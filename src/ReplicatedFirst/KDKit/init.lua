@@ -1,0 +1,23 @@
+-- doing this so verbosely rather than using a loop so that linters more easily pick everything up
+return {
+    API = require(script:WaitForChild("API")),
+    Class = require(script:WaitForChild("Class")),
+    Cooldown = require(script:WaitForChild("Cooldown")),
+    GUI = require(script:WaitForChild("GUI")),
+    Hash = require(script:WaitForChild("Hash")),
+    Humanize = require(script:WaitForChild("Humanize")),
+    JobId = require(script:WaitForChild("JobId")),
+    LazyRequire = require(script:WaitForChild("LazyRequire")),
+    Mouse = require(script:WaitForChild("Mouse")),
+    Mutex = require(script:WaitForChild("Mutex")),
+    Preload = require(script:WaitForChild("Preload")),
+    Random = require(script:WaitForChild("Random")),
+    RateLimit = require(script:WaitForChild("RateLimit")),
+    Remote = require(script:WaitForChild("Remote")),
+    Remotes = require(script:WaitForChild("Remotes")),
+    ReplicatedTable = require(script:WaitForChild("ReplicatedTable")),
+    Tickrate = require(script:WaitForChild("Tickrate")),
+    Time = require(script:WaitForChild("Time")),
+    TimeBasedPassword = require(script:WaitForChild("TimeBasedPassword")),
+    Utils = require(script:WaitForChild("Utils")),
+}

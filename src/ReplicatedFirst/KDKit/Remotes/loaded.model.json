@@ -1,0 +1,16 @@
+{
+    "ClassName": "RemoteEvent",
+    "properties": {
+        "Attributes": {
+            "rateLimit": {
+                "Float64": 60
+            },
+            "rateLimitPeriod": {
+                "Float64": 60
+            },
+            "rateLimitPool": {
+                "String": "Multiple remotes can be grouped under the same rate limit pool. By default, each remote is given its own pool. This attribute is optional. The above rateLimit and rateLimitPeriod both default to `60`."
+            }
+        }
+    }
+}

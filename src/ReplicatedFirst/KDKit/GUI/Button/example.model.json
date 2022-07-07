@@ -1,0 +1,32 @@
+{
+    "ClassName": "Sound",
+    "properties": {
+        "SoundId": {
+            "String": "rbxassetid://7076384001"
+        },
+        "Volume": {
+            "Float64": 1.5
+        },
+        "Attributes": {
+            "Note": {
+                "String": "This is an example of how to set the button clicking sound. If you create literally any other sound under this script, that one will be used instead."
+            }
+        }
+    },
+    "Children": [
+        {
+            "ClassName": "EqualizerSoundEffect",
+            "properties": {
+                "HighGain": {
+                    "Float64": -12.5
+                },
+                "LowGain": {
+                    "Float64": 10
+                },
+                "MidGain": {
+                    "Float64": -8.9
+                }
+            }
+        }
+    ]
+}
