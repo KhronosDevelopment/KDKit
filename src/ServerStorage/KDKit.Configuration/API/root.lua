@@ -2,7 +2,7 @@ local KDKitInstance = game:GetService("ReplicatedFirst"):WaitForChild("KDKit")
 local TimeBasedPassword = require(KDKitInstance:WaitForChild("TimeBasedPassword"))
 
 local rootAPIConfiguration = {
-    url = "https://api.khronosdevelopment.com/",
+    url = script:GetAttribute("API_URL"), -- i.e. "https://api.yoursite.com/"
 }
 
 local tbp = TimeBasedPassword.new(script:GetAttribute("API_SECRET"))
