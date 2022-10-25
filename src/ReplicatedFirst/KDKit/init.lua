@@ -8,6 +8,7 @@ return {
     Humanize = require(script:WaitForChild("Humanize")),
     JobId = require(script:WaitForChild("JobId")),
     LazyRequire = require(script:WaitForChild("LazyRequire")),
+    Maid = require(script:WaitForChild("Maid")),
     Mouse = require(script:WaitForChild("Mouse")),
     Mutex = require(script:WaitForChild("Mutex")),
     Preload = require(script:WaitForChild("Preload")),

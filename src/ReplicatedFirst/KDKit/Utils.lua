@@ -628,6 +628,7 @@ end
     Linear interpolation.
     ```lua
     Utils:lerp(0, 20, 0.1) -> 2
+    ```
 --]]
 function Utils:lerp(a, b, f)
     return (b - a) * f + a
@@ -637,9 +638,43 @@ end
     Inverse of Utils.lerp
     ```lua
     Utils:unlerp(10, 20, 12) -> 0.2
+    ```
 --]]
 function Utils:unlerp(a, b, x)
     return (x - a) / (b - a)
+end
+
+--[[
+    Checks if the given value is callable, i.e. that it is a function or a callable table.
+--]]
+function Utils:callable(maybeCallable)
+    if type(maybeCallable) == "function" then
+        return true
+    elseif type(maybeCallable) == "table" and type(rawget(getmetatable(maybeCallable), "__call")) == "function" then
+        return true
+    end
+
+    return false
+end
+
+--[[
+    Gets the attribute, if present, otherwise returns the provided default value.
+    Similar to Python's builtin `getattr`
+    ```lua
+    Utils:getattr({a = 123}, 'b', 456) -> 456
+    Utils:getattr(Vector3.new(), 'blah') -> nil
+    ```
+--]]
+function Utils:getattr(x, attr, default)
+    local s, r = pcall(function()
+        return x[attr]
+    end)
+
+    if not s or r == nil then
+        return default
+    end
+
+    return r
 end
 
 return Utils

@@ -1,5 +1,5 @@
 local Class = require(script.Parent:WaitForChild("Class"))
-local Cooldown = Class.new("Cooldown")
+local Cooldown = Class.new("KDKit.Cooldown")
 
 function Cooldown:__init()
     self.cooldowns = {}
