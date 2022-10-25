@@ -1,11 +1,11 @@
 local RunService = game:GetService("RunService")
 
-local Class = require(script.Parent.Parent:WaitForChild("Class"))
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 local Common = require(script.Parent:WaitForChild("Common"))
 local root = game.ReplicatedStorage:WaitForChild("KDKit.ReplicatedTable.Root")
 
-local ReplicatedTable = Class.new()
+local ReplicatedTable = {}
+
 ReplicatedTable.CALLBACK_COUNT = table.create(128) -- only used to prevent garbage collection of RTs that have at least one connection
 
 local function nonCyclicDeepClone(src)
@@ -42,8 +42,17 @@ local function buildTableFromInstance(instance, noCache)
     return output
 end
 
-function ReplicatedTable:__new(parent, path)
-    return parent and rawget(parent, "!!! PRIVATE INTERNAL STORAGE !!!").children[path], true
+function ReplicatedTable.new(parent, path)
+    local self = parent and rawget(parent, "!!! PRIVATE INTERNAL STORAGE !!!").children[path]
+
+    if self then
+        return self
+    else
+        self = setmetatable({}, ReplicatedTable)
+    end
+
+    ReplicatedTable.__init(self, parent, path)
+    return self
 end
 
 function ReplicatedTable:__init(parent, path)

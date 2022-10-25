@@ -3,8 +3,8 @@ local Button = require(script.Parent.Parent:WaitForChild("Button"))
 local Class = require(script.Parent.Parent.Parent:WaitForChild("Class"))
 
 local Page = Class.new("KDKit.GUI.App.Page")
-Page.TOP_ZINDEX = 100
-Page.BOTTOM_ZINDEX = 0
+Page.static.TOP_ZINDEX = 100
+Page.static.BOTTOM_ZINDEX = 0
 
 function Page:__init(app, module)
     self.app = app

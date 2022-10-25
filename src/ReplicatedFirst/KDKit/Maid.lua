@@ -12,7 +12,7 @@ local Utils = require(script.Parent:WaitForChild("Utils"))
 local Class = require(script.Parent:WaitForChild("Class"))
 local Maid = Class.new("KDKit.Maid")
 
-function Maid:kTaskIsValid(task)
+function Maid.static:isTaskValid(task)
     if Utils:callable(Utils:getattr(task, "Destroy")) then
         return true
     elseif Utils:callable(Utils:getattr(task, "Disconnect")) then
@@ -32,7 +32,7 @@ end
 function Maid:give(task)
     local thisTaskIndex = self.nextTaskIndex
 
-    if not Maid:kTaskIsValid(task) then
+    if not Maid:isTaskValid(task) then
         error(("Invalid task `%s`"):format(Utils:repr(task)))
     end
 
@@ -73,7 +73,7 @@ function Maid:clean(taskOrIndex)
 
     self.tasks[index] = nil
 
-    if not Maid:kTaskIsValid(task) then
+    if not Maid:isTaskValid(task) then
         warn(("Maid can no longer clean the task `%s`. Doing nothing."):format(Utils:repr(task)))
     else
         local taskRepr = Utils:repr(task) -- the task may be a mutable table, so want to cache this in case of error

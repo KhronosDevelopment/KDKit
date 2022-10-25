@@ -6,15 +6,15 @@ local Utils = require(script.Parent:WaitForChild("Utils"))
 local Remote = Class.new("KDKit.Remote")
 
 if RunService:IsServer() then
-    Remote.folder = Instance.new("Folder", game:GetService("ReplicatedStorage"))
-    Remote.folder.Name = "KDKit.Remote.instances"
+    Remote.static.folder = Instance.new("Folder", game:GetService("ReplicatedStorage"))
+    Remote.static.folder.Name = "KDKit.Remote.instances"
 else
     coroutine.wrap(function()
-        Remote.folder = game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.instances")
+        Remote.static.folder = game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.instances")
     end)()
 end
 
-function Remote:kWaitForFolder()
+function Remote.static:waitForFolder()
     while not Remote.folder do
         task.wait()
     end
@@ -44,10 +44,10 @@ function Remote:__init(
     -- so we will need to clone them into ReplicatedStorage, where they can be correctly resolved.
     if RunService:IsServer() then
         self.instance = self.template:Clone()
-        self.instance.Parent = Remote:kWaitForFolder()
+        self.instance.Parent = Remote:waitForFolder()
     else
         coroutine.wrap(function()
-            self.instance = Remote:kWaitForFolder():WaitForChild(self.template.Name)
+            self.instance = Remote:waitForFolder():WaitForChild(self.template.Name)
         end)()
     end
 end

@@ -18,26 +18,26 @@ local Remote = require(script.Parent.Parent:WaitForChild("Remote"))
     Class
 --]]
 local Button = Class.new("KDKit.GUI.Button")
-Button.list = table.create(256)
-Button.sound = script:WaitForChild("example")
+Button.static.list = table.create(256)
+Button.static.sound = script:WaitForChild("example")
 
 -- using coroutine instead of task.defer because I want this to execute immediately.
 -- Ideally, an alternative sound will be found before this module returns.
 coroutine.wrap(function()
     for _, child in script:GetChildren() do
         if child.Name ~= "example" then
-            Button.sound = child
+            Button.static.sound = child
             return
         end
     end
 
-    Button.sound = script.ChildAdded:Wait()
+    Button.static.sound = script.ChildAdded:Wait()
 end)()
 
 --[[
     Constants
 --]]
-Button.DELETED_METATABLE = {
+Button.static.DELETED_METATABLE = {
     __index = function(_self, key)
         error(("This Button has been deleted. You cannot access the key `%s`."):format(Utils:repr(key)))
     end,
@@ -45,13 +45,13 @@ Button.DELETED_METATABLE = {
         error(("This Button has been deleted. You cannot access the key `%s`."):format(Utils:repr(key)))
     end,
 }
-Button.STYLE_STATE_PRIORITIES = {
+Button.static.STYLE_STATE_PRIORITIES = {
     "disabled",
     "loading",
     "active",
     "hovered",
 }
-Button.CUSTOM_HITBOXES = {
+Button.static.CUSTOM_HITBOXES = {
     OVAL = function(_btn, xOffset, yOffset, xSize, ySize)
         return (yOffset / ySize - 0.5) ^ 2 + (xOffset / xSize - 0.5) ^ 2 <= 0.25
     end,
@@ -65,11 +65,11 @@ Button.CUSTOM_HITBOXES = {
         end
     end,
 }
-Button.USER_INPUT_TYPES = {
+Button.static.USER_INPUT_TYPES = {
     [Enum.UserInputType.MouseButton1] = true,
     [Enum.UserInputType.Touch] = true,
 }
-Button.GET_DEBUG_UIS_STATE = function()
+Button.static.GET_DEBUG_UIS_STATE = function()
     return {
         AccelerometerEnabled = UserInputService.AccelerometerEnabled,
         KeyboardEnabled = UserInputService.KeyboardEnabled,
@@ -77,7 +77,7 @@ Button.GET_DEBUG_UIS_STATE = function()
         TouchEnabled = UserInputService.TouchEnabled,
     }
 end
-Button.ATTRIBUTE_PREFIX = "kdbtn"
+Button.static.ATTRIBUTE_PREFIX = "kdbtn"
 
 --[[
     Utilities
@@ -125,14 +125,14 @@ local function parseKeyCode(key: string | Enum.KeyCode | number): Enum.KeyCode?
 end
 
 local Keybind = Class.new("KDKit.GUI.Button._internal.Keybind")
-Keybind.nextBindId = 0
-Keybind.bindCountByKey = table.create(32)
-function Keybind:kUseNextBindId()
+Keybind.static.nextBindId = 0
+Keybind.static.bindCountByKey = table.create(32)
+function Keybind.static:useNextBindId()
     self.nextBindId += 1
     return self.nextBindId - 1
 end
-function Keybind:kUseNextBindString()
-    return ("%s_%s"):format(self.__name, self:kUseNextBindId())
+function Keybind.static:useNextBindString()
+    return ("%s_%s"):format(self.__name, self:useNextBindId())
 end
 
 function Keybind:__init(button: "KDKit.GUI.Button", key: Enum.KeyCode)
@@ -146,7 +146,7 @@ function Keybind:enable()
     end
 
     Keybind.bindCountByKey[self.key] = (Keybind.bindCountByKey[self.key] or 0) + 1
-    self.bind = Keybind:kUseNextBindString()
+    self.bind = Keybind:useNextBindString()
     ContextActionService:BindAction(self.bind, function(_actionName, inputState, _inputObject)
         if inputState == Enum.UserInputState.Begin then
             if Button.active == self.button then
@@ -455,7 +455,7 @@ end
 --[[
     Apply to Groups of Buttons
 --]]
-function Button:kApplyToAll(root, funcName, ...)
+function Button.static:applyToAll(root, funcName, ...)
     if type(root) == "table" and root.__class == Button then
         root = root.instance
     end
@@ -471,7 +471,7 @@ function Button:enable(root)
     local staticCall = self == Button
 
     if staticCall then
-        return self:kApplyToAll(root, "enable")
+        return self:applyToAll(root, "enable")
     elseif not self.enabled then
         self.enabled = true
         self:visualStateChanged()
@@ -482,7 +482,7 @@ function Button:disable(root)
     local staticCall = self == Button
 
     if staticCall then
-        return self:kApplyToAll(root, "disable")
+        return self:applyToAll(root, "disable")
     elseif self.enabled then
         self.enabled = false
         if Button.active == self then
@@ -496,7 +496,7 @@ function Button:delete(root)
     local staticCall = self == Button
 
     if staticCall then
-        return self:kApplyToAll(root, "delete")
+        return self:applyToAll(root, "delete")
     else
         self:style(self.styles.original)
 

@@ -11,12 +11,12 @@ local Remote = require(script.Parent.Parent:WaitForChild("Remote"))
 local Mutex = require(script.Parent.Parent:WaitForChild("Mutex"))
 
 local App = Class.new("KDKit.GUI.App")
-App.Page = require(script:WaitForChild("Page"))
-App.Transition = require(script:WaitForChild("Transition"))
-App.folder = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-App.nextDisplayOrder = 0
+App.static.Page = require(script:WaitForChild("Page"))
+App.static.Transition = require(script:WaitForChild("Transition"))
+App.static.folder = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+App.static.nextDisplayOrder = 0
 
-App.GET_DEBUG_UIS_STATE = function()
+App.static.GET_DEBUG_UIS_STATE = function()
     local UserInputService = game:GetService("UserInputService")
     return {
         AccelerometerEnabled = UserInputService.AccelerometerEnabled,
@@ -26,7 +26,7 @@ App.GET_DEBUG_UIS_STATE = function()
     }
 end
 
-App.BUILTIN_SOURCES = { "INITIAL_SETUP", "APP_CLOSE", "APP_OPEN", "GO_HOME", "NEXT_PAGE_FAILED_TO_OPEN" }
+App.static.BUILTIN_SOURCES = { "INITIAL_SETUP", "APP_CLOSE", "APP_OPEN", "GO_HOME", "NEXT_PAGE_FAILED_TO_OPEN" }
 
 function App:__init(module: ModuleScript)
     self.module = module

@@ -15,15 +15,15 @@ local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 local GLOBAL_HTTP_RATE_LIMIT = RateLimit.new(450, 60)
 
 local Config = Class.new("KDKit.API.Config")
-Config.folder = game:GetService("ServerStorage"):WaitForChild("KDKit.Configuration"):WaitForChild("API")
-Config.list = {} -- will be populated with children in the above folder (see bottom of this file)
-Config.LOG_LEVEL = {
+Config.static.folder = game:GetService("ServerStorage"):WaitForChild("KDKit.Configuration"):WaitForChild("API")
+Config.static.list = {} -- will be populated with children in the above folder (see bottom of this file)
+Config.static.LOG_LEVEL = {
     DEBUG = 0,
     INFO = 1,
     WARN = 2,
     ERROR = 3,
 }
-Config.URL_PATTERN = "https?://[a-zA-Z0-9][a-zA-Z0-9./]*/"
+Config.static.URL_PATTERN = "https?://[a-zA-Z0-9][a-zA-Z0-9./]*/"
 
 function Config:__init(instance)
     self.instance = instance
