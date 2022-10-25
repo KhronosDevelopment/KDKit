@@ -79,6 +79,8 @@ function Maid:clean(task)
         warn(("Maid failed to clean task `%s` due to callback error:\n%s"):format(taskRepr, r))
     end
 end
+Maid.destroy = Maid.clean
+Maid.disconnect = Maid.clean
 Maid.Destroy = Maid.clean
 Maid.Disconnect = Maid.clean
 
