@@ -41,6 +41,7 @@ local Mutex = Class.new("KDKit.Mutex")
 function Mutex:__init(timeout)
     self.timeout = timeout or 60
     self.locked = false
+    self.destroyed = false
     self.owner = 0
 end
 
@@ -56,10 +57,17 @@ function Mutex:newOwner()
 end
 
 function Mutex:wait()
+    if self.destroyed then
+        error("The mutex has been destroyed.")
+    end
+
     local start = os.clock()
     local warned = false
     while self.locked and os.clock() - start < self.timeout do
         task.wait()
+        if self.destroyed then
+            error("The mutex has been destroyed.")
+        end
         if not warned and os.clock() - start > self.timeout / 2 then
             warn(
                 ("A mutex lock has been waiting to be released for %.1f seconds. Potential deadlock detected. An error will be thrown if not resolved by %.1f seconds. If this is an okay delay, raise your mutex's timeout threshold.\n%s"):format(
@@ -101,6 +109,10 @@ function Mutex:lock(fnToExecuteWithLock)
     return Utils:ensure(function()
         self.locked = false
     end, fnToExecuteWithLock, unlock)
+end
+
+function Mutex:destroy()
+    self.destroyed = true
 end
 
 return Mutex
