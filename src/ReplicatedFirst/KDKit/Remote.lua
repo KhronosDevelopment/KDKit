@@ -141,24 +141,24 @@ function Remote:wait()
 end
 
 if RunService:IsServer() then
-    Remote.rateLimitExceeded = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
-    Remote.rateLimitExceeded.Name = "KDKit.Remote.rateLimitExceeded"
-    Remote.rateLimitExceeded = Remote.new(Remote.rateLimitExceeded, RateLimit.new(0), true)
+    Remote.static.rateLimitExceeded = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
+    Remote.static.rateLimitExceeded.Name = "KDKit.Remote.rateLimitExceeded"
+    Remote.static.rateLimitExceeded = Remote.new(Remote.static.rateLimitExceeded, RateLimit.new(0), true)
 
-    Remote.logClientError = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
-    Remote.logClientError.Name = "KDKit.Remote.logClientError"
-    Remote.logClientError = Remote.new(Remote.logClientError, RateLimit.new(5, 300), true)
+    Remote.static.logClientError = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
+    Remote.static.logClientError.Name = "KDKit.Remote.logClientError"
+    Remote.static.logClientError = Remote.new(Remote.static.logClientError, RateLimit.new(5, 300), true)
 
-    Remote.onServerError = function(remote, player, args, traceback)
+    Remote.static.onServerError = function(remote, player, args, traceback)
         -- override me! I get called after every server error!
     end
 else
-    Remote.rateLimitExceeded = Remote.new(
+    Remote.static.rateLimitExceeded = Remote.new(
         game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.rateLimitExceeded"),
         RateLimit.new(0),
         true
     )
-    Remote.logClientError = Remote.new(
+    Remote.static.logClientError = Remote.new(
         game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.logClientError"),
         RateLimit.new(5, 300),
         true
