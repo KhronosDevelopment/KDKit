@@ -153,19 +153,34 @@ function Utils:repr(x: any, tableVerbosity: number?, alreadySeenTables: table?):
 
         alreadySeenTables[x] = true
         local n = 0
-        for key, value in x do
+        local function process(key, value)
             if n < tableVerbosity then
                 table.insert(
                     parts,
                     ("[%s] = %s"):format(
-                        self:repr(key, math.min(tableVerbosity, math.max(3, tableVerbosity / 2))),
-                        self:repr(value, math.min(tableVerbosity, math.max(3, tableVerbosity / 2)))
+                        self:repr(key, math.min(tableVerbosity, math.max(3, tableVerbosity / 2)), alreadySeenTables),
+                        self:repr(value, math.min(tableVerbosity, math.max(3, tableVerbosity / 2)), alreadySeenTables)
                     )
                 )
                 n += 1
+                return true
             else
                 table.insert(parts, "...")
-                break
+                return false
+            end
+        end
+
+        if getmetatable(x) and rawget(getmetatable(x), "__call") and not rawget(getmetatable(x), "__iter") then
+            for key, value in pairs(x) do
+                if not process(key, value) then
+                    break
+                end
+            end
+        else
+            for key, value in x do
+                if not process(key, value) then
+                    break
+                end
             end
         end
         alreadySeenTables[x] = nil
