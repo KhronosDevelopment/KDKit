@@ -74,7 +74,10 @@
 local class__newindex = function(self, name, value)
     if type(value) ~= "function" then
         error(
-            ("You may only add functions directly to the class. Please store this variable in `%s.static.%s`"):format(
+            ("You may only add functions directly to the class. You tried to set `%s.%s` to a `%s` (which is not a function). Instead, you can store this variable in `%s.static.%s`."):format(
+                self.__name,
+                name,
+                typeof(value),
                 self.__name,
                 name
             )
