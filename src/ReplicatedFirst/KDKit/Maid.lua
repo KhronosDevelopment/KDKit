@@ -13,11 +13,11 @@ local Class = require(script.Parent:WaitForChild("Class"))
 local Maid = Class.new("KDKit.Maid")
 
 function Maid.static:isTaskValid(task)
-    if Utils:callable(Utils:getattr(task, "clean")) then
+    if Utils:callable(Utils:getattr(task, "clean")) or Utils:callable(Utils:getattr(task, "Clean")) then
         return true
-    elseif Utils:callable(Utils:getattr(task, "Destroy")) then
+    elseif Utils:callable(Utils:getattr(task, "destroy")) or Utils:callable(Utils:getattr(task, "Destroy")) then
         return true
-    elseif Utils:callable(Utils:getattr(task, "Disconnect")) then
+    elseif Utils:callable(Utils:getattr(task, "disconnect")) or Utils:callable(Utils:getattr(task, "Disconnect")) then
         return true
     elseif Utils:callable(task) then
         return true
@@ -58,10 +58,14 @@ function Maid:clean(task)
         coroutine.wrap(function()
             if Utils:callable(Utils:getattr(task, "clean")) then
                 task:clean()
-            elseif Utils:callable(Utils:getattr(task, "Destroy")) then
-                task:Destroy()
             elseif Utils:callable(Utils:getattr(task, "Disconnect")) then
                 task:Disconnect()
+            elseif Utils:callable(Utils:getattr(task, "destroy")) then
+                task:destroy()
+            elseif Utils:callable(Utils:getattr(task, "disconnect")) then
+                task:disconnect()
+            elseif Utils:callable(Utils:getattr(task, "Destroy")) then
+                task:Destroy()
             elseif Utils:callable(task) then
                 task()
             else
