@@ -49,7 +49,7 @@
     local Derived = Class.new("Derived", Base)
     function Derived:__init()
         print("Derived.__init")
-        self:super____init()
+        self:__super__init()
         self.a2 = "derived"
     end
     function Derived:f1()
@@ -113,7 +113,7 @@ function Class.new(name, superclass)
     end
 
     function class:__index(attribute_name)
-        if superclass and attribute_name:sub(1, 7) == "super__" then
+        if superclass and (attribute_name:sub(1, 7) == "super__" or attribute_name:sub(1, 7) == "__super") then
             attribute_name = attribute_name:sub(8)
             if attribute_name == "static" then
                 return nil
