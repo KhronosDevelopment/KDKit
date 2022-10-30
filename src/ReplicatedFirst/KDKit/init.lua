@@ -2,6 +2,7 @@
 return {
     API = require(script:WaitForChild("API")),
     Class = require(script:WaitForChild("Class")),
+    ConfigGroup = require(script:WaitForChild("ConfigGroup")),
     Cooldown = require(script:WaitForChild("Cooldown")),
     GUI = require(script:WaitForChild("GUI")),
     Hash = require(script:WaitForChild("Hash")),

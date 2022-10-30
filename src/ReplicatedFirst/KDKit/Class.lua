@@ -94,7 +94,7 @@ local Class = { static = { __name = "Class" } }
 Class.static.__class = Class
 setmetatable(Class, { __index = Class.static, __newindex = class__newindex })
 
-function Class.new(name, superclass)
+function Class.static.new(name, superclass)
     superclass = superclass or Object
 
     assert(type(name) == "string")
@@ -110,21 +110,6 @@ function Class.new(name, superclass)
         local self = setmetatable({ __class = class }, class)
         class.__init(self, ...)
         return self
-    end
-
-    function class:__index(attribute_name)
-        if superclass and (attribute_name:sub(1, 7) == "super__" or attribute_name:sub(1, 7) == "__super") then
-            attribute_name = attribute_name:sub(8)
-            if attribute_name == "static" then
-                return nil
-            end
-            return rawget(superclass, attribute_name)
-        end
-
-        if attribute_name == "static" then
-            return nil
-        end
-        return rawget(class, attribute_name) or (superclass and rawget(superclass, attribute_name))
     end
 
     return setmetatable(class, {
@@ -146,6 +131,28 @@ function Object:__init(...)
             )
         )
     end
+end
+
+function Object:__index(name)
+    local class = rawget(self, "__class")
+    if not class then
+        return nil
+    end
+
+    local superclass = class.__super
+
+    if superclass and (name:sub(1, 7) == "super__" or name:sub(1, 7) == "__super") then
+        name = name:sub(8)
+        if name == "static" then
+            return nil
+        end
+        return rawget(superclass, name)
+    end
+
+    if name == "static" then
+        return nil
+    end
+    return rawget(class, name) or (superclass and rawget(superclass, name))
 end
 
 Class.static.__super = Object
