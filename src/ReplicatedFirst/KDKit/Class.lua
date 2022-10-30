@@ -112,6 +112,21 @@ function Class.static.new(name, superclass)
         return self
     end
 
+    function class:__index(attribute_name)
+        if superclass and (attribute_name:sub(1, 7) == "super__" or attribute_name:sub(1, 7) == "__super") then
+            attribute_name = attribute_name:sub(8)
+            if attribute_name == "static" then
+                return nil
+            end
+            return rawget(superclass, attribute_name)
+        end
+
+        if attribute_name == "static" then
+            return nil
+        end
+        return rawget(class, attribute_name) or (superclass and rawget(superclass, attribute_name))
+    end
+
     return setmetatable(class, {
         __index = function(self, attribute_name)
             return rawget(class.static, attribute_name) or (superclass and superclass[attribute_name])
@@ -131,28 +146,6 @@ function Object:__init(...)
             )
         )
     end
-end
-
-function Object:__index(name)
-    local class = rawget(self, "__class")
-    if not class then
-        return nil
-    end
-
-    local superclass = class.__super
-
-    if superclass and (name:sub(1, 7) == "super__" or name:sub(1, 7) == "__super") then
-        name = name:sub(8)
-        if name == "static" then
-            return nil
-        end
-        return rawget(superclass, name)
-    end
-
-    if name == "static" then
-        return nil
-    end
-    return rawget(class, name) or (superclass and rawget(superclass, name))
 end
 
 Class.static.__super = Object
