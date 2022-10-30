@@ -802,4 +802,37 @@ function Utils:getBlankPart(): Part
     return part
 end
 
+--[[
+    Returns the minimum value in the table (like math.min) except:
+        - it accepts a key function
+        - it returns the index of the minimum value along with the value itself
+
+    ```lua
+    Utils:min({3, 1, 8}) -> 1, 2
+    Utils:min({-8, 3}, math.abs) -> 3, 2
+    ```
+--]]
+function Utils:min(tab: table, key: (value: any, key: any) -> any): (any, any)
+    local minValue, minKey = nil, nil
+
+    for k, v in tab do
+        if key(v, k) < minValue then
+            minValue = v
+            minKey = k
+        end
+    end
+
+    return minValue, minKey
+end
+
+--[[
+    Exactly the same as Utils.min, but only returns the key of the minimum value.
+    ```lua
+    Utils:minKey({a = 2, b = 1, c = 4}) -> "b"
+    ```
+--]]
+function Utils:minKey(...): any
+    return select(2, self:min(...))
+end
+
 return Utils
