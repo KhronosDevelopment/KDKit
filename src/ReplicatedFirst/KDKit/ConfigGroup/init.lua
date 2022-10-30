@@ -14,20 +14,26 @@ function ConfigGroup:__init(root: Instance)
 
     for _, instance in self._instances do
         local cfg = ConfigGroup.Config.new(self, instance)
-        self._configs[cfg.name] = cfg
+
+        if self._configs[cfg.name] ~= nil then
+            error(
+                ("You have two (or more) configs with the same name: '%s'. All of the config names within a group must be unique."):format(
+                    cfg.name
+                )
+            )
+        end
 
         if rawget(self, cfg.name) ~= nil then
             error(("You cannot use the config name '%s', it is reserved for internal use."):format(cfg.name))
         end
+
+        self[cfg.name] = cfg
+        self._configs[cfg.name] = cfg
     end
 end
 
 function ConfigGroup:__iter__()
     return pairs(self._configs)
-end
-
-function ConfigGroup:__index(name)
-    return self._configs[name] or Class.Object.__index(self, name)
 end
 
 return ConfigGroup
