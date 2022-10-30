@@ -706,4 +706,77 @@ function Utils:weld(a: BasePart, b: BasePart, reuse: WeldConstraint): WeldConstr
     return weld
 end
 
+--[[
+    Returns a function that, when invoked, will access the provided key.
+--]]
+function Utils:plucker(attribute: string): (value: any) -> any
+    return function(value: string)
+        return value[attribute]
+    end
+end
+
+--[[
+    Basically equivalent to Utils:imap(tab, Utils:plucker(attribute))
+--]]
+function Utils:ipluck(plucker: string | (value: any, key: any) -> any, tab: table): nil
+    if typeof(plucker) == "string" then
+        plucker = self:plucker(plucker)
+    end
+
+    self:imap(tab, plucker)
+end
+
+--[[
+    Same as Utils:ipluck, but makes a copy first.
+--]]
+function Utils:pluck(plucker: string | (value: any, key: any) -> any, tab: table): table
+    tab = table.clone(tab)
+    self:ipluck(plucker, tab)
+    return tab
+end
+
+--[[
+    Returns the insertion index of the provided element, using binary search.
+    if you provide a key, it must return something that is comparable.
+    Similar to python's builtin `bisect.bisect` function.
+
+    ```lua
+    local x = {10, 11, 12, 14, 15}
+    Utils:bisect(x, 13) -> 4
+    ```
+--]]
+function Utils:bisect(tab: table, element: any, key: ((value: any, key: any) -> any)?): number
+    if not key then
+        key = function(x)
+            return x
+        end
+    end
+
+    element = key(element, nil)
+
+    local low = 1
+    local high = #tab + 1
+    local middle
+
+    while low < high do
+        middle = math.floor((low + high) / 2)
+
+        if element >= key(tab[middle], middle) then
+            low = middle + 1
+        else
+            high = middle
+        end
+    end
+
+    return low
+end
+
+--[[
+    Insert `element` into `tab` such that it remains sorted (with an optional sorting key).
+    Similar to Python's builtin `bisect.insort` function.
+--]]
+function Utils:insort(tab: table, element: any, key: ((value: any, key: any) -> any)?): nil
+    table.insert(tab, self:bisect(tab, element, key), element)
+end
+
 return Utils
