@@ -135,6 +135,10 @@ function Class.static.new(name, superclass)
     })
 end
 
+function Class.static:inherits(superclass: "KDKit.Class")
+    return self == superclass or (self.__super and self.__super:inherits(superclass))
+end
+
 Object = Class.new("Object")
 function Object:__init(...)
     local n = select("#", ...)

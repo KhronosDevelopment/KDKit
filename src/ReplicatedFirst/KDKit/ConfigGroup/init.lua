@@ -1,39 +1,90 @@
-local Class = require(script.Parent:WaitForChild("Class"))
 local Preload = require(script.Parent:WaitForChild("Preload"))
+local Humanize = require(script.Parent:WaitForChild("Humanize"))
+local Class = require(script.Parent:WaitForChild("Class"))
 
-local ConfigGroup = Class.new("KDKit.ConfigGroup")
-ConfigGroup.static.Config = require(script:WaitForChild("Config"))
+local ConfigGroup = {
+    Config = require(script:WaitForChild("Config")),
+}
 
-function ConfigGroup:__init(root: Instance)
-    Preload:ensureDescendants(root)
+function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
+    local group = {}
 
-    self._root = root
-    self._instances = root.configs:GetChildren()
-    self._defaults = require(root.defaults)
-    self._configs = table.create(#self._instances)
+    local rootConfigInstance = nil
+    repeat
+        rootConfigInstance = groupInstance:GetChildren()[1] or Preload:waitForEvent(groupInstance.ChildAdded, 3)
+        if not rootConfigInstance then
+            warn(("KDKit.ConfigGroup is waiting for a child to appear under `%s`"):format(groupInstance:GetFullName()))
+        end
+    until rootConfigInstance
 
-    for _, instance in self._instances do
-        local cfg = ConfigGroup.Config.new(self, instance)
+    if not skipNameWarning and groupInstance.Name ~= Humanize:plural(rootConfigInstance.Name) then
+        warn(
+            ("The ConfigGroup `%s` should be named '%s' rather than '%s'. Pass `skipNameWarning = true` to silence"):format(
+                groupInstance:GetFullName(),
+                Humanize:plural(rootConfigInstance.Name),
+                groupInstance.Name
+            )
+        )
+    end
 
-        if self._configs[cfg.name] ~= nil then
+    Preload:ensureDescendants(rootConfigInstance)
+    local rootConfig = require(rootConfigInstance)
+
+    if not rootConfig:inherits(ConfigGroup.Config) then
+        error(("Config root at `%s` must inherit KDKit.ConfigGroup.Config."):format(rootConfigInstance))
+    end
+
+    for _, configInstance in rootConfigInstance:GetChildren() do
+        local expectedClassName = ("%s.%s"):format(rootConfig.__class.__name, configInstance.name)
+
+        local config = require(configInstance)
+        if config == nil then
+            config = Class.new(expectedClassName, rootConfig).new(configInstance)
+        end
+
+        if config.__class == Class then
             error(
-                ("You have two (or more) configs with the same name: '%s'. All of the config names within a group must be unique."):format(
-                    cfg.name
+                ("Config at `%s` must return a singleton instance of the class, not the class itself. For example `return %s.new(script)`."):format(
+                    config.__name
                 )
             )
         end
 
-        if rawget(self, cfg.name) ~= nil then
-            error(("You cannot use the config name '%s', it is reserved for internal use."):format(cfg.name))
+        if not config.__class:inherits(rootConfig) then
+            error(
+                ("Config at `%s` must inherit from the root config at `%s`."):format(
+                    configInstance:GetFullName(),
+                    rootConfigInstance:GetFullName()
+                )
+            )
         end
 
-        self[cfg.name] = cfg
-        self._configs[cfg.name] = cfg
-    end
-end
+        if config.name ~= configInstance.Name then
+            error(
+                ("Please don't override `config.name`, that's confusing! Maybe you meant to override `humanName`? (in config `%s`)"):format(
+                    configInstance:GetFullName()
+                )
+            )
+        end
 
-function ConfigGroup:__iter__()
-    return pairs(self._configs)
+        if config.__class.__name ~= expectedClassName then
+            error(
+                ("Config at `%s` was expected to have the class name '%s', but instead got '%s'."):format(
+                    configInstance:GetFullName(),
+                    expectedClassName,
+                    config.__class.__name
+                )
+            )
+        end
+
+        if group[config.name] then
+            error(("Duplicate config name '%s' at `%s`."):format(config.name, configInstance:GetFullName()))
+        end
+
+        group[config.name] = config
+    end
+
+    return group
 end
 
 return ConfigGroup
