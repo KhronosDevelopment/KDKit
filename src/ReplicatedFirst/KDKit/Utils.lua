@@ -779,4 +779,27 @@ function Utils:insort(tab: table, element: any, key: ((value: any, key: any) -> 
     table.insert(tab, self:bisect(tab, element, key), element)
 end
 
+--[[
+    Returns an un-parented Part that has CanCollide on, and everything else off.
+--]]
+function Utils:getBlankPart(): Part
+    local part = Instance.new("Part")
+
+    part.TopSurface = Enum.SurfaceType.SmoothNoOutlines
+    part.BottomSurface = Enum.SurfaceType.SmoothNoOutlines
+    part.RightSurface = Enum.SurfaceType.SmoothNoOutlines
+    part.LeftSurface = Enum.SurfaceType.SmoothNoOutlines
+    part.FrontSurface = Enum.SurfaceType.SmoothNoOutlines
+    part.BackSurface = Enum.SurfaceType.SmoothNoOutlines
+
+    part.Anchored = true
+    part.CanCollide = true
+    part.CanTouch = false
+    part.CanQuery = false
+
+    part.Size = Vector3.new(1, 1, 1)
+
+    return part
+end
+
 return Utils
