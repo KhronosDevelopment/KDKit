@@ -5,6 +5,7 @@ local Time = {
         fetchedAt = nil,
     },
     ATTRIBUTE = "KDKit_Time_now",
+    INITIALIZATION_WARNING_INTERVAL = 3,
 }
 
 if game:GetService("RunService"):IsServer() then
@@ -46,8 +47,15 @@ function Time:updateRemoteTime()
 end
 
 function Time:waitForInitialSync()
+    local warnAt = os.clock() + Time.INITIALIZATION_WARNING_INTERVAL
     while not self.remote.at do
         task.wait()
+        if os.clock() > warnAt then
+            warn(
+                "KDKit.Time:waitForInitialSync() is taking longer than expected. To silence this warning, increase Time.INITIALIZATION_WARNING_INTERVAL."
+            )
+            warnAt = os.clock() + Time.INITIALIZATION_WARNING_INTERVAL
+        end
     end
 end
 
