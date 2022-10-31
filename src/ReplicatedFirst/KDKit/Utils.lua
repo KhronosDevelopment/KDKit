@@ -1,5 +1,3 @@
-local HttpService = game:GetService("HttpService")
-
 --[[
     KDKit.Utils is a collection of various utility functions that are "missing" from the standard library and the language itself.
     Yes, all of KDKit could be considered a "collection of various utility functions", but these are functions which don't quite
@@ -21,11 +19,12 @@ local Utils = {
     end, error, "im throwing an error")
     ```
 --]]
-function Utils:ensure<A, T>(callback: () -> any, func: (...A) -> T, ...: A): T
+function Utils:ensure<A, T>(callback: (success: boolean, traceback: string?) -> any, func: (...A) -> T, ...: A): T
     local funcResults = table.pack(xpcall(func, debug.traceback, ...))
     local funcSuccess = table.remove(funcResults, 1)
 
-    local cbResults = table.pack(xpcall(callback, debug.traceback, not funcSuccess, table.unpack(funcResults)))
+    local cbResults =
+        table.pack(xpcall(callback, debug.traceback, not funcSuccess, if funcSuccess then nil else funcResults[1]))
     local cbSuccess = table.remove(cbResults, 1)
 
     if not cbSuccess then
@@ -69,12 +68,13 @@ end
     ```
 --]]
 function Utils:strip(str: string): string
-    return str:gsub("^%s+", ""):gsub("%s+$", "")
+    local x, _ = str:gsub("^%s+", ""):gsub("%s+$", "")
+    return x
 end
 
 --[[
     Splits the provided string based on the given delimiter into a table of substrings. By default, splits on groups of whitespace.
-    Similar to Python's builtin `str.strip` method.
+    Similar to Python's builtin `str.split` method.
 
     ```lua
     Utils:split("Hello there, my name is Gabe!") -> { "Hello", "there,", "my", "name", "is", "Gabe!" }
@@ -413,7 +413,7 @@ end
     ```
 --]]
 function Utils:safeJSONEncode(data: any): string
-    return HttpService:JSONEncode(self:makeSerializable(data))
+    return game:GetService("HttpService"):JSONEncode(self:makeSerializable(data))
 end
 
 --[[
@@ -877,6 +877,88 @@ end
 --]]
 function Utils:unique<V>(tab: { [any]: V }): { V }
     return self:keys(self:invert(tab))
+end
+
+--[[
+    Waits to throw errors until after the block is complete.
+    Inspired by Ruby RSpec's "aggregate_failures"
+    ```lua
+    Utils:aggregateErrors(function(aggregate)
+        for i = 1, 3 do
+            aggregate(function()
+                error(("I am throwing an error. (%d)"):format(i))
+            end)
+        end
+    end)
+
+    Utils.lua:939: The following 3 error(s) occurred within a call to Utils.aggregateErrors:
+    Error 1:
+        Utils.lua:953: I am throwing an error. (1)
+        Utils.lua:905 function aggregate
+        Utils.lua:915 function aggregateErrors
+
+    Error 2:
+        Utils.lua:953: I am throwing an error. (2)
+        Utils.lua:905 function aggregate
+        Utils.lua:915 function aggregateErrors
+
+    Error 3:
+        Utils.lua:953: I am throwing an error. (3)
+        Utils.lua:905 function aggregate
+        Utils.lua:915 function aggregateErrors
+    stacktrace:
+    [C] function error
+    Utils.lua:939 function aggregateErrors
+    Utils.lua:950
+    ```
+--]]
+function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> A2) -> T): T
+    local errors = {}
+
+    local function aggregate(f, ...)
+        local x = table.pack(xpcall(f, debug.traceback, ...))
+        local success = table.remove(x, 1)
+        if not success then
+            table.insert(errors, self:strip(x[1]))
+            return nil
+        else
+            return table.unpack(x)
+        end
+    end
+
+    local result = table.pack(xpcall(func, debug.traceback, aggregate))
+    local success = table.remove(result, 1)
+    if not success then
+        table.insert(
+            errors,
+            ("This error occurred outside of a call to `aggregate`, so it was not protected and the function exited early.\n%s"):format(
+                result[1]
+            )
+        )
+    end
+
+    if #errors > 0 then
+        self:imap(function(err: string, index: number)
+            local lines = self:split(self:strip(err), "\n")
+            self:imap(function(line: string)
+                line = self:strip(line)
+                if line ~= "" then
+                    return "    " .. line
+                end
+            end, lines)
+
+            table.insert(lines, 1, ("Error %d:"):format(index))
+            return table.concat(lines, "\n")
+        end, errors)
+        error(
+            ("The following %d error(s) occurred within a call to Utils.aggregateErrors:\n%s"):format(
+                #errors,
+                table.concat(errors, "\n\n")
+            )
+        )
+    end
+
+    return table.unpack(result)
 end
 
 return Utils
