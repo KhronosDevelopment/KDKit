@@ -868,4 +868,15 @@ function Utils:invert<K, V>(tab: { [K]: V }): { [V]: K }
     return inverted
 end
 
+--[[
+    Returns the unique values in the provided table.
+    Equivalent to Python: `list(set(table))`
+    ```lua
+    Utils:unique({ "a", "b", "c", "a", "b" }) -> { "a", "b", "c" }
+    ```
+--]]
+function Utils:unique<V>(tab: { [any]: V }): { V }
+    return self:keys(self:invert(tab))
+end
+
 return Utils
