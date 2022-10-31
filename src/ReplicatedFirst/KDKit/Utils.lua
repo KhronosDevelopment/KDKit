@@ -21,7 +21,7 @@ local Utils = {
     end, error, "im throwing an error")
     ```
 --]]
-function Utils:ensure(callback, func, ...)
+function Utils:ensure<A, T>(callback: () -> any, func: (...A) -> T, ...: A): T
     local funcResults = table.pack(xpcall(func, debug.traceback, ...))
     local funcSuccess = table.remove(funcResults, 1)
 
@@ -51,7 +51,7 @@ end
     Utils:keys({"a", "b", "c"}) -> { 1, 2, 3 }
     ```
 --]]
-function Utils:keys(tab: table): table
+function Utils:keys<K>(tab: { [K]: any }): { K }
     local keys = table.create(16)
     for key, _value in tab do
         table.insert(keys, key)
@@ -83,7 +83,7 @@ end
     Utils:split("abc123xyz", "%d") -> { "abc", "xyz" }
     ```
 --]]
-function Utils:split(str: string, delimiter: string?): table
+function Utils:split(str: string, delimiter: string?): { string }
     local words = table.create(16)
 
     local wordPattern = if delimiter then ("[^%s]+"):format(delimiter) else "%S+"
@@ -104,7 +104,7 @@ end
     print(x) -> { 1, 4, 9 }
     ```
 --]]
-function Utils:imap(transform: (value: any, key: any) -> any, tab: table): nil
+function Utils:imap<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): nil
     for key, value in tab do
         tab[key] = transform(value, key)
     end
@@ -118,7 +118,7 @@ end
     Utils:map(function(v) return v ^ 3 end, { 1, 2, 3 }) -> { 1, 8, 27 }
     ```
 --]]
-function Utils:map(transform: (value: any, key: any) -> any, tab: table): table
+function Utils:map<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
     local copy = table.clone(tab)
     self:imap(transform, copy)
     return copy
@@ -421,13 +421,13 @@ end
     Similar to passing a `key` to Python's builtin `list.sort` function.
     You may also return a table to include tiebreakers.
 --]]
-function Utils:isort(tab: table, by: (value: any, key: any) -> any): nil
+function Utils:isort<K, V>(tab: { [K]: V }, key: ((value: V) -> any)?): nil
     local rankings = table.create(#tab)
     local aRanking, bRanking, aRank, bRank
 
     table.sort(tab, function(a, b)
-        aRanking = rankings[a] or by(a)
-        bRanking = rankings[b] or by(b)
+        aRanking = rankings[a] or key(a)
+        bRanking = rankings[b] or key(b)
         rankings[a] = aRanking
         rankings[b] = bRanking
 
@@ -458,9 +458,9 @@ end
 --[[
     Similar to Utils.isort, but makes a copy first.
 --]]
-function Utils:sort(tab: table, by: (value: any, key: any) -> any): table
+function Utils:sort<K, V>(tab: { [K]: V }, key: ((value: V) -> any)?): { [K]: V }
     tab = table.clone(tab)
-    self:isort(tab, by)
+    self:isort(tab, key)
     return tab
 end
 
@@ -468,7 +468,7 @@ end
     Returns true if the first object is visibly on top of the second gui object.
     Useful for detecting which object is currently visible at a certain point on a client's screen.
 --]]
-function Utils:guiObjectIsOnTopOfAnother(a, b)
+function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
     local aGui = a:FindFirstAncestorOfClass("ScreenGui")
         or a:FindFirstAncestorOfClass("SurfaceGui")
         or a:FindFirstAncestorOfClass("BillboardGui")
@@ -592,7 +592,7 @@ end
     y -> { a = 2, b = 3, d = 4 } -- (unchanged)
     ```
 --]]
-function Utils:imerge(dst, src)
+function Utils:imerge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 })
     for key, value in src do
         dst[key] = value
     end
@@ -604,7 +604,7 @@ end
     Utils:merge({ a = 1, b = 2 }, { a = 2, c = 3 }}) -> { a = 2, b = 2, c = 3 }
     ```
 --]]
-function Utils:merge(dst, src)
+function Utils:merge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
     dst = table.clone(dst)
     self:imerge(dst, src)
     return dst
@@ -623,7 +623,7 @@ end
     y -> { 'c', 'd' } -- (unchanged)
     ```
 --]]
-function Utils:iextend(left, right)
+function Utils:iextend<V1, V2>(left: { V1 }, right: { V2 }): nil
     table.move(right, 1, #right, #left + 1, left)
 end
 
@@ -633,7 +633,7 @@ end
     Utils:extend({ 'a', 'b' }, { 'c', 'd' }) -> { 'a', 'b', 'c', 'd' }
     ```
 --]]
-function Utils:extend(left, right)
+function Utils:extend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
     left = table.clone(left)
     self:iextend(left, right)
     return left
@@ -645,7 +645,7 @@ end
     Utils:lerp(0, 20, 0.1) -> 2
     ```
 --]]
-function Utils:lerp(a, b, f)
+function Utils:lerp(a: number, b: number, f: number): number
     return (b - a) * f + a
 end
 
@@ -655,14 +655,14 @@ end
     Utils:unlerp(10, 20, 12) -> 0.2
     ```
 --]]
-function Utils:unlerp(a, b, x)
+function Utils:unlerp(a: number, b: number, x: number): number
     return (x - a) / (b - a)
 end
 
 --[[
     Checks if the given value is callable, i.e. that it is a function or a callable table.
 --]]
-function Utils:callable(maybeCallable)
+function Utils:callable(maybeCallable: any): boolean
     if type(maybeCallable) == "function" then
         return true
     elseif type(maybeCallable) == "table" and type(rawget(getmetatable(maybeCallable), "__call")) == "function" then
@@ -680,7 +680,7 @@ end
     Utils:getattr(Vector3.new(), 'blah') -> nil
     ```
 --]]
-function Utils:getattr(x, attr, default)
+function Utils:getattr(x: any, attr: any, default: any)
     local s, r = pcall(function()
         return x[attr]
     end)
@@ -718,7 +718,7 @@ end
 --[[
     Basically equivalent to Utils:imap(tab, Utils:plucker(attribute))
 --]]
-function Utils:ipluck(plucker: string | (value: any, key: any) -> any, tab: table): nil
+function Utils:ipluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: { [K]: V }): nil
     if typeof(plucker) == "string" then
         plucker = self:plucker(plucker)
     end
@@ -729,7 +729,7 @@ end
 --[[
     Same as Utils:ipluck, but makes a copy first.
 --]]
-function Utils:pluck(plucker: string | (value: any, key: any) -> any, tab: table): table
+function Utils:pluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: { [K]: V }): { [K]: T }
     tab = table.clone(tab)
     self:ipluck(plucker, tab)
     return tab
@@ -745,7 +745,7 @@ end
     Utils:bisect(x, 13) -> 4
     ```
 --]]
-function Utils:bisect(tab: table, element: any, key: ((value: any, key: any) -> any)?): number
+function Utils:bisect<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V) -> any)?): number
     if not key then
         key = function(x)
             return x
@@ -775,7 +775,7 @@ end
     Insert `element` into `tab` such that it remains sorted (with an optional sorting key).
     Similar to Python's builtin `bisect.insort` function.
 --]]
-function Utils:insort(tab: table, element: any, key: ((value: any, key: any) -> any)?): nil
+function Utils:insort<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V) -> any)?): nil
     table.insert(tab, self:bisect(tab, element, key), element)
 end
 
@@ -812,7 +812,7 @@ end
     Utils:min({-8, 3}, math.abs) -> 3, 2
     ```
 --]]
-function Utils:min(tab: table, key: (value: any, key: any) -> any): (any, any)
+function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (any, any)
     local minValue, minKey = nil, nil
 
     for k, v in tab do
@@ -833,6 +833,39 @@ end
 --]]
 function Utils:minKey(...): any
     return select(2, self:min(...))
+end
+
+--[[
+    Pretty self explanatory, I think.
+    ```lua
+    Utils:sum({ 1, 2, 3 }) -> 6
+    Utils:sum({ 4, "5", 6 }) -> 15
+    ```
+--]]
+function Utils:sum<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> number)?): number
+    key = key or tonumber
+
+    local total = 0
+    for k, v in tab do
+        total += key(v, k)
+    end
+
+    return total
+end
+
+--[[
+    Swaps the keys and values of the provided table.
+    If there are duplicate values, the last occurrence will be kept.
+    ```lua
+    Utils:invert({ a = "b", c = "d" }) -> { b = "a", d = "c" }
+    ```
+--]]
+function Utils:invert<K, V>(tab: { [K]: V }): { [V]: K }
+    local inverted = table.create(#tab)
+    for k, v in tab do
+        inverted[v] = k
+    end
+    return inverted
 end
 
 return Utils
