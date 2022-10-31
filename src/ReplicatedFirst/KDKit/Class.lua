@@ -49,12 +49,12 @@
     local Derived = Class.new("Derived", Base)
     function Derived:__init()
         print("Derived.__init")
-        self:__super__init()
+        Derived.__super.__init(self)
         self.a2 = "derived"
     end
     function Derived:f1()
         print("Derived.f1", self.a1)
-        self:super__f1()
+        Derived.__super.f1(self)
     end
     function Derived:f2()
         print("Derived.f2", self.a2)
@@ -89,13 +89,12 @@ local class__newindex = function(self, name, value)
     rawset(self, name, value)
 end
 
-local Object
 local Class = { static = { __name = "Class" } }
 Class.static.__class = Class
 setmetatable(Class, { __index = Class.static, __newindex = class__newindex })
 
 function Class.static.new(name, superclass)
-    superclass = superclass or Object
+    superclass = superclass or Class.Object
 
     assert(type(name) == "string")
     assert(superclass == nil or type(superclass) == "table")
@@ -113,18 +112,10 @@ function Class.static.new(name, superclass)
     end
 
     function class:__index(attribute_name)
-        if superclass and (attribute_name:sub(1, 7) == "super__" or attribute_name:sub(1, 7) == "__super") then
-            attribute_name = attribute_name:sub(8)
-            if attribute_name == "static" then
-                return nil
-            end
-            return rawget(superclass, attribute_name)
-        end
-
         if attribute_name == "static" then
             return nil
         end
-        return rawget(class, attribute_name) or (superclass and rawget(superclass, attribute_name))
+        return rawget(class, attribute_name) or (superclass and superclass.__index(self, attribute_name))
     end
 
     return setmetatable(class, {
@@ -139,8 +130,8 @@ function Class.static:isSubClass(child: "KDKit.Class", parent: "KDKit.Class")
     return child == parent or (child.__super and self:isSubClass(child.__super, parent))
 end
 
-Object = Class.new("Object")
-function Object:__init(...)
+Class.static.Object = Class.new("Object")
+function Class.Object:__init(...)
     local n = select("#", ...)
     if n > 0 then
         error(
@@ -151,8 +142,5 @@ function Object:__init(...)
         )
     end
 end
-
-Class.static.__super = Object
-Class.static.Object = Object -- for easier access
 
 return Class
