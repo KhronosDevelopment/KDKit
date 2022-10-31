@@ -723,7 +723,7 @@ function Utils:ipluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: {
         plucker = self:plucker(plucker)
     end
 
-    self:imap(tab, plucker)
+    self:imap(plucker, tab)
 end
 
 --[[
