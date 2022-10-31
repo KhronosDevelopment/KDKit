@@ -135,8 +135,8 @@ function Class.static.new(name, superclass)
     })
 end
 
-function Class.static:inherits(superclass: "KDKit.Class")
-    return self == superclass or (self.__super and self.__super:inherits(superclass))
+function Class.static:isSubClass(child: "KDKit.Class", parent: "KDKit.Class")
+    return child == parent or (child.__super and self:isSubClass(child.__super, parent))
 end
 
 Object = Class.new("Object")

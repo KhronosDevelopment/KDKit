@@ -30,12 +30,12 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
     Preload:ensureDescendants(rootConfigInstance)
     local rootConfig = require(rootConfigInstance)
 
-    if not rootConfig:inherits(ConfigGroup.Config) then
+    if not Class:isSubClass(rootConfig, ConfigGroup.Config) then
         error(("Config root at `%s` must inherit KDKit.ConfigGroup.Config."):format(rootConfigInstance))
     end
 
     for _, configInstance in rootConfigInstance:GetChildren() do
-        local expectedClassName = ("%s.%s"):format(rootConfig.__class.__name, configInstance.name)
+        local expectedClassName = ("%s.%s"):format(rootConfig.__name, configInstance.name)
 
         local config = require(configInstance)
         if config == nil then
@@ -50,7 +50,7 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
             )
         end
 
-        if not config.__class:inherits(rootConfig) then
+        if not Class:isSubClass(config.__class, rootConfig) then
             error(
                 ("Config at `%s` must inherit from the root config at `%s`."):format(
                     configInstance:GetFullName(),
