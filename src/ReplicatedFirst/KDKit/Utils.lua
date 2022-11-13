@@ -843,11 +843,16 @@ end
     ```
 --]]
 function Utils:sum<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> number)?): number
-    key = key or tonumber
-
     local total = 0
-    for k, v in tab do
-        total += key(v, k)
+
+    if key then
+        for k, v in tab do
+            total += key(v, k)
+        end
+    else
+        for k, v in tab do
+            total += v
+        end
     end
 
     return total
