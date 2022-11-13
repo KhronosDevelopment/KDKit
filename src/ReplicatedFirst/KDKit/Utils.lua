@@ -709,9 +709,14 @@ end
 --[[
     Returns a function that, when invoked, will access the provided key.
 --]]
-function Utils:plucker(attribute: string): (value: any) -> any
+function Utils:plucker(...: string): (value: any) -> any
+    local chain = { ... }
     return function(value: string)
-        return value[attribute]
+        for _, key in chain do
+            value = value[key]
+        end
+
+        return value
     end
 end
 
