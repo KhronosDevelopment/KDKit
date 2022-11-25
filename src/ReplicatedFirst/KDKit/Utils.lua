@@ -711,7 +711,7 @@ end
 --]]
 function Utils:plucker(...: string): (value: any) -> any
     local chain = { ... }
-    return function(value: string)
+    return function(value: any)
         for _, key in chain do
             value = value[key]
         end
