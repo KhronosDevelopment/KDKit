@@ -47,7 +47,7 @@ function Time:updateRemoteTime()
 end
 
 function Time:waitForInitialSync()
-    local warnAt = os.clock() + Time.INITIALIZATION_WARNING_INTERVAL
+    local warnAt = os.clock() + Time.INITIALIZATION_WARNING_INTERVAL + math.max(6 - workspace.DistributedGameTime, 0)
     while not self.remote.at do
         task.wait()
         if os.clock() > warnAt then
