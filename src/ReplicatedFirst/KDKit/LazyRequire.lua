@@ -49,6 +49,16 @@ function LazyRequire:isResolved(lazyRequiredModule)
 end
 
 function LazyRequire:resolve(lazyRequiredModule)
+    if lazyRequiredModule == nil and typeof(self) == "Instance" and self:IsA("ModuleScript") then
+        -- used `require.resolve(module)` syntax
+        return LazyRequire:resolve(LazyRequire(self))
+    end
+
+    if self == LazyRequire and typeof(lazyRequiredModule) == "Instance" and lazyRequiredModule:IsA("ModuleScript") then
+        -- used `require:resolve(module)` syntax
+        return self:resolve(self(lazyRequiredModule))
+    end
+
     while not self:isResolved(lazyRequiredModule) do
         task.wait()
     end
