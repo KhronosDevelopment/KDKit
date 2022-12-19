@@ -69,26 +69,33 @@ function Maid:clean(task, skipDebugProfile: boolean): nil
     end
     self.tasks[task] = nil
 
-    local s, r = xpcall(
-        coroutine.wrap(function()
-            if Utils:callable(Utils:getattr(task, "clean")) then
-                task:clean()
-            elseif Utils:callable(Utils:getattr(task, "Disconnect")) then
-                task:Disconnect()
-            elseif Utils:callable(Utils:getattr(task, "destroy")) then
-                task:destroy()
-            elseif Utils:callable(Utils:getattr(task, "disconnect")) then
-                task:disconnect()
-            elseif Utils:callable(Utils:getattr(task, "Destroy")) then
-                task:Destroy()
-            elseif Utils:callable(task) then
-                task()
-            else
-                error("Failed to resolve task cleaning method.")
-            end
-        end),
-        debug.traceback
-    )
+    local s, r
+    if typeof(task) == "Instance" then
+        s, r = pcall(task.Destroy, task)
+    else
+        s, r = xpcall(
+            coroutine.wrap(function()
+                if Utils:callable(Utils:getattr(task, "clean")) then
+                    task:clean()
+                elseif Utils:callable(Utils:getattr(task, "Disconnect")) then
+                    task:Disconnect()
+                elseif Utils:callable(Utils:getattr(task, "disconnect")) then
+                    task:disconnect()
+                elseif Utils:callable(Utils:getattr(task, "Destroy")) then
+                    task:Destroy()
+                elseif Utils:callable(Utils:getattr(task, "destroy")) then
+                    task:destroy()
+                elseif Utils:callable(Utils:getattr(task, "Clean")) then
+                    task:Clean()
+                elseif Utils:callable(task) then
+                    task()
+                else
+                    error("Failed to resolve task cleaning method.")
+                end
+            end),
+            debug.traceback
+        )
+    end
 
     if not s then
         warn(("Maid failed to clean task `%s` due to callback error:\n%s"):format(Utils:repr(task), r))
