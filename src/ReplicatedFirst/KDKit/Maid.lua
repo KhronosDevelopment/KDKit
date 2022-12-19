@@ -11,7 +11,7 @@
 local Utils = require(script.Parent:WaitForChild("Utils"))
 local Class = require(script.Parent:WaitForChild("Class"))
 local Maid = Class.new("KDKit.Maid")
-Maid.static.ERROR_ON_UNKNOWN_CLEANS = true
+Maid.static.ERROR_ON_UNKNOWN_CLEANS = game:GetService("RunService"):IsStudio()
 
 function Maid.static:isTaskValid(task): boolean
     if Utils:callable(Utils:getattr(task, "clean")) or Utils:callable(Utils:getattr(task, "Clean")) then
@@ -35,7 +35,15 @@ function Maid:has(task): boolean
     return self.tasks[task]
 end
 
-function Maid:give<T>(task: T): T
+function Maid:give<T, A>(task: (T | (...A) -> T), ...: A): (T | () -> T)
+    if type(task) == "function" then
+        local func: (...A) -> T = task
+        local args = { ... }
+        task = function()
+            return func(table.unpack(args))
+        end
+    end
+
     if not Maid:isTaskValid(task) then
         error(("Invalid task `%s`"):format(Utils:repr(task)))
     end
