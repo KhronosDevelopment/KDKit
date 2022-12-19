@@ -466,7 +466,12 @@ end
 
 --[[
     Returns true if the first object is visibly on top of the second gui object.
+    Returns false in the opposite case.
+    Otherwise, returns nil in ambiguous cases.
+
     Useful for detecting which object is currently visible at a certain point on a client's screen.
+
+    Note: this function does not consider physical locations of SurfaceGuis and BillboardGuis within the workspace.
 --]]
 function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
     local aGui = a:FindFirstAncestorOfClass("ScreenGui")
@@ -505,9 +510,9 @@ function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
             elseif aGui:IsDescendantOf(bGui) then
                 return true
             end
-
-            return nil -- ambiguous
         end
+
+        return nil -- ambiguous
     end
 
     -- the guis are the same
@@ -523,7 +528,7 @@ function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
         end
     end
 
-    -- child of one another? ez pz
+    -- descendant of one another? ez pz
     if b:IsDescendantOf(a) then
         return false
     elseif a:IsDescendantOf(b) then
@@ -575,9 +580,9 @@ function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
 
     if aFirstDescendantOfCommonAncestor.ZIndex ~= bFirstDescendantOfCommonAncestor.ZIndex then
         return aFirstDescendantOfCommonAncestor.ZIndex > bFirstDescendantOfCommonAncestor.ZIndex
-    else
-        return nil -- ambiguous
     end
+
+    return nil -- ambiguous
 end
 
 --[[
@@ -645,8 +650,12 @@ end
     Utils:lerp(0, 20, 0.1) -> 2
     ```
 --]]
-function Utils:lerp(a: number, b: number, f: number): number
-    return (b - a) * f + a
+function Utils:lerp(a: number, b: number, f: number, clamp: boolean?): number
+    if clamp then
+        return math.clamp((b - a) * f + a, a, b)
+    else
+        return (b - a) * f + a
+    end
 end
 
 --[[
@@ -655,8 +664,12 @@ end
     Utils:unlerp(10, 20, 12) -> 0.2
     ```
 --]]
-function Utils:unlerp(a: number, b: number, x: number): number
-    return (x - a) / (b - a)
+function Utils:unlerp(a: number, b: number, x: number, clamp: boolean?): number
+    if clamp then
+        return math.clamp((x - a) / (b - a), 0, 1)
+    else
+        return (x - a) / (b - a)
+    end
 end
 
 --[[
@@ -709,9 +722,9 @@ end
 --[[
     Returns a function that, when invoked, will access the provided key.
 --]]
-function Utils:plucker(...: string): (value: any) -> any
+function Utils:plucker(...: string): (value: any, key: any?) -> any
     local chain = { ... }
-    return function(value: any)
+    return function(value: any, _key: any?)
         for _, key in chain do
             value = value[key]
         end
@@ -721,7 +734,7 @@ function Utils:plucker(...: string): (value: any) -> any
 end
 
 --[[
-    Basically equivalent to Utils:imap(tab, Utils:plucker(attribute))
+    Basically equivalent to Utils:imap(Utils:plucker(attribute), tab)
 --]]
 function Utils:ipluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: { [K]: V }): nil
     if typeof(plucker) == "string" then
@@ -738,6 +751,59 @@ function Utils:pluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: { 
     tab = table.clone(tab)
     self:ipluck(plucker, tab)
     return tab
+end
+
+--[[
+    Returns true if at least one of the elements of the table are truthy.
+    Optionally, you may specify a function which will be used to judge the truthiness of each element.
+    Note that this function is lazy, so any elements that occur after a truthy one will not be evaluated.
+    If you wish to avoid this lazy behavior, use Utils:any(Utils:map(collection, evaluator)).
+    * Very similar to Python's builtin `any` function.
+
+    ```lua
+    Utils:any({false, true, false}) -> true
+    Utils:any({false, false}) -> false
+    Utils:any({}) -> false
+    Utils:any({1, 2, 3, -5}, function(x) return x < 0 end) -> false
+    ```
+--]]
+function Utils:any<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | string)?): boolean
+    if evaluator == nil then
+        evaluator = function(x)
+            return x
+        end
+    elseif typeof(evaluator) == "string" then
+        evaluator = self:plucker(evaluator)
+    end
+
+    for k, v in collection do
+        if evaluator(v, k) then
+            return true
+        end
+    end
+
+    return false
+end
+
+--[[
+    Similar to Utils:any(), but checks if _all_ the elements are truthy.
+--]]
+function Utils:all<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | string)?): boolean
+    if evaluator == nil then
+        evaluator = function(x)
+            return x
+        end
+    elseif typeof(evaluator) == "string" then
+        evaluator = self:plucker(evaluator)
+    end
+
+    for k, v in collection do
+        if not evaluator(v, k) then
+            return false
+        end
+    end
+
+    return true
 end
 
 --[[
@@ -785,7 +851,7 @@ function Utils:insort<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V
 end
 
 --[[
-    Returns an un-parented Part that has CanCollide on, and everything else off.
+    Returns an un-parented Part that has CanCollide/Anchored on, and everything else off.
 --]]
 function Utils:getBlankPart(): Part
     local part = Instance.new("Part")
@@ -832,6 +898,7 @@ end
 
 --[[
     Exactly the same as Utils.min, but only returns the key of the minimum value.
+    Similar to Python's `numpy.argmin`
     ```lua
     Utils:minKey({a = 2, b = 1, c = 4}) -> "b"
     ```
@@ -880,7 +947,7 @@ end
 
 --[[
     Returns the unique values in the provided table.
-    Equivalent to Python: `list(set(table))`
+    Equivalent to Ruby's `Array::uniq`
     ```lua
     Utils:unique({ "a", "b", "c", "a", "b" }) -> { "a", "b", "c" }
     ```
