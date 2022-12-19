@@ -11,8 +11,9 @@
 local Utils = require(script.Parent:WaitForChild("Utils"))
 local Class = require(script.Parent:WaitForChild("Class"))
 local Maid = Class.new("KDKit.Maid")
+Maid.static.ERROR_ON_UNKNOWN_CLEANS = true
 
-function Maid.static:isTaskValid(task)
+function Maid.static:isTaskValid(task): boolean
     if Utils:callable(Utils:getattr(task, "clean")) or Utils:callable(Utils:getattr(task, "Clean")) then
         return true
     elseif Utils:callable(Utils:getattr(task, "destroy")) or Utils:callable(Utils:getattr(task, "Destroy")) then
@@ -30,7 +31,11 @@ function Maid:__init()
     self.tasks = table.create(32)
 end
 
-function Maid:give(task)
+function Maid:has(task): boolean
+    return self.tasks[task]
+end
+
+function Maid:give<T>(task: T): T
     if not Maid:isTaskValid(task) then
         error(("Invalid task `%s`"):format(Utils:repr(task)))
     end
@@ -39,17 +44,18 @@ function Maid:give(task)
     return task
 end
 
-function Maid:clean(task)
+function Maid:clean(task): nil
     if task == nil then
         for task in self.tasks do
             self:clean(task)
         end
-        return
+        return nil
     end
 
-    if not self.tasks[task] then
-        warn(("This Maid never received or already cleaned the task `%s`. Doing nothing."):format(Utils:repr(task)))
-        return
+    if not self:has(task) then
+        local func = if Maid.ERROR_ON_UNKNOWN_CLEANS then error else warn
+        func(("This Maid never received or already cleaned the task `%s`. Doing nothing."):format(Utils:repr(task)))
+        return nil
     end
     self.tasks[task] = nil
 
@@ -78,6 +84,8 @@ function Maid:clean(task)
     if not s then
         warn(("Maid failed to clean task `%s` due to callback error:\n%s"):format(taskRepr, r))
     end
+
+    return nil
 end
 Maid.destroy = Maid.clean
 Maid.disconnect = Maid.clean
