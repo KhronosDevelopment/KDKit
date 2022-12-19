@@ -75,7 +75,9 @@ function Maid:clean(task, skipDebugProfile: boolean): nil
     else
         s, r = xpcall(
             coroutine.wrap(function()
-                if Utils:callable(Utils:getattr(task, "clean")) then
+                if Utils:callable(Utils:getattr(task, "destroy")) then
+                    task:destroy()
+                elseif Utils:callable(Utils:getattr(task, "clean")) then
                     task:clean()
                 elseif Utils:callable(Utils:getattr(task, "Disconnect")) then
                     task:Disconnect()
@@ -83,8 +85,6 @@ function Maid:clean(task, skipDebugProfile: boolean): nil
                     task:disconnect()
                 elseif Utils:callable(Utils:getattr(task, "Destroy")) then
                     task:Destroy()
-                elseif Utils:callable(Utils:getattr(task, "destroy")) then
-                    task:destroy()
                 elseif Utils:callable(Utils:getattr(task, "Clean")) then
                     task:Clean()
                 elseif Utils:callable(task) then
