@@ -44,22 +44,31 @@ function Maid:give<T>(task: T): T
     return task
 end
 
-function Maid:clean(task): nil
+function Maid:clean(task, skipDebugProfile: boolean): nil
+    if not skipDebugProfile then
+        debug.profilebegin("Maid:clean()")
+    end
+
     if task == nil then
         for task in self.tasks do
-            self:clean(task)
+            self:clean(task, true)
+        end
+        if not skipDebugProfile then
+            debug.profileend()
         end
         return nil
     end
 
     if not self:has(task) then
+        if not skipDebugProfile then
+            debug.profileend()
+        end
         local func = if Maid.ERROR_ON_UNKNOWN_CLEANS then error else warn
         func(("This Maid never received or already cleaned the task `%s`. Doing nothing."):format(Utils:repr(task)))
         return nil
     end
     self.tasks[task] = nil
 
-    local taskRepr = Utils:repr(task) -- the task may be a mutable table, so want to cache this in case of error
     local s, r = xpcall(
         coroutine.wrap(function()
             if Utils:callable(Utils:getattr(task, "clean")) then
@@ -82,9 +91,12 @@ function Maid:clean(task): nil
     )
 
     if not s then
-        warn(("Maid failed to clean task `%s` due to callback error:\n%s"):format(taskRepr, r))
+        warn(("Maid failed to clean task `%s` due to callback error:\n%s"):format(Utils:repr(task), r))
     end
 
+    if not skipDebugProfile then
+        debug.profileend()
+    end
     return nil
 end
 Maid.destroy = Maid.clean
