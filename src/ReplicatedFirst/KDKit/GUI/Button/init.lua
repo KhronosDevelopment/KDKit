@@ -128,8 +128,8 @@ local Keybind = Class.new("KDKit.GUI.Button._internal.Keybind")
 Keybind.static.nextBindId = 0
 Keybind.static.bindCountByKey = table.create(32)
 function Keybind.static:useNextBindId()
-    self.nextBindId += 1
-    return self.nextBindId - 1
+    Keybind.static.nextBindId += 1
+    return Keybind.static.nextBindId - 1
 end
 function Keybind.static:useNextBindString()
     return ("%s_%s"):format(self.__name, self:useNextBindId())
@@ -155,22 +155,22 @@ function Keybind:enable()
 
             if Button.active then
                 local active = Button.active
-                Button.active = nil
+                Button.static.active = nil
                 active:visualStateChanged()
             end
 
-            Button.active = self.button
+            Button.static.active = self.button
             self.button:visualStateChanged()
         elseif inputState == Enum.UserInputState.End then
             if Button.active == self.button then
                 self.button:press()
 
-                Button.active = nil
+                Button.static.active = nil
                 self.button:visualStateChanged()
             end
         elseif inputState == Enum.UserInputState.Cancel then
             if Button.active == self.button then
-                Button.active = nil
+                Button.static.active = nil
                 self.button:visualStateChanged()
             end
         end
@@ -346,6 +346,11 @@ function Button:style(style, animationTime)
     return t
 end
 
+function Button:updateStyle(state, property, value)
+    self.styles[state][property] = value
+    self:visualStateChanged()
+end
+
 function Button:determinePropertyValueDuringState(property, visualState)
     local styles = self.styles
 
@@ -442,7 +447,7 @@ function Button:press(skipSound)
     if self.callback then
         self.loading = true
         if Button.active == self then
-            Button.active = nil
+            Button.static.active = nil
         end
         self:visualStateChanged()
 
@@ -486,7 +491,7 @@ function Button:disable(root)
     elseif self.enabled then
         self.enabled = false
         if Button.active == self then
-            Button.active = nil
+            Button.static.active = nil
         end
         self:visualStateChanged()
     end
@@ -532,12 +537,12 @@ RunService.RenderStepped:Connect(function()
     if mouseHoveringOverButton ~= Button.hovered then
         if Button.hovered then
             local unHovered = Button.hovered
-            Button.hovered = nil
+            Button.static.hovered = nil
             unHovered:visualStateChanged()
         end
 
         if mouseHoveringOverButton then
-            Button.hovered = mouseHoveringOverButton
+            Button.static.hovered = mouseHoveringOverButton
             mouseHoveringOverButton:visualStateChanged()
         end
     end
@@ -553,12 +558,12 @@ UserInputService.InputBegan:Connect(function(input)
     if Button.USER_INPUT_TYPES[input.UserInputType] and Button.hovered then
         if Button.active then
             local active = Button.active
-            Button.active = nil
+            Button.static.active = nil
             active:visualStateChanged()
         end
 
         if Button.hovered:pressable() then
-            Button.active = Button.hovered
+            Button.static.active = Button.hovered
             Button.active:visualStateChanged()
         end
     end
@@ -567,7 +572,7 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if Button.USER_INPUT_TYPES[input.UserInputType] and Button.active then
         local active = Button.active
-        Button.active = nil
+        Button.static.active = nil
         active:visualStateChanged()
 
         if active == Button.hovered then
