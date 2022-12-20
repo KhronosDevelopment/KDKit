@@ -4,6 +4,8 @@ local KDRandom = {
     rng = Random.new(),
 }
 
+local UUID_HAT = Utils:characters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
 function KDRandom:linearChoice(options)
     return options[self.rng:NextInteger(1, #options)]
 end
@@ -62,18 +64,37 @@ function KDRandom:weightedChoice(options)
     end
 end
 
-function KDRandom:uuid(strlen, hat)
-    hat = hat or "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local hatSize = hat:len()
+function KDRandom:uuid(strlen: number, avoidCollisions: { [string]: any }?, hat: ({ string } | string)?): string
+    if hat == nil then
+        hat = UUID_HAT
+    else
+        if type(hat) == "string" then
+            hat = Utils:characters(hat)
+        end
 
-    local output = table.create(strlen)
-    local j
-    for i = 1, strlen do
-        j = self.rng:NextInteger(1, hatSize)
-        table.insert(output, hat:sub(j, j))
+        assert(next(hat), "cannot use empty hat for uuid generation")
     end
 
-    return table.concat(output)
+    if avoidCollisions == nil then
+        local output = table.create(strlen)
+        for i = 1, strlen do
+            table.insert(output, self:linearChoice(hat))
+        end
+        return table.concat(output)
+    else
+        local output
+        while true do
+            for try = 1, 5 do
+                output = self:uuid(strlen, nil, hat)
+                if avoidCollisions[output] == nil then
+                    return output
+                end
+            end
+
+            -- 5 tries of collisions, need to increase the strlen
+            strlen += 1
+        end
+    end
 end
 
 function KDRandom:withSeed(seed, f, ...)

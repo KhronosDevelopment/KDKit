@@ -95,6 +95,21 @@ function Utils:split(str: string, delimiter: string?): { string }
 end
 
 --[[
+    Returns a table containing the characters of the string.
+    Similar to Python's builtin `list(string)`
+    ```lua
+    Utils:characters("abc") -> { "a", "b", "c" }
+    ```
+--]]
+function Utils:characters(s: string): { string }
+    local characters = table.create(s:len())
+    for i = 1, s:len() do
+        table.insert(characters, s:sub(i, i))
+    end
+    return characters
+end
+
+--[[
     Calls the provided `transform` function on each value in the table.
     Modifies the table [i]n place, does not make a copy.
 
