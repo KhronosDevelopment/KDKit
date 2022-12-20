@@ -15,6 +15,10 @@ App.static.Page = require(script:WaitForChild("Page"))
 App.static.Transition = require(script:WaitForChild("Transition"))
 App.static.folder = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 App.static.nextDisplayOrder = 0
+function App.static:useNextDisplayOrder()
+    App.static.nextDisplayOrder += 1
+    return App.static.nextDisplayOrder - 1
+end
 
 App.static.GET_DEBUG_UIS_STATE = function()
     local UserInputService = game:GetService("UserInputService")
@@ -37,9 +41,8 @@ function App:__init(module: ModuleScript)
     self.instance.Enabled = false
     self.instance.IgnoreGuiInset = true
     self.instance.ResetOnSpawn = false
-    self.instance.DisplayOrder = App.nextDisplayOrder
+    self.instance.DisplayOrder = App:useNextDisplayOrder()
     self.instance.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    App.nextDisplayOrder += 1
 
     self.opened = false
     self.closedWithData = nil
