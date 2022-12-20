@@ -377,9 +377,9 @@ end
 function Button:visualStateChanged()
     local visualState = self:getVisualState()
     local previousVisualState = self._previousVisualState or table.clone(visualState)
-    self._previousState = table.clone(visualState)
+    self._previousVisualState = table.clone(visualState)
 
-    local becameActive = visualState.active and not previousVisualState.active
+    local activeChanged = visualState.active ~= previousVisualState.active
 
     local style = table.clone(self.styles.original)
     for property in style do
@@ -396,7 +396,7 @@ function Button:visualStateChanged()
         end
     end
 
-    return self:style(style, if becameActive then 0.02 else 0.15)
+    return self:style(style, if activeChanged then 0.02 else 0.1)
 end
 
 --[[
@@ -453,6 +453,7 @@ function Button:press(skipSound)
 
         Utils:ensure(function()
             self.loading = false
+            self:visualStateChanged()
         end, self.callback, self)
     end
 end
@@ -534,16 +535,19 @@ RunService.RenderStepped:Connect(function()
     end)
 
     local mouseHoveringOverButton = buttonsUnderMouse[1]
-    if mouseHoveringOverButton ~= Button.hovered then
+    local correctHovered = if Button.active == nil or mouseHoveringOverButton == Button.active
+        then mouseHoveringOverButton
+        else nil
+    if Button.hovered ~= correctHovered then
         if Button.hovered then
             local unHovered = Button.hovered
             Button.static.hovered = nil
             unHovered:visualStateChanged()
         end
 
-        if mouseHoveringOverButton then
-            Button.static.hovered = mouseHoveringOverButton
-            mouseHoveringOverButton:visualStateChanged()
+        if correctHovered then
+            Button.static.hovered = correctHovered
+            correctHovered:visualStateChanged()
         end
     end
 
