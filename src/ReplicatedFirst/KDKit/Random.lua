@@ -40,12 +40,18 @@ function KDRandom:enum(e)
     return self:linearChoice(e:GetEnumItems())
 end
 
-function KDRandom:shuffle(t)
+function KDRandom:ishuffle(t)
     local N = #t
     for i = N, 2, -1 do
         local r = self.rng:NextInteger(1, i)
         t[i], t[r] = t[r], t[i]
     end
+end
+
+function KDRandom:shuffle(t)
+    t = table.clone(t)
+    self:ishuffle(t)
+    return t
 end
 
 function KDRandom:weightedChoice(options)
