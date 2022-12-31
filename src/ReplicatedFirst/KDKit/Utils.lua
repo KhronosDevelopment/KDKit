@@ -1127,4 +1127,36 @@ function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A
     return table.unpack(result)
 end
 
+--[[
+    Select elements from the provided table.
+    Similar to Ruby's `Array::select` (which I think is added by ActiveSupport but I'm too lazy to check)
+    ```lua
+    Utils:select({1, 2, 3, 4, 5}, function(x)
+        return x % 2 == 0
+    end) -> {2, 4}
+    ```
+--]]
+function Utils:select<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean): { [K]: V }
+    local selected = table.create(16)
+    for k, v in tab do
+        if func(v, k) then
+            selected[k] = v
+        end
+    end
+    return selected
+end
+
+--[[
+    Logical opposite of Utils:select
+--]]
+function Utils:reject<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean): { [K]: V }
+    local selected = table.create(16)
+    for k, v in tab do
+        if not func(v, k) then
+            selected[k] = v
+        end
+    end
+    return selected
+end
+
 return Utils
