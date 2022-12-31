@@ -1175,4 +1175,17 @@ function Utils:reject<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean
     return selected
 end
 
+--[[
+    Returns true if and only if the provided part is touching the provided point.
+    Note: this currently only works for rectangular parts (not spheres or cylinders).
+
+    Will return true for points that are exactly on the surface of the part.
+--]]
+function Utils:partTouchesPoint(part: Part, point: Vector3): boolean
+    point = part.CFrame:PointToObjectSpace(point)
+    return math.abs(point.X) <= part.Size.X / 2
+        and math.abs(point.Y) <= part.Size.Y / 2
+        and math.abs(point.Z) <= part.Size.Z / 2
+end
+
 return Utils
