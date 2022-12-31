@@ -8,6 +8,88 @@ local Utils = {
 }
 
 --[[
+    try/catch syntax
+    ```lua
+    local result = Utils:try(function()
+        return 1 + "a"
+    end):catch(function(err)
+        print("uh oh that didn't work")
+    end):raise():result()
+    ```
+
+    This code will print "uh oh that didn't work", then raise an error.
+
+    Here's a list of each available chaining function:
+        - `catch` accepts a function which handles an error, if it occurs. The function will not be called if no error occurs.
+        - `proceed` accepts a function will be called only if an error did not occur
+        - `after` accepts a function which will always be called, regardless of whether or not an error occurs.
+                  It accepts a single argument, `err`, which is a traceback string if an error occurred, and `nil` otherwise.
+        - `raise` does not accept any arguments, but it re-raises the caught error, if one occurred. Even if you called `:catch()`.
+        - `result` does not accept any arguments. It has different behavior depending on whether or not `raise` has already been called:
+                   * `raise` has already been called: It returns the result of the original function
+                   * `raise` has not been called: It returns a success boolean and either an error string or the function result
+--]]
+function Utils:try<Arguments, ReturnValue>(
+    func: (...Arguments) -> ReturnValue,
+    ...: Arguments
+): {
+    catch: ("self", (err: string) -> nil) -> "self",
+    proceed: ("self", () -> nil) -> "self",
+    after: ("self", (err: string?) -> nil) -> "self",
+    raise: () -> nil,
+    result: (() -> (boolean, ReturnValue | string)) | (() -> ReturnValue),
+}
+    local results = table.pack(xpcall(func, debug.traceback, ...))
+    local success = table.remove(results, 1)
+
+    return {
+        raw = {
+            results = results,
+            success = success,
+        },
+        raisedWithoutError = false,
+        catch = function(ctx, cb: (err: string) -> nil)
+            if not ctx.raw.success then
+                cb(ctx.raw.results[1])
+            end
+
+            return ctx
+        end,
+        proceed = function(ctx, cb: () -> nil)
+            if ctx.raw.success then
+                cb()
+            end
+
+            return ctx
+        end,
+        after = function(ctx, cb: (err: string?) -> nil)
+            if ctx.raw.success then
+                cb(nil)
+            else
+                cb(ctx.raw.results[1])
+            end
+
+            return ctx
+        end,
+        raise = function(ctx)
+            if not ctx.raw.success then
+                error(("The following error occurred during a KDKit.Utils.try call.\n%s"):format(ctx.raw.results[1]))
+            end
+
+            ctx.raisedWithoutError = true
+            return ctx
+        end,
+        result = function(ctx)
+            if ctx.raisedWithoutError then
+                return table.unpack(self.raw.results)
+            else
+                return self.raw.success, table.unpack(self.raw.results)
+            end
+        end,
+    }
+end
+
+--[[
     Ensures that the first function runs after the second one does, regardless of if the second function errors.
     ```lua
     Utils:ensure(function(failed, traceback)
@@ -20,27 +102,19 @@ local Utils = {
     ```
 --]]
 function Utils:ensure<A, T>(callback: (success: boolean, traceback: string?) -> any, func: (...A) -> T, ...: A): T
-    local funcResults = table.pack(xpcall(func, debug.traceback, ...))
-    local funcSuccess = table.remove(funcResults, 1)
-
-    local cbResults =
-        table.pack(xpcall(callback, debug.traceback, not funcSuccess, if funcSuccess then nil else funcResults[1]))
-    local cbSuccess = table.remove(cbResults, 1)
-
-    if not cbSuccess then
-        task.defer(
-            error,
-            ("The following error occurred during the callback to a KDKit.Utils.ensure call. The error was ignored.\n%s"):format(
-                cbResults[1]
-            )
-        )
-    end
-
-    if not funcSuccess then
-        error(("The following error occurred during a KDKit.Utils.ensure call.\n%s"):format(funcResults[1]))
-    end
-
-    return table.unpack(funcResults)
+    return self:try(func, ...)
+        :after(function(err: string?)
+            self:try(callback, not err, err):catch(function(cbErr)
+                task.defer(
+                    error,
+                    ("The following error occurred during the callback to a KDKit.Utils.ensure call. The error was ignored.\n%s"):format(
+                        cbErr
+                    )
+                )
+            end)
+        end)
+        :raise()
+        :result()
 end
 
 --[[
