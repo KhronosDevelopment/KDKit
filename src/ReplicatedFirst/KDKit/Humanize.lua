@@ -335,6 +335,7 @@ function Humanize:list(array, maxItems, name)
     local n = #array
 
     if maxItems then
+        name = name or "item"
         local extra = n - maxItems
         local show = math.min(maxItems, n)
         local items = table.create(show + 1)
