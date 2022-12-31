@@ -81,9 +81,9 @@ function Utils:try<Arguments, ReturnValue>(
         end,
         result = function(ctx)
             if ctx.raisedWithoutError then
-                return table.unpack(self.raw.results)
+                return table.unpack(ctx.raw.results)
             else
-                return self.raw.success, table.unpack(self.raw.results)
+                return ctx.raw.success, table.unpack(ctx.raw.results)
             end
         end,
     }
