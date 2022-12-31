@@ -214,6 +214,22 @@ function Utils:map<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V })
 end
 
 --[[
+    Similar to Utils:map, except you can specify both the key and the value.
+
+    ```lua
+    Utils:mapf(function(v, k) return k + 1, v ^ 2 end, { 1, 2, 3 }) -> { [2] = 1, [3] = 4, [4] = 9 }
+    ```
+--]]
+function Utils:mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1) -> (K2, V2), tab: { [K1]: V1 }): { [K2]: V2 }
+    local output = table.create(16)
+    for k1, v1 in tab do
+        local k2, v2 = transform(v1, k1)
+        output[k2] = v2
+    end
+    return output
+end
+
+--[[
     Returns a string which represents the provided value while retaining as much information as possible about the value.
     Similar to Python's builtin `repr` function.
 --]]
