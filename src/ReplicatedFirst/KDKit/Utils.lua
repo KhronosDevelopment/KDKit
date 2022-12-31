@@ -101,10 +101,10 @@ end
     end, error, "im throwing an error")
     ```
 --]]
-function Utils:ensure<A, T>(callback: (success: boolean, traceback: string?) -> any, func: (...A) -> T, ...: A): T
+function Utils:ensure<A, T>(callback: (failed: boolean, traceback: string?) -> any, func: (...A) -> T, ...: A): T
     return self:try(func, ...)
         :after(function(err: string?)
-            self:try(callback, not err, err):catch(function(cbErr)
+            self:try(callback, not not err, err):catch(function(cbErr)
                 task.defer(
                     error,
                     ("The following error occurred during the callback to a KDKit.Utils.ensure call. The error was ignored.\n%s"):format(
