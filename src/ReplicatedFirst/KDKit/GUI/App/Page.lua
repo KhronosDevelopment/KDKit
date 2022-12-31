@@ -1,6 +1,7 @@
 local Animate = require(script.Parent.Parent:WaitForChild("Animate"))
 local Button = require(script.Parent.Parent:WaitForChild("Button"))
 local Class = require(script.Parent.Parent.Parent:WaitForChild("Class"))
+local Utils = require(script.Parent.Parent.Parent:WaitForChild("Utils"))
 
 local Page = Class.new("KDKit.GUI.App.Page")
 Page.static.TOP_ZINDEX = 100
@@ -55,6 +56,18 @@ end
 
 function Page:beforeClosed(transition)
     -- override me
+end
+
+function Page:cycle(seconds, func, ...)
+    task.defer(function(...)
+        while task.wait(seconds) do
+            if self.opened then
+                Utils:try(func, ...):catch(function(err)
+                    task.defer(error, err)
+                end)
+            end
+        end
+    end, ...)
 end
 
 return Page

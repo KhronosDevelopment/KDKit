@@ -126,6 +126,11 @@ function App:__init(module: ModuleScript)
             return if pageInstance.Name == "home" then 0 else 1
         end)
     do
+        if not pageInstance:IsA("ModuleScript") then
+            -- not actually a page instance
+            continue
+        end
+
         local page = App.Page.new(self, pageInstance)
 
         if page.name ~= Humanize:casing(page.name, "camel") and page.name ~= Humanize:casing(page.name, "snake") then
