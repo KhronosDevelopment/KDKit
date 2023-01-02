@@ -233,7 +233,8 @@ end
     Returns a string which represents the provided value while retaining as much information as possible about the value.
     Similar to Python's builtin `repr` function.
 --]]
-function Utils:repr(x: any, tableVerbosity: number?, alreadySeenTables: table?): string
+function Utils:repr(x: any, tableDepth: number?, tableVerbosity: number?, alreadySeenTables: table?): string
+    tableDepth = math.floor(tableDepth or 4)
     tableVerbosity = math.floor(tableVerbosity or 10)
     alreadySeenTables = alreadySeenTables or table.create(16)
 
@@ -253,6 +254,8 @@ function Utils:repr(x: any, tableVerbosity: number?, alreadySeenTables: table?):
     elseif tx == "table" then
         if alreadySeenTables[x] then
             return "<cyclic table detected> " .. tostring(x)
+        elseif tableDepth <= 0 then
+            return "<table depth exceeded> " .. tostring(x)
         end
         local parts = table.create(8)
 
@@ -263,8 +266,18 @@ function Utils:repr(x: any, tableVerbosity: number?, alreadySeenTables: table?):
                 table.insert(
                     parts,
                     ("[%s] = %s"):format(
-                        self:repr(key, math.min(tableVerbosity, math.max(3, tableVerbosity / 2)), alreadySeenTables),
-                        self:repr(value, math.min(tableVerbosity, math.max(3, tableVerbosity / 2)), alreadySeenTables)
+                        self:repr(
+                            key,
+                            tableDepth - 1,
+                            math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
+                            alreadySeenTables
+                        ),
+                        self:repr(
+                            value,
+                            tableDepth - 1,
+                            math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
+                            alreadySeenTables
+                        )
                     )
                 )
                 n += 1
@@ -1173,6 +1186,19 @@ function Utils:reject<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean
         end
     end
     return selected
+end
+
+--[[
+    Returns the first value in the table where the `func` returns `true`.
+--]]
+function Utils:find<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean): (V?, K?)
+    for k, v in tab do
+        if func(v, k) then
+            return v, k
+        end
+    end
+
+    return nil, nil
 end
 
 --[[
