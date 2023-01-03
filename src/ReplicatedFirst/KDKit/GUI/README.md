@@ -58,4 +58,4 @@ return page
 GIF:
 (coming soon)
 
-Isn't that amazing? 3 lines of button code for all that? Yeah. I'm not kidding, this is the only code required to make this work.
+Isn't that amazing? 3 lines of button code for all that? Yeah. I'm not kidding, this is the only code required to make this work. See the module level [README](./Button) for more details.
