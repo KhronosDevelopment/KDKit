@@ -882,7 +882,7 @@ end
     Utils:any({false, true, false}) -> true
     Utils:any({false, false}) -> false
     Utils:any({}) -> false
-    Utils:any({1, 2, 3, -5}, function(x) return x < 0 end) -> false
+    Utils:any({1, 2, 3, -5}, function(x) return x < 0 end) -> true
     ```
 --]]
 function Utils:any<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | string)?): boolean
