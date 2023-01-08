@@ -16,6 +16,12 @@ function Page:__init(app, module)
     self.connections = table.create(16)
     self.buttons = table.create(32)
 
+    -- these are not used internally, but in asynchronous code it is sometimes useful
+    -- to be able to track whether or not the current coroutine is still attached to the
+    -- active context of the page
+    self.nTimesOpened = 0
+    self.nTimesClosed = 0
+
     if not self.instance then
         error(
             ("You must have a gui object named `instance` under each page. Did not find one under `%s`."):format(
@@ -30,6 +36,7 @@ end
 
 function Page:rawOpen(transition)
     self.opened = true
+    self.nTimesOpened += 1
     Button:enable(self.instance)
     self.instance.ZIndex = Page.TOP_ZINDEX
     local animationTime = Animate:onscreen(self.instance, true, if transition.initial then 0 else nil)
@@ -47,6 +54,7 @@ function Page:rawClose(transition)
     self.instance.ZIndex = Page.BOTTOM_ZINDEX
     local animationTime = Animate:offscreen(self.instance, true, if transition.initial then 0 else nil)
     self.opened = false
+    self.nTimesClosed += 1
     return animationTime
 end
 
