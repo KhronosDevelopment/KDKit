@@ -16,6 +16,11 @@ function Page:__init(app, module)
     self.connections = table.create(16)
     self.buttons = table.create(32)
 
+    -- set this to true if you do not want the page to be added to the history stack
+    -- with the exception of when the page is currently open, when it will be on the top of the stack
+    -- that is, ephemeral pages will never be opened via a call to App:goBack()
+    self.ephemeral = false
+
     -- these are not used internally, but in asynchronous code it is sometimes useful
     -- to be able to track whether or not the current coroutine is still attached to the
     -- active context of the page

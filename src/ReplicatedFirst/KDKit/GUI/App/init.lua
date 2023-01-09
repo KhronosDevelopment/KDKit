@@ -299,6 +299,9 @@ function App:rawDoPageTransition(transition)
             elseif transition.backward then
                 table.remove(self.history, #self.history)
             elseif transition.from ~= transition.to then
+                if transition.from.ephemeral then
+                    table.remove(self.history, #self.history)
+                end
                 table.insert(self.history, transition.to)
             end
         end, transition.to.rawOpen, transition.to, transition)
