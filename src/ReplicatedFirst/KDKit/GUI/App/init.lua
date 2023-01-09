@@ -57,14 +57,7 @@ function App:__init(module: ModuleScript)
     table.clear(self.proxy)
     setmetatable(self.proxy, {
         __index = self,
-        __newindex = function(_, key)
-            error(
-                ("Apps are readonly. Perhaps you meant to write to app.common[%s] instead of app[%s]?"):format(
-                    Utils:repr(key),
-                    Utils:repr(key)
-                )
-            )
-        end,
+        __newindex = self,
     })
 
     if type(self.common.transitionSources) ~= "table" then

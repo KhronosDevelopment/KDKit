@@ -52,6 +52,14 @@ function Maid:give<T, A>(task: (T | (...A) -> T), ...: A): (T | () -> T)
     return task
 end
 
+function Maid:remove(task: any): nil
+    self.tasks[task] = nil
+end
+
+function Maid:removeAll(): nil
+    table.clear(self.tasks)
+end
+
 function Maid:clean(task, skipDebugProfile: boolean): nil
     if not skipDebugProfile then
         debug.profilebegin("Maid:clean()")

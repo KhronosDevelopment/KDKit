@@ -28,6 +28,7 @@ function Remote:__init(
 )
     self.template = instance
     self.rateLimit = rateLimit
+    self.name = instance:GetFullName()
     self.functional = instance:IsA("RemoteFunction")
     self.clientDropsCallsWhenLimitExceeded = not not clientDropsCallsWhenLimitExceeded
 
@@ -180,8 +181,8 @@ function Remote:wrapWithClientErrorLogging(func, context, getState)
 
                 Remote.logClientError(
                     context,
-                    if successfullyGotState then Utils:makeSerializable(state) else "Error getting state: " .. state,
-                    Utils:makeSerializable(args),
+                    if successfullyGotState then Utils:repr(state, 3) else "Error getting state: " .. state,
+                    Utils:repr(args, 3),
                     traceback
                 )
             end

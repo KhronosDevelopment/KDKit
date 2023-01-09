@@ -34,7 +34,23 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
         error(("Config root at `%s` must inherit KDKit.ConfigGroup.Config."):format(rootConfigInstance))
     end
 
+    local checkedCommons = false
     for _, configInstance in rootConfigInstance:GetChildren() do
+        if configInstance:IsA("Folder") and configInstance.Name == "common" then
+            if checkedCommons then
+                error(
+                    "You may only have one commons folder, but you have at least two. " .. configInstance:GetFullName()
+                )
+            end
+            checkedCommons = true
+        elseif not configInstance:IsA("ModuleScript") then
+            error(
+                "All children of a ConfigGroup must be either a ModuleScript or a Folder named 'commons'. Found "
+                    .. configInstance:GetFullName()
+                    .. " instead."
+            )
+        end
+
         local expectedClassName = ("%s.%s"):format(rootConfig.__name, configInstance.name)
 
         local config = require(configInstance)

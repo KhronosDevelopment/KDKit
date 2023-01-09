@@ -205,6 +205,92 @@ function Keybind:disable()
     self.bind = nil
 end
 
+local LoadingGroup = Class.new("KDKit.GUI.Button._internal.LoadingGroup")
+LoadingGroup.static.list = {} :: { [any]: "KDKit.GUI.Button._internal.LoadingGroup" }
+
+function LoadingGroup:__init(id)
+    self.id = id
+    self.buttons = {} :: { ["KDKit.GUI.Button"]: true }
+    self.wasLoadingOnLastUpdate = nil
+    LoadingGroup.list[self.id] = self
+end
+
+function LoadingGroup:add(button: "KDKit.GUI.Button")
+    if self.buttons[button] then
+        self:remove(button)
+    end
+
+    self.buttons[button] = true
+    self:update()
+end
+
+function LoadingGroup:remove(button: "KDKit.GUI.Button")
+    if not self.buttons[button] then
+        return
+    end
+    self.buttons[button] = nil
+    self:update()
+
+    -- if that was the last button, delete the entire group
+    if not next(self.buttons) then
+        LoadingGroup.list[self.id] = nil
+    end
+end
+
+function LoadingGroup:isLoading()
+    for button in self.buttons do
+        if button.callbackIsExecuting then
+            return true
+        end
+    end
+
+    return false
+end
+
+function LoadingGroup:update()
+    local loading = self:isLoading()
+    if loading ~= self.wasLoadingOnLastUpdate then
+        self.wasLoadingOnLastUpdate = loading
+        for button in self.buttons do
+            button:visualStateChanged()
+        end
+    end
+end
+
+local LoadingGroups = {}
+
+function LoadingGroups:add(button: "KDKit.GUI.Button", id: any)
+    local group = LoadingGroup.list[id] or LoadingGroup.new(id)
+    group:add(button)
+end
+
+function LoadingGroups:remove(button: "KDKit.GUI.Button", id: any)
+    local group = LoadingGroup.list[id]
+
+    if group then
+        group:remove(button)
+    end
+end
+
+function LoadingGroups:anyAreLoading(ids: { any }): boolean
+    for _, id in ids do
+        local group = LoadingGroup.list[id]
+        if group and group:isLoading() then
+            return true
+        end
+    end
+    return false
+end
+
+function LoadingGroups:update(ids: { any }): boolean
+    for _, id in ids do
+        local group = LoadingGroup.list[id]
+        if group then
+            group:update()
+        end
+    end
+end
+
 --[[
     Initializer
 --]]
@@ -221,7 +307,8 @@ function Button:__init(instance: GuiObject, callback: (button: "KDKit.GUI.Button
         )
     end
 
-    self.loading = false
+    self.loadingGroupIds = {}
+    self.callbackIsExecuting = false
     self.enabled = false
 
     self.connections = {}
@@ -315,7 +402,7 @@ function Button:bind(...: string | Enum.KeyCode | number): "KDKit.GUI.Button"
             )
         end
 
-        if self.keybinds[keyCode] then
+        if self:isBoundTo(keyCode) then
             error(("This button is already bound to `%s`"):format(Utils:repr(keyCode)))
         end
 
@@ -328,6 +415,26 @@ function Button:bind(...: string | Enum.KeyCode | number): "KDKit.GUI.Button"
         if pressable then
             self.keybinds[keyCode]:enable()
         end
+    end
+
+    return self
+end
+
+function Button:unbindAll()
+    for keyCode, keybind in self.keybinds do
+        keybind:disable()
+    end
+    table.clear(self.keybinds)
+end
+
+function Button:loadWith(...: any): "KDKit.GUI.Button"
+    for _, id in self.loadingGroupIds do
+        LoadingGroups:remove(self, id)
+    end
+
+    self.loadingGroupIds = { ... }
+    for _, id in self.loadingGroupIds do
+        LoadingGroups:add(self, id)
     end
 
     return self
@@ -364,11 +471,12 @@ function Button:determinePropertyValueDuringState(property, visualState)
 end
 
 function Button:getVisualState()
+    local loading = self:isLoading()
     local state = {
         hovered = Button.hovered == self and self:pressable(),
         active = Button.active == self,
-        loading = self.loading,
-        disabled = self.loading or not self.enabled,
+        loading = loading,
+        disabled = loading or not self.enabled,
     }
 
     return state
@@ -378,6 +486,10 @@ function Button:visualStateChanged()
     local visualState = self:getVisualState()
     local previousVisualState = self._previousVisualState or table.clone(visualState)
     self._previousVisualState = table.clone(visualState)
+
+    if Utils:shallowEqual(visualState, previousVisualState) then
+        return
+    end
 
     local activeChanged = visualState.active ~= previousVisualState.active
 
@@ -402,6 +514,14 @@ end
 --[[
     Utils
 --]]
+function Button:isLoading(): boolean
+    return self.callbackIsExecuting or LoadingGroups:anyAreLoading(self.loadingGroupIds)
+end
+
+function Button:isBoundTo(keyCode: Enum.KeyCode)
+    return self.keybinds[keyCode] ~= nil
+end
+
 function Button:customHitboxContainsPoint(x, y)
     if not self.customHitbox then
         return true
@@ -413,7 +533,7 @@ function Button:customHitboxContainsPoint(x, y)
 end
 
 function Button:pressable()
-    return self.enabled and not self.loading
+    return self.enabled and not self:isLoading()
 end
 
 function Button:makeSound()
@@ -445,15 +565,15 @@ function Button:press(skipSound)
     end
 
     if self.callback then
-        self.loading = true
+        self.callbackIsExecuting = true
         if Button.active == self then
             Button.static.active = nil
         end
-        self:visualStateChanged()
+        LoadingGroups:update(self.loadingGroupIds)
 
         Utils:ensure(function()
-            self.loading = false
-            self:visualStateChanged()
+            self.callbackIsExecuting = false
+            LoadingGroups:update(self.loadingGroupIds)
         end, self.callback, self)
     end
 end
@@ -504,6 +624,7 @@ function Button:delete(root)
     if staticCall then
         return self:applyToAll(root, "delete")
     else
+        self:loadWith(nil)
         self:style(self.styles.original)
 
         for _, conn in self.connections do
