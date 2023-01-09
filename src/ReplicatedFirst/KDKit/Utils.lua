@@ -971,7 +971,7 @@ end
 --[[
     Returns an un-parented Part that has CanCollide/Anchored on, and everything else off.
 --]]
-function Utils:getBlankPart(): Part
+function Utils:getBlankPart(parent: Instance?): Part
     local part = Instance.new("Part")
 
     part.TopSurface = Enum.SurfaceType.SmoothNoOutlines
@@ -987,6 +987,8 @@ function Utils:getBlankPart(): Part
     part.CanQuery = false
 
     part.Size = Vector3.new(1, 1, 1)
+
+    part.Parent = parent
 
     return part
 end
