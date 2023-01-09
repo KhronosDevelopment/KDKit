@@ -166,6 +166,7 @@ Utils:reject({-3, -2, -1, 0, 1, 2, 3}, function(x) return x <= 0 end) -- {1, 2, 
 - Utils.strip
 - Utils.map
 - Utils.keys
+- Utils.shallowEqual/Utils.deepEqual
 - Utils.ensure
 - Utils.isLower/Utils.isUpper
 - Utils.isAlphanumeric/Utils.isAlpha/Utils.isNumeric

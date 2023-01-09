@@ -1216,4 +1216,67 @@ function Utils:partTouchesPoint(part: Part, point: Vector3): boolean
         and math.abs(point.Z) <= part.Size.Z / 2
 end
 
+--[[
+    Returns true if and only if the two provided tables have the same keys with equivalent values.
+    Does not recurse into table values; if that is desirable, see deepEqual.
+    ```lua
+    Utils:shallowEqual({a=1, b=2}, {b=2, a=1}) -> true
+    Utils:shallowEqual({a=1, b=2}, {a=3, b=4}) -> false
+    Utils:shallowEqual({a=1}, {a=1, b=2}) -> false
+    Utils:shallowEqual({}, {}) -> true
+    Utils:shallowEqual({a=1, b={1,2,3}}, {a=1, b={1,2,3}}) -> false -- see deepEqual
+    ```
+--]]
+function Utils:shallowEqual(a: table | any, b: table | any): boolean
+    if a == b then
+        return true
+    end
+    if type(a) ~= "table" or type(b) ~= "table" then
+        return false
+    end
+
+    for k, v in a do
+        if b[k] ~= v then
+            return false
+        end
+    end
+
+    for k, v in b do
+        if a[k] ~= v then
+            return false
+        end
+    end
+
+    return true
+end
+
+--[[
+    Equivalent to shallowEqual, but also compares nested tables.
+    ```lua
+    Utils:deepEqual({a=1, b={1,2,3}}, {a=1, b={1,2,3}}) -> true
+    ```
+--]]
+function Utils:deepEqual(a: table | any, b: table | any): boolean
+    if a == b then
+        return true
+    end
+    if type(a) ~= "table" or type(b) ~= "table" then
+        return false
+    end
+
+    for k, v in a do
+        if not self:deepEqual(v, b[k]) then
+            return false
+        end
+    end
+
+    for k, v in b do
+        if a[k] == nil or not self:deepEqual(v, a[k]) then
+            return false
+        end
+    end
+
+    return true
+end
+
 return Utils
