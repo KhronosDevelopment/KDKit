@@ -16,13 +16,16 @@ end
 function Animate:positionBasedOnAttributes(
     instance: Instance,
     positionAttributeName: string,
-    delayAttributeName: string?,
+    delayAttributeNames: ({ string } | string)?,
     includeDescendants: boolean?,
     seconds: number?,
     style: Enum.EasingStyle?,
     direction: Enum.EasingDirection?
 )
-    delayAttributeName = delayAttributeName or "animationDelay"
+    delayAttributeNames = delayAttributeNames or { "animationDelay" }
+    if typeof(delayAttributeNames) == "string" then
+        delayAttributeNames = { delayAttributeNames }
+    end
     if includeDescendants == nil then
         includeDescendants = true
     end
@@ -31,7 +34,11 @@ function Animate:positionBasedOnAttributes(
     direction = direction or Enum.EasingDirection.InOut
 
     local position = instance:GetAttribute(positionAttributeName)
-    local animationDelay = instance:GetAttribute(delayAttributeName) or 0
+    local animationDelay = nil
+    for _, name in delayAttributeNames do
+        animationDelay = animationDelay or instance:GetAttribute(name)
+    end
+    animationDelay = animationDelay or 0
 
     if position then
         local me = self:count(instance)
@@ -57,7 +64,7 @@ function Animate:positionBasedOnAttributes(
                 self:positionBasedOnAttributes(
                     descendant,
                     positionAttributeName,
-                    delayAttributeName,
+                    delayAttributeNames,
                     false,
                     seconds,
                     style,
@@ -70,11 +77,17 @@ function Animate:positionBasedOnAttributes(
     return allAnimationsWillCompleteIn
 end
 
-function Animate:onscreen(instance: Instance, includeDescendants: boolean?, seconds: number?, style: Enum.EasingStyle?)
+function Animate:onscreen(
+    instance: Instance,
+    includeDescendants: boolean?,
+    seconds: number?,
+    skipDelay: boolean?,
+    style: Enum.EasingStyle?
+)
     return self:positionBasedOnAttributes(
         instance,
         "onscreenPosition",
-        "animationDelay",
+        if skipDelay then {} else { "onscreenAnimationDelay", "animationDelay" },
         includeDescendants,
         seconds or 1 / 2,
         style,
@@ -82,11 +95,17 @@ function Animate:onscreen(instance: Instance, includeDescendants: boolean?, seco
     )
 end
 
-function Animate:offscreen(instance: Instance, includeDescendants: boolean?, seconds: number?, style: Enum.EasingStyle?)
+function Animate:offscreen(
+    instance: Instance,
+    includeDescendants: boolean?,
+    seconds: number?,
+    skipDelay: boolean?,
+    style: Enum.EasingStyle?
+)
     return self:positionBasedOnAttributes(
         instance,
         "offscreenPosition",
-        "animationDelay",
+        if skipDelay then {} else { "offscreenAnimationDelay", "animationDelay" },
         includeDescendants,
         seconds or 1 / 3,
         style,
