@@ -43,6 +43,7 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
                 )
             end
             checkedCommons = true
+            continue
         elseif not configInstance:IsA("ModuleScript") then
             error(
                 "All children of a ConfigGroup must be either a ModuleScript or a Folder named 'commons'. Found "
@@ -61,6 +62,7 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
         if config.__class == Class then
             error(
                 ("Config at `%s` must return a singleton instance of the class, not the class itself. For example `return %s.new(script)`."):format(
+                    configInstance:GetFullName(),
                     config.__name
                 )
             )
