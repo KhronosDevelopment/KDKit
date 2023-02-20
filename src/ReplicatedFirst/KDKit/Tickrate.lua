@@ -12,24 +12,51 @@
     ```
 --]]
 
+local STARTED_RECORDING_AT = os.clock()
 local AVG_TICKRATE_OVER = 300
-local tickrate = 60
-local minTickrate = tickrate
-game:GetService("RunService").Heartbeat:Connect(function(timeStep)
-    if timeStep <= 1 / 1000 then
-        -- This shouldn't technically be possible, but one of my servers reported an infinite tickrate somehow.
-        -- So I just want to be safe.
-        return
-    end
-    local hz = 1 / timeStep
-    tickrate = (tickrate * (AVG_TICKRATE_OVER - 1) + hz) / AVG_TICKRATE_OVER
+local KEEP_HISTORY_DURATION = AVG_TICKRATE_OVER + 2
+local recentTicksPerSecond = table.create(KEEP_HISTORY_DURATION)
+for i = KEEP_HISTORY_DURATION - 1, 0, -1 do
+    table.insert(recentTicksPerSecond, { math.floor(STARTED_RECORDING_AT) - i, 60 })
+end
 
-    if workspace.DistributedGameTime < AVG_TICKRATE_OVER then
-        return -- Server initialization is usually very slow. We don't want to include that time in our minTickrate calculation.
+local function cycle()
+    while (os.clock() - recentTicksPerSecond[1][1]) > KEEP_HISTORY_DURATION do
+        table.remove(recentTicksPerSecond, 1)
+        table.insert(recentTicksPerSecond, { recentTicksPerSecond[KEEP_HISTORY_DURATION - 1][1] + 1, 0 })
     end
-    minTickrate = math.min(minTickrate, tickrate)
+end
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    debug.profilebegin("KDKit.Tickrate (record)")
+
+    -- timeStep isn't as accurate as I would like it to be, so keeping a tick history instead
+    recentTicksPerSecond[KEEP_HISTORY_DURATION][2] += 1
+    cycle()
+
+    print("ticked", math.floor(os.clock()))
+
+    debug.profileend()
 end)
 
+local minTickrate = 60
 return function()
+    debug.profilebegin("KDKit.Tickrate (compute)")
+
+    cycle()
+
+    -- Sum up the number of ticks from the previous second groups. Exclude the most recent second (which is not full yet).
+    local tickCount = 0
+    for i = 1, AVG_TICKRATE_OVER do
+        tickCount += recentTicksPerSecond[KEEP_HISTORY_DURATION - i][2]
+    end
+
+    local tickrate = tickCount / AVG_TICKRATE_OVER
+
+    if os.clock() - STARTED_RECORDING_AT >= AVG_TICKRATE_OVER then
+        minTickrate = math.min(minTickrate, tickrate)
+    end
+
+    debug.profileend()
     return tickrate, minTickrate
 end
