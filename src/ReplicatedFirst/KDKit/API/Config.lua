@@ -30,11 +30,7 @@ function Config:__init(instance)
     self.settings = require(instance)
     self.logLevel = self.settings.logLevel and Config.LOG_LEVEL[self.settings.logLevel:upper()]
     if not self.logLevel then
-        if game:GetService("RunService"):IsStudio() then
-            self.logLevel = Config.LOG_LEVEL.DEBUG
-        else
-            self.logLevel = Config.LOG_LEVEL.ERROR
-        end
+        self.logLevel = Config.LOG_LEVEL.DEBUG
     end
 
     self.name = self.instance.Name
