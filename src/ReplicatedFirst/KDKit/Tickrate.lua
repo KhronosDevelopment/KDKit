@@ -34,8 +34,6 @@ game:GetService("RunService").Heartbeat:Connect(function()
     recentTicksPerSecond[KEEP_HISTORY_DURATION][2] += 1
     cycle()
 
-    print("ticked", math.floor(os.clock()))
-
     debug.profileend()
 end)
 
