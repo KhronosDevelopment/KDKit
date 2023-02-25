@@ -296,15 +296,11 @@ end
 --]]
 function Button:__init(instance: GuiObject, callback: (button: "KDKit.GUI.Button") -> nil)
     self.instance = instance
-    self.callback = callback
     Button.list[self.instance] = self
 
-    if self.callback then
-        self.callback = Remote:wrapWithClientErrorLogging(
-            self.callback,
-            ("KDKit.GUI.Button callback <%s>"):format(self.instance:GetFullName()),
-            Button.GET_DEBUG_UIS_STATE
-        )
+    self.onPressCallbacks = {} :: { (self: "Button") -> nil }
+    if callback then
+        self:onPress(callback)
     end
 
     self.loadingGroupIds = {}
@@ -376,6 +372,31 @@ Button.__init = Remote:wrapWithClientErrorLogging(Button.__init, "KDKit.GUI.Butt
 --[[
     Configuration
 --]]
+function Button:onPress(callback: (self: "Button") -> nil): ("Button", { Disconnect: () -> nil })
+    local disconnected = false
+
+    table.insert(
+        self.onPressCallbacks,
+        Remote:wrapWithClientErrorLogging(
+            callback,
+            ("KDKit.GUI.Button callback #%d <%s>"):format(#self.onPressCallbacks + 1, self.instance:GetFullName()),
+            Button.GET_DEBUG_UIS_STATE
+        )
+    )
+
+    return self,
+        {
+            Disconnect = function()
+                if disconnected then
+                    return
+                end
+                disconnected = true
+
+                table.remove(self.onPressCallbacks, table.find(self.onPressCallbacks, callback))
+            end,
+        }
+end
+
 function Button:hitbox(hitbox: string | (
     self: "KDKit.GUI.Button",
     xOffset: number,
@@ -564,7 +585,7 @@ function Button:press(skipSound)
         self:makeSound()
     end
 
-    if self.callback then
+    if next(self.onPressCallbacks) then
         self.callbackIsExecuting = true
         if Button.active == self then
             Button.static.active = nil
@@ -576,6 +597,14 @@ function Button:press(skipSound)
             LoadingGroups:update(self.loadingGroupIds)
         end, self.callback, self)
     end
+end
+
+function Button:callback()
+    Utils:aggregateErrors(function(aggregate)
+        for _, cb in self.onPressCallbacks do
+            aggregate(cb, self)
+        end
+    end)
 end
 
 --[[
