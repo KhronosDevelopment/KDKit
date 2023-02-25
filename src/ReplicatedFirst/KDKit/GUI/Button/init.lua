@@ -153,20 +153,10 @@ function Keybind:enable()
                 return
             end
 
-            if Button.active then
-                local active = Button.active
-                Button.static.active = nil
-                active:visualStateChanged()
-            end
-
-            Button.static.active = self.button
-            self.button:visualStateChanged()
+            self.button:press()
         elseif inputState == Enum.UserInputState.End then
             if Button.active == self.button then
-                self.button:press()
-
-                Button.static.active = nil
-                self.button:visualStateChanged()
+                self.button:release()
             end
         elseif inputState == Enum.UserInputState.Cancel then
             if Button.active == self.button then
@@ -299,8 +289,9 @@ function Button:__init(instance: GuiObject, callback: (button: "KDKit.GUI.Button
     Button.list[self.instance] = self
 
     self.onPressCallbacks = {} :: { (self: "Button") -> nil }
+    self.onReleaseCallbacks = {} :: { (self: "Button") -> nil }
     if callback then
-        self:onPress(callback)
+        self:onRelease(callback)
     end
 
     self.loadingGroupIds = {}
@@ -373,17 +364,28 @@ Button.__init = Remote:wrapWithClientErrorLogging(Button.__init, "KDKit.GUI.Butt
 --[[
     Configuration
 --]]
-function Button:onPress(callback: (self: "Button") -> nil): ("Button", { Disconnect: () -> nil })
+function Button:addCallback(
+    callback: (self: "Button") -> nil,
+    onKeyDown: boolean?,
+    skipErrorLoggingWrap: boolean?
+): ("Button", { Disconnect: () -> nil })
+    local callbackTable = if onKeyDown then self.onPressCallbacks else self.onReleaseCallbacks
+
     local disconnected = false
 
-    table.insert(
-        self.onPressCallbacks,
-        Remote:wrapWithClientErrorLogging(
+    if not skipErrorLoggingWrap then
+        callback = Remote:wrapWithClientErrorLogging(
             callback,
-            ("KDKit.GUI.Button callback #%d <%s>"):format(#self.onPressCallbacks + 1, self.instance:GetFullName()),
+            ("KDKit.GUI.Button %s callback #%d <%s>"):format(
+                if onKeyDown then "onPress" else "onRelease",
+                #callbackTable + 1,
+                self.instance:GetFullName()
+            ),
             Button.GET_DEBUG_UIS_STATE
         )
-    )
+    end
+
+    table.insert(callbackTable, callback)
 
     return self,
         {
@@ -393,9 +395,23 @@ function Button:onPress(callback: (self: "Button") -> nil): ("Button", { Disconn
                 end
                 disconnected = true
 
-                table.remove(self.onPressCallbacks, table.find(self.onPressCallbacks, callback))
+                table.remove(callbackTable, table.find(callbackTable, callback))
             end,
         }
+end
+
+function Button:onPress(
+    callback: (self: "Button") -> nil,
+    skipErrorLoggingWrap: boolean?
+): ("Button", { Disconnect: () -> nil })
+    return self:addCallback(callback, true, skipErrorLoggingWrap)
+end
+
+function Button:onRelease(
+    callback: (self: "Button") -> nil,
+    skipErrorLoggingWrap: boolean?
+): ("Button", { Disconnect: () -> nil })
+    return self:addCallback(callback, false, skipErrorLoggingWrap)
 end
 
 function Button:hitbox(hitbox: string | (
@@ -598,34 +614,62 @@ function Button:makeSound()
     return sound
 end
 
-function Button:press(skipSound)
+function Button:press()
+    local active = Button.active
+    if active then
+        Button.static.active = nil
+        active:visualStateChanged()
+    end
+
+    Button.static.active = self
+    self:visualStateChanged()
+
+    if self:pressable() then
+        task.defer(self.firePressCallbacks, self)
+    end
+end
+
+function Button:release(skipSound: boolean?)
+    if Button.active == self then
+        Button.static.active = nil
+        self:visualStateChanged()
+    end
+
     if not self:pressable() then
-        error(
-            "This button is not currently pressable. You can call `button:callback()` directly if you wish (but I don't recommend it)."
-        )
+        return
     end
 
     if not skipSound then
         self:makeSound()
     end
 
-    if next(self.onPressCallbacks) then
-        self.callbackIsExecuting = true
-        if Button.active == self then
-            Button.static.active = nil
-        end
-        LoadingGroups:update(self.loadingGroupIds)
+    self.callbackIsExecuting = true
+    LoadingGroups:update(self.loadingGroupIds)
+    self:visualStateChanged()
 
-        Utils:ensure(function()
-            self.callbackIsExecuting = false
-            LoadingGroups:update(self.loadingGroupIds)
-        end, self.callback, self)
-    end
+    Utils:ensure(function()
+        self.callbackIsExecuting = false
+        LoadingGroups:update(self.loadingGroupIds)
+        self:visualStateChanged()
+    end, self.fireReleaseCallbacks, self)
 end
 
-function Button:callback()
+function Button:click(skipSound: boolean?)
+    self:press()
+    self:release(skipSound)
+end
+
+function Button:firePressCallbacks()
     Utils:aggregateErrors(function(aggregate)
         for _, cb in self.onPressCallbacks do
+            aggregate(cb, self)
+        end
+    end)
+end
+
+function Button:fireReleaseCallbacks()
+    Utils:aggregateErrors(function(aggregate)
+        for _, cb in self.onReleaseCallbacks do
             aggregate(cb, self)
         end
     end)
@@ -655,6 +699,9 @@ function Button:enable(root): "Button"?
         return nil
     elseif not self.enabled then
         self.enabled = true
+        if self:pressable() and Button.active == self then
+            task.defer(self.firePressCallbacks, self)
+        end
         self:visualStateChanged()
     end
 
@@ -839,14 +886,7 @@ UserInputService.InputBegan:Connect(function(input)
     updateGuiState()
 
     if Button.hovered then
-        if Button.active then
-            local active = Button.active
-            Button.static.active = nil
-            active:visualStateChanged()
-        end
-
-        Button.static.active = Button.hovered
-        Button.active:visualStateChanged()
+        Button.hovered:press()
     end
 end)
 
@@ -857,13 +897,13 @@ UserInputService.InputEnded:Connect(function(input)
 
     updateGuiState()
 
-    if Button.active then
-        local active = Button.active
-        Button.static.active = nil
-        active:visualStateChanged()
-
-        if active == Button.hovered and active:pressable() then
-            active:press()
+    local active = Button.active
+    if active then
+        if Button.hovered == active then
+            active:release()
+        else
+            Button.static.active = nil
+            active:visualStateChanged()
         end
     end
 end)
