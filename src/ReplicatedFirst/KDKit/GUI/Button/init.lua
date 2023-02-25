@@ -149,20 +149,15 @@ function Keybind:enable()
     self.bind = Keybind:useNextBindString()
     ContextActionService:BindAction(self.bind, function(_actionName, inputState, _inputObject)
         if inputState == Enum.UserInputState.Begin then
-            if Button.active == self.button then
-                return
+            if Button.active ~= self.button then
+                self.button:press()
             end
-
-            self.button:press()
         elseif inputState == Enum.UserInputState.End then
             if Button.active == self.button then
                 self.button:release()
             end
         elseif inputState == Enum.UserInputState.Cancel then
-            if Button.active == self.button then
-                Button.static.active = nil
-                self.button:visualStateChanged()
-            end
+            self.button:deactivate()
         end
     end, false, self.key)
 
@@ -381,7 +376,7 @@ function Button:addCallback(
         callback = Remote:wrapWithClientErrorLogging(
             callback,
             ("KDKit.GUI.Button %s callback #%d <%s>"):format(
-                if onKeyDown then "onPress" else "onRelease",
+                if event == "press" then "onPress" elseif event == "release" then "onRelease" else "onClick",
                 #callbackTable + 1,
                 self.instance:GetFullName()
             ),
@@ -625,26 +620,36 @@ function Button:makeSound()
     return sound
 end
 
-function Button:press()
-    local active = Button.active
-    if active then
-        Button.static.active = nil
-        active:visualStateChanged()
+function Button:activate()
+    local currentlyActive = Button.active
+    if currentlyActive == self then
+        return
+    elseif currentlyActive then
+        currentlyActive:deactivate()
     end
 
     Button.static.active = self
     self:visualStateChanged()
+end
 
+function Button:deactivate()
+    if Button.active ~= self then
+        return
+    end
+
+    Button.static.active = nil
+    self:visualStateChanged()
+end
+
+function Button:press()
+    self:activate()
     if self:pressable() then
         task.defer(self.firePressCallbacks, self)
     end
 end
 
 function Button:release(skipSound: boolean?)
-    if Button.active == self then
-        Button.static.active = nil
-        self:visualStateChanged()
-    end
+    self:deactivate()
 
     if not self:pressable() then
         return
@@ -732,9 +737,6 @@ function Button:disable(root): "Button"?
         return nil
     elseif self.enabled then
         self.enabled = false
-        if Button.active == self then
-            Button.static.active = nil
-        end
         self:visualStateChanged()
     end
 
@@ -917,8 +919,7 @@ UserInputService.InputEnded:Connect(function(input)
         if Button.hovered == active then
             active:release()
         else
-            Button.static.active = nil
-            active:visualStateChanged()
+            active:deactivate()
         end
     end
 end)
