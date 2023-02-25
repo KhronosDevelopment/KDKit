@@ -284,14 +284,15 @@ end
 --[[
     Initializer
 --]]
-function Button:__init(instance: GuiObject, callback: (button: "KDKit.GUI.Button") -> nil)
+function Button:__init(instance: GuiObject, onClick: (button: "KDKit.GUI.Button") -> nil)
     self.instance = instance
     Button.list[self.instance] = self
 
     self.onPressCallbacks = {} :: { (self: "Button") -> nil }
     self.onReleaseCallbacks = {} :: { (self: "Button") -> nil }
-    if callback then
-        self:onRelease(callback)
+    self.onClickCallbacks = {} :: { (self: "Button") -> nil }
+    if onClick then
+        self:onClick(onClick)
     end
 
     self.loadingGroupIds = {}
@@ -366,10 +367,13 @@ Button.__init = Remote:wrapWithClientErrorLogging(Button.__init, "KDKit.GUI.Butt
 --]]
 function Button:addCallback(
     callback: (self: "Button") -> nil,
-    onKeyDown: boolean?,
+    event: ("press" | "release" | "click")?,
     skipErrorLoggingWrap: boolean?
 ): ("Button", { Disconnect: () -> nil })
-    local callbackTable = if onKeyDown then self.onPressCallbacks else self.onReleaseCallbacks
+    local callbackTable = if event == "press"
+        then self.onPressCallbacks
+        elseif event == "release" then self.onReleaseCallbacks
+        else self.onClickCallbacks
 
     local disconnected = false
 
@@ -404,14 +408,21 @@ function Button:onPress(
     callback: (self: "Button") -> nil,
     skipErrorLoggingWrap: boolean?
 ): ("Button", { Disconnect: () -> nil })
-    return self:addCallback(callback, true, skipErrorLoggingWrap)
+    return self:addCallback(callback, "press", skipErrorLoggingWrap)
 end
 
 function Button:onRelease(
     callback: (self: "Button") -> nil,
     skipErrorLoggingWrap: boolean?
 ): ("Button", { Disconnect: () -> nil })
-    return self:addCallback(callback, false, skipErrorLoggingWrap)
+    return self:addCallback(callback, "release", skipErrorLoggingWrap)
+end
+
+function Button:onClick(
+    callback: (self: "Button") -> nil,
+    skipErrorLoggingWrap: boolean?
+): ("Button", { Disconnect: () -> nil })
+    return self:addCallback(callback, "click", skipErrorLoggingWrap)
 end
 
 function Button:hitbox(hitbox: string | (
@@ -659,20 +670,24 @@ function Button:click(skipSound: boolean?)
     self:release(skipSound)
 end
 
-function Button:firePressCallbacks()
+function Button:fireCallbacks(callbackTable: { (self: "Button") -> nil }): nil
     Utils:aggregateErrors(function(aggregate)
-        for _, cb in self.onPressCallbacks do
+        for _, cb in callbackTable do
             aggregate(cb, self)
         end
     end)
 end
 
+function Button:firePressCallbacks()
+    self:fireCallbacks(self.onPressCallbacks)
+end
+
 function Button:fireReleaseCallbacks()
-    Utils:aggregateErrors(function(aggregate)
-        for _, cb in self.onReleaseCallbacks do
-            aggregate(cb, self)
-        end
-    end)
+    self:fireCallbacks(self.onReleaseCallbacks)
+end
+
+function Button:fireClickCallbacks()
+    self:fireCallbacks(self.onClickCallbacks)
 end
 
 --[[
