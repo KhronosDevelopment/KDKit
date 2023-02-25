@@ -881,7 +881,8 @@ local function updateGuiState()
     debug.profileend()
 end
 
-RunService:BindToRenderStep("KDKit.GUI.Button.updateGuiState", Enum.RenderPriority.Input.Value + 1, updateGuiState)
+Button.static.UPDATE_RENDER_PRIORITY = Enum.RenderPriority.Input.Value + 1
+RunService:BindToRenderStep("KDKit.GUI.Button.updateGuiState", Button.UPDATE_RENDER_PRIORITY, updateGuiState)
 
 UserInputService.InputBegan:Connect(function(input)
     if not Button.USER_INPUT_TYPES[input.UserInputType] then
