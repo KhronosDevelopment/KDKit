@@ -150,11 +150,11 @@ function Keybind:enable()
     ContextActionService:BindAction(self.bind, function(_actionName, inputState, _inputObject)
         if inputState == Enum.UserInputState.Begin then
             if Button.active ~= self.button then
-                self.button:press()
+                self.button:simulateMouseDown()
             end
         elseif inputState == Enum.UserInputState.End then
             if Button.active == self.button then
-                self.button:release()
+                self.button:simulateMouseUp()
             end
         elseif inputState == Enum.UserInputState.Cancel then
             self.button:deactivate()
@@ -287,7 +287,7 @@ function Button:__init(instance: GuiObject, onClick: (button: "KDKit.GUI.Button"
     self.onReleaseCallbacks = {} :: { (self: "Button") -> nil }
     self.onClickCallbacks = {} :: { (self: "Button") -> nil }
     if onClick then
-        self:onClick(onClick)
+        self:onRelease(onClick)
     end
 
     self.loadingGroupIds = {}
@@ -641,14 +641,14 @@ function Button:deactivate()
     self:visualStateChanged()
 end
 
-function Button:press()
+function Button:simulateMouseDown()
     self:activate()
     if self:pressable() then
         task.defer(self.firePressCallbacks, self)
     end
 end
 
-function Button:release(skipSound: boolean?)
+function Button:simulateMouseUp(skipSound: boolean?)
     self:deactivate()
 
     if not self:pressable() then
@@ -671,8 +671,8 @@ function Button:release(skipSound: boolean?)
 end
 
 function Button:click(skipSound: boolean?)
-    self:press()
-    self:release(skipSound)
+    self:simulateMouseDown()
+    self:simulateMouseUp(skipSound)
 end
 
 function Button:fireCallbacks(callbackTable: { (self: "Button") -> nil }): nil
@@ -903,7 +903,7 @@ UserInputService.InputBegan:Connect(function(input)
     updateGuiState()
 
     if Button.hovered then
-        Button.hovered:press()
+        Button.hovered:simulateMouseDown()
     end
 end)
 
@@ -917,7 +917,7 @@ UserInputService.InputEnded:Connect(function(input)
     local active = Button.active
     if active then
         if Button.hovered == active then
-            active:release()
+            active:simulateMouseUp()
         else
             active:deactivate()
         end
