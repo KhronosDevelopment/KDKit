@@ -310,6 +310,7 @@ function Button:__init(instance: GuiObject, callback: (button: "KDKit.GUI.Button
     self.connections = {}
     self.keybinds = {}
 
+    self.stylingEnabled = true
     self.styles = {
         original = table.create(8),
         hovered = table.create(8),
@@ -441,11 +442,13 @@ function Button:bind(...: string | Enum.KeyCode | number): "KDKit.GUI.Button"
     return self
 end
 
-function Button:unbindAll()
+function Button:unbindAll(): "KDKit.GUI.Button"
     for keyCode, keybind in self.keybinds do
         keybind:disable()
     end
     table.clear(self.keybinds)
+
+    return self
 end
 
 function Button:loadWith(...: any): "KDKit.GUI.Button"
@@ -457,6 +460,20 @@ function Button:loadWith(...: any): "KDKit.GUI.Button"
     for _, id in self.loadingGroupIds do
         LoadingGroups:add(self, id)
     end
+
+    return self
+end
+
+function Button:disableAllStyling(): "KDKit.GUI.Button"
+    self.stylingEnabled = false
+    self:visualStateChanged()
+
+    return self
+end
+
+function Button:enableAllStyling(): "KDKit.GUI.Button"
+    self.stylingEnabled = true
+    self:visualStateChanged()
 
     return self
 end
@@ -491,7 +508,12 @@ function Button:determinePropertyValueDuringState(property, visualState)
     return styles.original[property]
 end
 
+local STATE_NO_STYLING = { hovered = false, active = false, loading = false, disabled = false }
 function Button:getVisualState()
+    if not self.stylingEnabled then
+        return STATE_NO_STYLING
+    end
+
     local loading = self:isLoading()
     local state = {
         hovered = Button.hovered == self and self:pressable(),
@@ -505,19 +527,8 @@ end
 
 function Button:visualStateChanged()
     local visualState = self:getVisualState()
-    local previousVisualState = self._previousVisualState or table.clone(visualState)
+    local previousVisualState = self._previousVisualState
     self._previousVisualState = table.clone(visualState)
-
-    if Utils:shallowEqual(visualState, previousVisualState) then
-        return
-    end
-
-    local activeChanged = visualState.active ~= previousVisualState.active
-
-    local style = table.clone(self.styles.original)
-    for property in style do
-        style[property] = self:determinePropertyValueDuringState(property, visualState)
-    end
 
     if self:pressable() then
         for _key, keybind in self.keybinds do
@@ -527,6 +538,17 @@ function Button:visualStateChanged()
         for _key, keybind in self.keybinds do
             keybind:disable()
         end
+    end
+
+    if Utils:shallowEqual(visualState, previousVisualState) then
+        return
+    end
+
+    local activeChanged = previousVisualState and visualState.active ~= previousVisualState.active
+
+    local style = table.clone(self.styles.original)
+    for property in style do
+        style[property] = self:determinePropertyValueDuringState(property, visualState)
     end
 
     return self:style(style, if activeChanged then 0.02 else 0.1)
@@ -693,7 +715,7 @@ local function updateGuiState()
                 or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredVisibleInstance)
             )
         then
-            topmostHoveredVisibleInstance = button
+            topmostHoveredVisibleInstance = instanceUnderMouse
         end
     end
 
