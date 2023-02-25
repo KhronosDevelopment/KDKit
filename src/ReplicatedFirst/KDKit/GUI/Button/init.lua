@@ -287,7 +287,7 @@ function Button:__init(instance: GuiObject, onClick: (button: "KDKit.GUI.Button"
     self.onReleaseCallbacks = {} :: { (self: "Button") -> nil }
     self.onClickCallbacks = {} :: { (self: "Button") -> nil }
     if onClick then
-        self:onRelease(onClick)
+        self:onClick(onClick)
     end
 
     self.loadingGroupIds = {}
@@ -630,6 +630,10 @@ function Button:activate()
 
     Button.static.active = self
     self:visualStateChanged()
+
+    if self:pressable() then
+        task.defer(self.firePressCallbacks, self)
+    end
 end
 
 function Button:deactivate()
@@ -639,13 +643,14 @@ function Button:deactivate()
 
     Button.static.active = nil
     self:visualStateChanged()
+
+    if self:pressable() then
+        task.defer(self.fireReleaseCallbacks, self)
+    end
 end
 
 function Button:simulateMouseDown()
     self:activate()
-    if self:pressable() then
-        task.defer(self.firePressCallbacks, self)
-    end
 end
 
 function Button:simulateMouseUp(skipSound: boolean?)
@@ -667,7 +672,7 @@ function Button:simulateMouseUp(skipSound: boolean?)
         self.callbackIsExecuting = false
         LoadingGroups:update(self.loadingGroupIds)
         self:visualStateChanged()
-    end, self.fireReleaseCallbacks, self)
+    end, self.fireClickCallbacks, self)
 end
 
 function Button:click(skipSound: boolean?)
@@ -719,7 +724,7 @@ function Button:enable(root): "Button"?
         return nil
     elseif not self.enabled then
         self.enabled = true
-        if self:pressable() and Button.active == self then
+        if Button.active == self and self:pressable() then
             task.defer(self.firePressCallbacks, self)
         end
         self:visualStateChanged()
@@ -736,6 +741,9 @@ function Button:disable(root): "Button"?
 
         return nil
     elseif self.enabled then
+        if Button.active == self and self:pressable() then
+            task.defer(self.fireReleaseCallbacks, self)
+        end
         self.enabled = false
         self:visualStateChanged()
     end
