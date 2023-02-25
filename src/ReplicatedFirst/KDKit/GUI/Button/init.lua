@@ -644,22 +644,28 @@ function Button.static:applyToAll(root, funcName, ...)
     end
 end
 
-function Button:enable(root)
+function Button:enable(root): "Button"?
     local staticCall = self == Button
 
     if staticCall then
-        return self:applyToAll(root, "enable")
+        self:applyToAll(root, "enable")
+
+        return nil
     elseif not self.enabled then
         self.enabled = true
         self:visualStateChanged()
     end
+
+    return self
 end
 
-function Button:disable(root)
+function Button:disable(root): "Button"?
     local staticCall = self == Button
 
     if staticCall then
-        return self:applyToAll(root, "disable")
+        self:applyToAll(root, "disable")
+
+        return nil
     elseif self.enabled then
         self.enabled = false
         if Button.active == self then
@@ -667,6 +673,8 @@ function Button:disable(root)
         end
         self:visualStateChanged()
     end
+
+    return self
 end
 
 function Button:delete(root)
@@ -690,56 +698,113 @@ function Button:delete(root)
 end
 
 --[[
+    Placeholder generic buttons
+--]]
+
+-- when you interact with something that is a gui object, but not a Button
+Button.static.other = Button.new(Instance.new("Frame")):disableAllStyling():enable()
+
+-- when you interact with the world, not a gui object whatsoever
+Button.static.world = Button.new(Instance.new("Frame")):disableAllStyling():enable()
+
+function Button:isWorld()
+    return self == Button.world
+end
+
+function Button:isOther()
+    return self == Button.other
+end
+
+function Button.static:worldIsHovered()
+    return not self.hovered or self.hovered == self.world
+end
+
+function Button.static:otherIsHovered()
+    return self.hovered and self.hovered == self.other
+end
+
+function Button.static:worldIsActive()
+    return not self.active or self.active == self.world
+end
+
+function Button.static:otherIsActive()
+    return self.active and self.active == self.other
+end
+
+--[[
     User Input Handling
 --]]
 local function updateGuiState()
+    debug.profilebegin("KDKit.Button.updateGuiState")
+
     local mouseX, mouseY = Mouse:getPosition()
 
-    local topmostHoveredButton = nil
-    local topmostHoveredVisibleInstance = nil
+    local topmostHoveredButton = nil :: "Button"?
+    local topmostHoveredInstance = nil :: GuiObject?
     for _, instanceUnderMouse in PlayerGui:GetGuiObjectsAtPosition(mouseX, mouseY) do
         local button = Button.list[instanceUnderMouse]
-        if
-            button
-            and button:customHitboxContainsPoint(mouseX, mouseY)
-            and (
-                not topmostHoveredButton
-                or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredButton.instance)
-            )
-        then
-            topmostHoveredButton = button
+
+        if button then
+            if not button:customHitboxContainsPoint(mouseX, mouseY) then
+                continue
+            end
+
+            if
+                not topmostHoveredButton or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredInstance)
+            then
+                topmostHoveredButton = button
+                topmostHoveredInstance = instanceUnderMouse
+            end
         elseif
-            (not instanceUnderMouse:IsA("Frame") or instanceUnderMouse.BackgroundTransparency < 1)
+            not topmostHoveredButton
             and (
-                not topmostHoveredVisibleInstance
-                or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredVisibleInstance)
+                (not instanceUnderMouse:IsA("Frame") and not instanceUnderMouse:IsA("TextLabel"))
+                or instanceUnderMouse.BackgroundTransparency < 1
             )
         then
-            topmostHoveredVisibleInstance = instanceUnderMouse
+            if
+                not topmostHoveredInstance
+                or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredInstance)
+            then
+                topmostHoveredInstance = instanceUnderMouse
+            end
         end
     end
 
-    local correctHovered = if Button.active == nil or topmostHoveredButton == Button.active
+    local actualHoveredButton = if topmostHoveredButton
         then topmostHoveredButton
+        elseif topmostHoveredInstance then Button.other
+        else Button.world
+
+    local persistableHoveredButton = if Button.active == nil or actualHoveredButton == Button.active
+        then actualHoveredButton
         else nil
-    if Button.hovered ~= correctHovered then
+
+    if Button.hovered ~= persistableHoveredButton then
         if Button.hovered then
             local unHovered = Button.hovered
             Button.static.hovered = nil
             unHovered:visualStateChanged()
         end
 
-        if correctHovered then
-            Button.static.hovered = correctHovered
-            correctHovered:visualStateChanged()
+        if persistableHoveredButton then
+            Button.static.hovered = persistableHoveredButton
+            persistableHoveredButton:visualStateChanged()
         end
     end
 
-    if Button.hovered and Button.hovered:pressable() then
+    if
+        Button.hovered
+        and Button.hovered ~= Button.world
+        and Button.hovered ~= Button.other
+        and Button.hovered:pressable()
+    then
         Mouse:setIcon("KDKit.GUI.Button", "pointer")
     else
         Mouse:setIcon("KDKit.GUI.Button", nil)
     end
+
+    debug.profileend()
 end
 
 RunService:BindToRenderStep("KDKit.GUI.Button.updateGuiState", Enum.RenderPriority.Input.Value + 1, updateGuiState)
