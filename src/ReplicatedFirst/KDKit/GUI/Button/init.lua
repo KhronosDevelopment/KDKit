@@ -641,23 +641,35 @@ end
 --[[
     User Input Handling
 --]]
-RunService.RenderStepped:Connect(function()
+local function updateGuiState()
     local mouseX, mouseY = Mouse:getPosition()
 
-    local buttonsUnderMouse = table.create(16)
+    local topmostHoveredButton = nil
+    local topmostHoveredVisibleInstance = nil
     for _, instanceUnderMouse in PlayerGui:GetGuiObjectsAtPosition(mouseX, mouseY) do
         local button = Button.list[instanceUnderMouse]
-        if button and button:customHitboxContainsPoint(mouseX, mouseY) then
-            table.insert(buttonsUnderMouse, button)
+        if
+            button
+            and button:customHitboxContainsPoint(mouseX, mouseY)
+            and (
+                not topmostHoveredButton
+                or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredButton.instance)
+            )
+        then
+            topmostHoveredButton = button
+        elseif
+            (not instanceUnderMouse:IsA("Frame") or instanceUnderMouse.BackgroundTransparency < 1)
+            and (
+                not topmostHoveredVisibleInstance
+                or Utils:guiObjectIsOnTopOfAnother(instanceUnderMouse, topmostHoveredVisibleInstance)
+            )
+        then
+            topmostHoveredVisibleInstance = button
         end
     end
-    table.sort(buttonsUnderMouse, function(a, b)
-        return Utils:guiObjectIsOnTopOfAnother(a.instance, b.instance)
-    end)
 
-    local mouseHoveringOverButton = buttonsUnderMouse[1]
-    local correctHovered = if Button.active == nil or mouseHoveringOverButton == Button.active
-        then mouseHoveringOverButton
+    local correctHovered = if Button.active == nil or topmostHoveredButton == Button.active
+        then topmostHoveredButton
         else nil
     if Button.hovered ~= correctHovered then
         if Button.hovered then
@@ -677,10 +689,18 @@ RunService.RenderStepped:Connect(function()
     else
         Mouse:setIcon("KDKit.GUI.Button", nil)
     end
-end)
+end
+
+RunService:BindToRenderStep("KDKit.GUI.Button.updateGuiState", Enum.RenderPriority.Input.Value + 1, updateGuiState)
 
 UserInputService.InputBegan:Connect(function(input)
-    if Button.USER_INPUT_TYPES[input.UserInputType] and Button.hovered then
+    if not Button.USER_INPUT_TYPES[input.UserInputType] then
+        return
+    end
+
+    updateGuiState()
+
+    if Button.hovered then
         if Button.active then
             local active = Button.active
             Button.static.active = nil
@@ -695,7 +715,13 @@ UserInputService.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if Button.USER_INPUT_TYPES[input.UserInputType] and Button.active then
+    if not Button.USER_INPUT_TYPES[input.UserInputType] then
+        return
+    end
+
+    updateGuiState()
+
+    if Button.active then
         local active = Button.active
         Button.static.active = nil
         active:visualStateChanged()
