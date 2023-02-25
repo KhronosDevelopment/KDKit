@@ -546,6 +546,12 @@ function Button:getVisualState()
         disabled = loading or not self.enabled,
     }
 
+    -- For touch devices, your virtual cursor doesn't move after you tap a button.
+    -- It looks quite awkward to have a 'visually hovered' button when you aren't actually 'hovering' over it at all.
+    if Button.recentMouseMovementCausedByTouchInput then
+        state.hovered = state.hovered and state.active
+    end
+
     return state
 end
 
@@ -884,7 +890,18 @@ end
 Button.static.UPDATE_RENDER_PRIORITY = Enum.RenderPriority.Input.Value + 1
 RunService:BindToRenderStep("KDKit.GUI.Button.updateGuiState", Button.UPDATE_RENDER_PRIORITY, updateGuiState)
 
+Button.static.recentMouseMovementCausedByTouchInput = false
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        Button.static.recentMouseMovementCausedByTouchInput = false
+    end
+end)
+
 UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        Button.static.recentMouseMovementCausedByTouchInput = true
+    end
+
     if not Button.USER_INPUT_TYPES[input.UserInputType] then
         return
     end
