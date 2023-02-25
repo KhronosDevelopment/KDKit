@@ -29,14 +29,18 @@ end
 
 function Maid:__init()
     self.tasks = table.create(32)
+    self.RBXScriptConnectionTasks = table.create(32)
 end
 
 function Maid:has(task): boolean
-    return self.tasks[task]
+    return not not (self.tasks[task] or self.RBXScriptConnectionTasks[task])
 end
 
 function Maid:give<T, A>(task: (T | (...A) -> T), ...: A): (T | () -> T)
-    if type(task) == "function" then
+    if typeof(task) == "RBXScriptConnection" then
+        self.RBXScriptConnectionTasks[task] = true
+        return task
+    elseif type(task) == "function" then
         local func: (...A) -> T = task
         local args = { ... }
         task = function()
@@ -54,10 +58,12 @@ end
 
 function Maid:remove(task: any): nil
     self.tasks[task] = nil
+    self.RBXScriptConnectionTasks[task] = nil
 end
 
 function Maid:removeAll(): nil
     table.clear(self.tasks)
+    table.clear(self.RBXScriptConnectionTasks)
 end
 
 function Maid:clean(task, skipDebugProfile: boolean): nil
@@ -66,6 +72,9 @@ function Maid:clean(task, skipDebugProfile: boolean): nil
     end
 
     if task == nil then
+        for task in self.RBXScriptConnectionTasks do
+            self:clean(task, true)
+        end
         for task in self.tasks do
             self:clean(task, true)
         end
@@ -83,10 +92,12 @@ function Maid:clean(task, skipDebugProfile: boolean): nil
         func(("This Maid never received or already cleaned the task `%s`. Doing nothing."):format(Utils:repr(task)))
         return nil
     end
-    self.tasks[task] = nil
+    self:remove(task)
 
     local s, r
-    if typeof(task) == "Instance" then
+    if typeof(task) == "RBXScriptConnection" then
+        s, r = pcall(task.Disconnect, task)
+    elseif typeof(task) == "Instance" then
         s, r = pcall(task.Destroy, task)
     else
         s, r = xpcall(
