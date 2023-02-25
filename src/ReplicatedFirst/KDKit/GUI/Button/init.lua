@@ -751,26 +751,6 @@ function Button:disable(root): "Button"?
     return self
 end
 
-function Button:flicker(root): "Button"?
-    local staticCall = self == Button
-
-    if staticCall then
-        self:applyToAll(root, "flicker")
-
-        return nil
-    else
-        if self.enabled then
-            self:disable()
-            self:enable()
-        else
-            self:enable()
-            self:disable()
-        end
-    end
-
-    return self
-end
-
 function Button:delete(root)
     local staticCall = self == Button
 
