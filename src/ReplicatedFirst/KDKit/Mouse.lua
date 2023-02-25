@@ -1,5 +1,6 @@
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
 
 if RunService:IsServer() then
     return nil
@@ -12,7 +13,6 @@ local Mouse = {
     },
     cursorByContext = {},
     contexts = {},
-    instance = game.Players.LocalPlayer:GetMouse(),
 }
 
 function Mouse:setIcon(context, cursor)
@@ -41,24 +41,24 @@ end
 function Mouse:updateIcon()
     local icon = self.cursorByContext[self.contexts[#self.contexts]]
         or "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"
-    self.instance.Icon = icon
+    UserInputService.MouseIcon = icon
     return icon
 end
 
 function Mouse:getRay(offset)
-    return workspace.CurrentCamera:ScreenPointToRay(self.instance.X, self.instance.Y, offset)
+    local x, y = self:getPosition()
+    return workspace.CurrentCamera:ScreenPointToRay(x, y, offset)
 end
 
 function Mouse:getPosition(topIsZero)
-    local x, y = self.instance.X, self.instance.Y
+    local pos = UserInputService:GetMouseLocation()
 
-    if topIsZero then
+    if not topIsZero then
         local topLeftInset, _bottomRightInset = GuiService:GetGuiInset()
-        x += topLeftInset.X
-        y += topLeftInset.Y
+        pos -= topLeftInset
     end
 
-    return x, y
+    return pos.X, pos.Y
 end
 
 Mouse:updateIcon()
