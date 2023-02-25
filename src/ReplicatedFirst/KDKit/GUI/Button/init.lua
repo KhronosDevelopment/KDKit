@@ -515,9 +515,11 @@ function Button:getVisualState()
     end
 
     local loading = self:isLoading()
+    local pressable = self:pressable()
+
     local state = {
-        hovered = Button.hovered == self and self:pressable(),
-        active = Button.active == self,
+        hovered = pressable and Button.hovered == self,
+        active = pressable and Button.active == self,
         loading = loading,
         disabled = loading or not self.enabled,
     }
@@ -823,10 +825,8 @@ UserInputService.InputBegan:Connect(function(input)
             active:visualStateChanged()
         end
 
-        if Button.hovered:pressable() then
-            Button.static.active = Button.hovered
-            Button.active:visualStateChanged()
-        end
+        Button.static.active = Button.hovered
+        Button.active:visualStateChanged()
     end
 end)
 
@@ -842,7 +842,7 @@ UserInputService.InputEnded:Connect(function(input)
         Button.static.active = nil
         active:visualStateChanged()
 
-        if active == Button.hovered then
+        if active == Button.hovered and active:pressable() then
             active:press()
         end
     end
