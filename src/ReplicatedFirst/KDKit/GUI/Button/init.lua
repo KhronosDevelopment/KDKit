@@ -879,9 +879,9 @@ local function updateGuiState()
         and Button.hovered ~= Button.other
         and Button.hovered:pressable()
     then
-        Mouse:setIcon("KDKit.GUI.Button", "pointer")
+        Mouse:setIcon(Button, "pointer")
     else
-        Mouse:setIcon("KDKit.GUI.Button", nil)
+        Mouse:setIcon(Button, nil)
     end
 
     debug.profileend()

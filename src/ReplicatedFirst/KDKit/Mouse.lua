@@ -10,6 +10,7 @@ local Mouse = {
     cursors = {
         pointer = "rbxasset://textures/Cursors/KeyboardMouse/ArrowCursor.png",
         grabbing = "rbxasset://textures/Cursors/KeyboardMouse/ArrowCursor.png",
+        dragging = "rbxasset://textures/Cursors/mouseIconCameraTrack.png",
     },
     cursorByContext = {},
     contexts = {},
