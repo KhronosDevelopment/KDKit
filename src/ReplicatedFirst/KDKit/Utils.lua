@@ -233,9 +233,16 @@ end
     Returns a string which represents the provided value while retaining as much information as possible about the value.
     Similar to Python's builtin `repr` function.
 --]]
-function Utils:repr(x: any, tableDepth: number?, tableVerbosity: number?, alreadySeenTables: table?): string
+function Utils:repr(
+    x: any,
+    tableDepth: number?,
+    tableVerbosity: number?,
+    tableIndent: string?,
+    alreadySeenTables: table?
+): string
     tableDepth = math.floor(tableDepth or 4)
     tableVerbosity = math.floor(tableVerbosity or 10)
+    tableIndent = tableIndent or "  "
     alreadySeenTables = alreadySeenTables or table.create(16)
 
     local tx = typeof(x)
@@ -263,23 +270,27 @@ function Utils:repr(x: any, tableDepth: number?, tableVerbosity: number?, alread
         local n = 0
         local function process(key, value)
             if n < tableVerbosity then
-                table.insert(
-                    parts,
-                    ("[%s] = %s"):format(
-                        self:repr(
-                            key,
-                            tableDepth - 1,
-                            math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
-                            alreadySeenTables
-                        ),
-                        self:repr(
-                            value,
-                            tableDepth - 1,
-                            math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
-                            alreadySeenTables
-                        )
+                local part = ("[%s] = %s"):format(
+                    self:repr(
+                        key,
+                        tableDepth - 1,
+                        math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
+                        nil,
+                        alreadySeenTables
+                    ),
+                    self:repr(
+                        value,
+                        tableDepth - 1,
+                        math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
+                        tableIndent,
+                        alreadySeenTables
                     )
                 )
+                if tableIndent then
+                    part = tableIndent .. part
+                    part = part:gsub("\n", "\n" .. tableIndent)
+                end
+                table.insert(parts, part)
                 n += 1
                 return true
             else
@@ -303,7 +314,16 @@ function Utils:repr(x: any, tableDepth: number?, tableVerbosity: number?, alread
         end
         alreadySeenTables[x] = nil
 
-        return "{ " .. table.concat(parts, ", ") .. " }"
+        if tableIndent then
+            if #parts == 0 then
+                return "{}"
+            end
+
+            table.insert(parts, "")
+            return "{\n" .. table.concat(parts, ",\n") .. "}"
+        else
+            return "{ " .. table.concat(parts, ", ") .. " }"
+        end
     elseif tx == "EnumItem" then
         return tostring(x)
     elseif tx == "Enum" then
