@@ -1279,4 +1279,36 @@ function Utils:deepEqual(a: table | any, b: table | any): boolean
     return true
 end
 
+--[[
+    Resolves the nearest Enum.NormalId based on a vector normal.
+    (important) Assumes that `normal` is a unit vector.
+--]]
+local NORMAL_IDS_EXCEPT_TOP: { [Enum.NormalId]: Vector3 } = {
+    [Enum.NormalId.Right] = Vector3.fromNormalId(Enum.NormalId.Right),
+    [Enum.NormalId.Left] = Vector3.fromNormalId(Enum.NormalId.Left),
+    [Enum.NormalId.Front] = Vector3.fromNormalId(Enum.NormalId.Front),
+    [Enum.NormalId.Back] = Vector3.fromNormalId(Enum.NormalId.Back),
+    [Enum.NormalId.Bottom] = Vector3.fromNormalId(Enum.NormalId.Bottom),
+}
+function Utils:resolveNormalId(part: Part, normal: Vector3): Enum.NormalId
+    for normalId, untransformedTrueNormal in NORMAL_IDS_EXCEPT_TOP do
+        --[[
+        Un-optimized solution:
+
+        local trueNormal = part.CFrame:VectorToWorldSpace(untransformedTrueNormal)
+        local angle = math.acos(trueNormal:Dot(normal) / (trueNormal.Magnitude * normal.Magnitude))
+        if angle <= math.radians(45) then
+            return normalId
+        end
+        --]]
+
+        -- optimized, assuming that the provided normal is a unit vector
+        if part.CFrame:VectorToWorldSpace(untransformedTrueNormal):Dot(normal) >= 0.707106781186547 then
+            return normalId
+        end
+    end
+
+    return Enum.NormalId.Top
+end
+
 return Utils
