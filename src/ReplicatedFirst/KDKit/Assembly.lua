@@ -18,7 +18,7 @@ function Assembly:__init(instance: BasePart?, networkOwner: (Player | AUTO)?)
     Assembly.autoFlush[self] = true
 end
 
-function Assembly:destroy()
+function Assembly:clean()
     Assembly.autoFlush[self] = nil
 end
 
