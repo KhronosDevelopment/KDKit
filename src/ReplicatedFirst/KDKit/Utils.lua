@@ -237,12 +237,12 @@ function Utils:repr(
     x: any,
     tableDepth: number?,
     tableVerbosity: number?,
-    tableIndent: string?,
+    tableIndent: (string | boolean)?,
     alreadySeenTables: table?
 ): string
     tableDepth = math.floor(tableDepth or 4)
     tableVerbosity = math.floor(tableVerbosity or 10)
-    tableIndent = tableIndent or "  "
+    tableIndent = if tableIndent == nil or tableIndent == true then "  " else nil
     alreadySeenTables = alreadySeenTables or table.create(16)
 
     local tx = typeof(x)
@@ -275,7 +275,7 @@ function Utils:repr(
                         key,
                         tableDepth - 1,
                         math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
-                        nil,
+                        false,
                         alreadySeenTables
                     ),
                     self:repr(
@@ -294,6 +294,10 @@ function Utils:repr(
                 n += 1
                 return true
             else
+                if tableIndent then
+                    table.insert(parts, tableIndent .. "...")
+                end
+
                 table.insert(parts, "...")
                 return false
             end
