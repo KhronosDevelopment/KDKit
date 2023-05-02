@@ -1,6 +1,7 @@
 -- doing this so verbosely rather than using a loop so that linters more easily pick everything up
 return {
     API = require(script:WaitForChild("API")),
+    Assembly = require(script:WaitForChild("Assembly")),
     Class = require(script:WaitForChild("Class")),
     ConfigGroup = require(script:WaitForChild("ConfigGroup")),
     Cooldown = require(script:WaitForChild("Cooldown")),
