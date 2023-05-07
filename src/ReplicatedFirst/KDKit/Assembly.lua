@@ -18,6 +18,16 @@ function Assembly:__init(instance: BasePart?, networkOwner: (Player | AUTO)?)
     Assembly.autoFlush[self] = true
 end
 
+function Assembly:getOwningPlayer(): Player?
+    -- returns `nil` if the server owns the assembly or if the ownership is AUTO
+    -- otherwise, returns self.networkOwner
+    if self.networkOwner == nil or self.networkOwner == Assembly.AUTO then
+        return nil
+    else
+        return self.networkOwner
+    end
+end
+
 function Assembly:clean()
     Assembly.autoFlush[self] = nil
 end
