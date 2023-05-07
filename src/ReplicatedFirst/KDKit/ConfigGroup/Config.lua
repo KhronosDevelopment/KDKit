@@ -10,4 +10,8 @@ function Config:__init(instance: ModuleScript)
     self.humanNamePlural = self.attributes.humanNamePlural or Humanize:plural(self.humanName)
 end
 
+function Config:addAttributeCheck(...)
+    -- TODO
+end
+
 return Config
