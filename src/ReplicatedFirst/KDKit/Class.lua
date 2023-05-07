@@ -130,6 +130,10 @@ function Class.static:isSubClass(child: "KDKit.Class", parent: "KDKit.Class")
     return child == parent or (child.__super and self:isSubClass(child.__super, parent))
 end
 
+function Class.static:isInstance(instance: table, of: "KDKit.Class")
+    return type(instance.__class) == "table" and self:isSubClass(instance.__class, of)
+end
+
 Class.static.Object = Class.new("Object")
 function Class.Object:__init(...)
     local n = select("#", ...)
