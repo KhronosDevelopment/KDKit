@@ -12,10 +12,11 @@ Assembly.static.autoFlush = {} :: { ["Class.Assembly"]: boolean }
 function Assembly:__init(instance: BasePart?, networkOwner: (Player | AUTO)?)
     self.instance = instance
     self.networkOwner = networkOwner
+    self.cleaned = false
 
     self:flush(true)
 
-    Assembly.autoFlush[self] = true
+    Assembly.autoFlush[self] = networkOwner ~= Assembly.AUTO
 end
 
 function Assembly:getOwningPlayer(): Player?
@@ -30,11 +31,16 @@ end
 
 function Assembly:clean()
     Assembly.autoFlush[self] = nil
+    self.cleaned = true
 end
 
 function Assembly:setNetworkOwner(networkOwner: (Player | AUTO)?)
     self.networkOwner = networkOwner
     self:flush()
+
+    if not self.cleaned then -- theoretically unnecessary, you should not be invoking this function after cleaning!
+        Assembly.autoFlush[self] = networkOwner ~= Assembly.AUTO
+    end
 end
 
 function Assembly:setInstance(instance: BasePart?)
@@ -63,9 +69,11 @@ end
 task.defer(function()
     while true do
         local startedAt = os.clock()
-        for toilet, _ in Assembly.autoFlush do
-            toilet:flush(true) -- tee hee
-            task.wait()
+        for assembly, auto in Assembly.autoFlush do
+            if auto then
+                assembly:flush(true)
+                task.wait()
+            end
         end
 
         task.wait(15 - (os.clock() - startedAt))
