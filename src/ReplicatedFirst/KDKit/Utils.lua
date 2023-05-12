@@ -1027,13 +1027,26 @@ end
     Utils:min({-8, 3}, math.abs) -> 3, 2
     ```
 --]]
-function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (any, any)
+function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V, K)
     local minValue, minKey = nil, nil
 
-    for k, v in tab do
-        if key(v, k) < minValue then
-            minValue = v
-            minKey = k
+    if key then
+        local minimumEvaluation = nil
+
+        for k, v in tab do
+            local evaluation = key(v, k)
+            if minimumEvaluation == nil or evaluation < minimumEvaluation then
+                minValue = v
+                minKey = k
+                minimumEvaluation = evaluation
+            end
+        end
+    else
+        for k, v in tab do
+            if minValue == nil or v < minValue then
+                minValue = v
+                minKey = k
+            end
         end
     end
 
