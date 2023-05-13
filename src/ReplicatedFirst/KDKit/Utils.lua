@@ -1146,7 +1146,7 @@ end
     Utils.lua:950
     ```
 --]]
-function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> A2) -> T): T
+function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> A2?) -> T): T
     local errors = {}
 
     local function aggregate(f, ...)
