@@ -34,11 +34,15 @@ function RateLimit:__init(limit, period)
 end
 
 function RateLimit:getOrCreatePool(key)
+    if key == nil then
+        key = "global"
+    end
+
     -- please don't call this function without also calling maybeRemovePoolAfterLimitRemainingIncreased to clean it up
-    local pool = self.pools[key or "global"]
+    local pool = self.pools[key]
     if not pool then
         pool = { limitRemaining = self.limit, queued = 0, dequeued = 0 }
-        self.pools[key or "global"] = pool
+        self.pools[key] = pool
     end
 
     return pool
@@ -54,11 +58,18 @@ function RateLimit:maybeRemovePoolAfterLimitRemainingIncreased(key)
 end
 
 function RateLimit:isReady(key)
+    if key == nil then
+        key = "global"
+    end
+
     local pool = self.pools[key]
     return not pool or pool.limitRemaining > 0
 end
 
 function RateLimit:use(key, waitUntilReady)
+    if key == nil then
+        key = "global"
+    end
     local pool = self:getOrCreatePool(key)
 
     if pool.limitRemaining <= 0 then
