@@ -130,17 +130,35 @@ function Utils:keys<K>(tab: { [K]: any }): { K }
 end
 
 --[[
-    Simply removes surrounding whitespace from a string.
-    Similar to Python's builtin `str.strip` method.
+    Simply removes surrounding whitespace from the right side of a string.
+    Similar to Python's builtin `str.rstrip` method.
 
     ```lua
-    Utils:strip("  hello there  ") -> "hello there"
-    Utils:strip(" \n\t it strips all types of whitespace \n like this \n\t ") -> "it strips all types of whitespace \n like this"
+    Utils:rstrip("  hello there  ") -> "  hello there"
+    Utils:rstrip(" \n\t it strips all types of whitespace \n like this \n\t ") -> " \n\t it strips all types of whitespace \n like this"
     ```
 --]]
-function Utils:strip(str: string): string
-    local x, _ = str:gsub("^%s+", ""):gsub("%s+$", "")
+function Utils:rstrip(str: string): string
+    local x, _ = str:gsub("%s+$", "")
     return x
+end
+
+--[[
+    Identical to `Utils:rstrip()` except removes whitespace from the left.
+    Similar to Python's builtin `str.lstrip` method.
+    ```
+--]]
+function Utils:lstrip(str: string): string
+    local x, _ = str:gsub("^%s+", "")
+    return x
+end
+
+--[[
+    Simply removes surrounding whitespace from a string.
+    Similar to Python's builtin `str.strip` method.
+--]]
+function Utils:strip(str: string): string
+    return self:lstrip(self:rstrip(str))
 end
 
 --[[
