@@ -1111,6 +1111,17 @@ function Utils:unique<V>(tab: { [any]: V }): { V }
 end
 
 --[[
+    Indents each line of the provided string.
+    ```lua
+    Utils:indent("hello\nworld") -> "    hello\n    world"
+    ```
+--]]
+function Utils:indent(str: string, using: string?): string
+    using = using or "    "
+    return using .. str:gsub("\n", "\n" .. using)
+end
+
+--[[
     Waits to throw errors until after the block is complete.
     Inspired by Ruby RSpec's "aggregate_failures"
     ```lua
