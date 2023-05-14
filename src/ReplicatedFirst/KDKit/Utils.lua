@@ -1241,6 +1241,20 @@ function Utils:find<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean):
 end
 
 --[[
+    Returns the index of the value in the table, or nil if it wasn't found.
+    Similar to Python's `list.index`, but does not throw an error.
+--]]
+function Utils:index<K>(tab: { [K]: any }, value: any): K?
+    for k, v in tab do
+        if value == v then
+            return k
+        end
+    end
+
+    return nil
+end
+
+--[[
     Returns true if and only if the provided part is touching the provided point.
     Note: this currently only works for rectangular parts (not spheres or cylinders).
 
