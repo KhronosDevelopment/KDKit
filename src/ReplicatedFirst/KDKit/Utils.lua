@@ -30,60 +30,57 @@ local Utils = {
                    * `raise` has not been called: It returns a success boolean and either an error string or the function result
 --]]
 function Utils:try<Arguments, ReturnValue>(
-    func: (...Arguments) -> ReturnValue,
+    func: (...Arguments) -> ...ReturnValue,
     ...: Arguments
 ): {
+    success: boolean,
+    traceback: string?,
+    results: { ReturnValue } | { string },
     catch: ("self", (err: string) -> nil) -> "self",
     proceed: ("self", () -> nil) -> "self",
     after: ("self", (err: string?) -> nil) -> "self",
     raise: () -> nil,
-    result: (() -> (boolean, ReturnValue | string)) | (() -> ReturnValue),
+    result: (() -> (boolean, ...ReturnValue | string)) | (() -> ...ReturnValue),
 }
     local results = table.pack(xpcall(func, debug.traceback, ...))
     local success = table.remove(results, 1)
 
     return {
-        raw = {
-            results = results,
-            success = success,
-        },
-        raisedWithoutError = false,
+        results = results,
+        success = success,
+        traceback = if success then nil else results[1],
+        _raise_called = false,
         catch = function(ctx, cb: (err: string) -> nil)
-            if not ctx.raw.success then
-                cb(ctx.raw.results[1])
+            if not ctx.success then
+                cb(ctx.traceback)
             end
 
             return ctx
         end,
         proceed = function(ctx, cb: () -> nil)
-            if ctx.raw.success then
+            if ctx.success then
                 cb()
             end
 
             return ctx
         end,
         after = function(ctx, cb: (err: string?) -> nil)
-            if ctx.raw.success then
-                cb(nil)
-            else
-                cb(ctx.raw.results[1])
-            end
-
+            cb(ctx.traceback)
             return ctx
         end,
         raise = function(ctx)
-            if not ctx.raw.success then
-                error(("The following error occurred during a KDKit.Utils.try call.\n%s"):format(ctx.raw.results[1]))
+            if not ctx.success then
+                error(("The following error occurred during a KDKit.Utils.try call.\n%s"):format(ctx.traceback))
             end
 
-            ctx.raisedWithoutError = true
+            ctx._raise_called = true
             return ctx
         end,
         result = function(ctx)
-            if ctx.raisedWithoutError then
-                return table.unpack(ctx.raw.results)
+            if ctx._raise_called then
+                return table.unpack(ctx.results)
             else
-                return ctx.raw.success, table.unpack(ctx.raw.results)
+                return ctx.success, table.unpack(ctx.results)
             end
         end,
     }
