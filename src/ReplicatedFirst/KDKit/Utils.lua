@@ -70,7 +70,11 @@ function Utils:try<Arguments, ReturnValue>(
         end,
         raise = function(ctx)
             if not ctx.success then
-                error(("The following error occurred during a KDKit.Utils.try call.\n%s"):format(ctx.traceback))
+                error(
+                    ("The following error occurred during a KDKit.Utils.try call.\n%s"):format(
+                        self:indent(self:rstrip(ctx.traceback), "|   ")
+                    )
+                )
             end
 
             ctx._raise_called = true
@@ -1199,16 +1203,7 @@ function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A
 
     if #errors > 0 then
         self:imap(function(err: string, index: number)
-            local lines = self:split(self:strip(err), "\n")
-            self:imap(function(line: string)
-                line = self:strip(line)
-                if line ~= "" then
-                    return "    " .. line
-                end
-            end, lines)
-
-            table.insert(lines, 1, ("Error %d:"):format(index))
-            return table.concat(lines, "\n")
+            return ("Error %d:\n"):format(index) .. self:indent(self:rstrip(err), "|   ")
         end, errors)
         error(
             ("The following %d error(s) occurred within a call to Utils.aggregateErrors:\n%s"):format(
