@@ -4,6 +4,7 @@ local KDRandom = {
     rng = Random.new(),
 }
 
+local TWO_PI = math.pi * 2
 local UUID_HAT = Utils:characters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 function KDRandom:linearChoice(options)
@@ -124,6 +125,21 @@ function KDRandom:number(a: NumberRange | number?, b: number?): number
     end
 
     return self.rng:NextNumber(a or 0, b or 1)
+end
+
+function KDRandom:normal(mean: number?, variance: number?)
+    -- inspired by https://github.com/Bytebit-Org/lua-statistics/blob/3bd0c0bdad2c5bbe46efd1895206287aef903d6d/src/statistics.lua#L193-L201
+    local x = math.sqrt(-2 * math.log(self.rng:NextNumber(0.0001, 1))) * math.cos(TWO_PI * self.rng:NextNumber())
+
+    if variance then
+        x *= math.sqrt(variance)
+    end
+
+    if mean then
+        x += mean
+    end
+
+    return x
 end
 
 return KDRandom
