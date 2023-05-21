@@ -104,13 +104,17 @@ function KDRandom:uuid(strlen: number, avoidCollisions: { [string]: any }?, hat:
     end
 end
 
-function KDRandom:withSeed(seed, f, ...)
+function KDRandom:withRNG(rng, f, ...)
     local oldRNG = self.rng
-    self.rng = Random.new(seed)
+    self.rng = rng
 
     return Utils:ensure(function()
         self.rng = oldRNG
     end, f, ...)
+end
+
+function KDRandom:withSeed(seed, f, ...)
+    return self:withRNG(Random.new(seed), f, ...)
 end
 
 function KDRandom:vector(minMagnitude, maxMagnitude)
@@ -127,19 +131,9 @@ function KDRandom:number(a: NumberRange | number?, b: number?): number
     return self.rng:NextNumber(a or 0, b or 1)
 end
 
-function KDRandom:normal(mean: number?, variance: number?)
+function KDRandom:normal()
     -- inspired by https://github.com/Bytebit-Org/lua-statistics/blob/3bd0c0bdad2c5bbe46efd1895206287aef903d6d/src/statistics.lua#L193-L201
-    local x = math.sqrt(-2 * math.log(self.rng:NextNumber(0.0001, 1))) * math.cos(TWO_PI * self.rng:NextNumber())
-
-    if variance then
-        x *= math.sqrt(variance)
-    end
-
-    if mean then
-        x += mean
-    end
-
-    return x
+    return math.sqrt(-2 * math.log(self.rng:NextNumber(0.0001, 1))) * math.cos(TWO_PI * self.rng:NextNumber())
 end
 
 return KDRandom
