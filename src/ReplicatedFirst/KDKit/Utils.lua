@@ -21,7 +21,7 @@ local Utils = {
 
     Here's a list of each available chaining function:
         - `catch` accepts a function which handles an error, if it occurs. The function will not be called if no error occurs.
-        - `proceed` accepts a function will be called only if an error did not occur
+        - `proceed` accepts a function that will be called with the results, only if an error did not occur
         - `after` accepts a function which will always be called, regardless of whether or not an error occurs.
                   It accepts a single argument, `err`, which is a traceback string if an error occurred, and `nil` otherwise.
         - `raise` does not accept any arguments, but it re-raises the caught error, if one occurred. Even if you called `:catch()`.
@@ -37,7 +37,7 @@ function Utils:try<Arguments, ReturnValue>(
     traceback: string?,
     results: { ReturnValue } | { string },
     catch: ("self", (err: string) -> nil) -> "self",
-    proceed: ("self", () -> nil) -> "self",
+    proceed: ("self", (...ReturnValue) -> nil) -> "self",
     after: ("self", (err: string?) -> nil) -> "self",
     raise: () -> nil,
     result: (() -> (boolean, ...ReturnValue | string)) | (() -> ...ReturnValue),
@@ -52,14 +52,22 @@ function Utils:try<Arguments, ReturnValue>(
         _raise_called = false,
         catch = function(ctx, cb: (err: string) -> nil)
             if not ctx.success then
-                cb(ctx.traceback)
+                self:try(cb, ctx.traceback):catch(function(cbErr)
+                    task.defer(
+                        error,
+                        ("The following error occurred during the :catch() callback of a KDKit.Utils:try() attempt. The error was ignored.\nOriginal error that was passed to the callback:\n%s\nError that occurred within the callback:\n%s"):format(
+                            self:indent(ctx.traceback, "|   "),
+                            self:indent(cbErr, "|   ")
+                        )
+                    )
+                end)
             end
 
             return ctx
         end,
-        proceed = function(ctx, cb: () -> nil)
+        proceed = function(ctx, cb: (...ReturnValue) -> nil)
             if ctx.success then
-                cb()
+                cb(table.unpack(ctx.results))
             end
 
             return ctx
@@ -131,6 +139,21 @@ function Utils:keys<K>(tab: { [K]: any }): { K }
         table.insert(keys, key)
     end
     return keys
+end
+
+--[[
+    Returns the values of the table.
+    ```lua
+    Utils:keys({a=1, b=2, c=3}) -> { 1, 2, 3 }
+    Utils:keys({"a", "b", "c"}) -> { "a", "b", "c" }
+    ```
+--]]
+function Utils:values<V>(tab: { [any]: V }): { V }
+    local values = table.create(16)
+    for _key, value in tab do
+        table.insert(values, value)
+    end
+    return values
 end
 
 --[[
