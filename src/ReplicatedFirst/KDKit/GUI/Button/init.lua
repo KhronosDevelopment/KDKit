@@ -297,6 +297,7 @@ function Button:__init(instance: GuiObject, onClick: (button: "KDKit.GUI.Button"
     self.connections = {}
     self.keybinds = {}
 
+    self.silenced = false
     self.stylingEnabled = true
     self.styles = {
         original = table.create(8),
@@ -500,6 +501,16 @@ function Button:enableAllStyling(): "KDKit.GUI.Button"
     return self
 end
 
+function Button:silence(): "KDKit.GUI.Button"
+    self.silenced = true
+    return self
+end
+
+function Button:unSilence(): "KDKit.GUI.Button"
+    self.silenced = false
+    return self
+end
+
 --[[
     Stateful Rendering
 --]]
@@ -666,7 +677,7 @@ function Button:simulateMouseUp(skipSound: boolean?)
         return
     end
 
-    if not skipSound then
+    if not skipSound and not self.silenced then
         self:makeSound()
     end
 
@@ -782,10 +793,10 @@ end
 --]]
 
 -- when you interact with something that is a gui object, but not a Button
-Button.static.other = Button.new(Instance.new("Frame")):disableAllStyling():enable()
+Button.static.other = Button.new(Instance.new("Frame")):disableAllStyling():silence():enable()
 
 -- when you interact with the world, not a gui object whatsoever
-Button.static.world = Button.new(Instance.new("Frame")):disableAllStyling():enable()
+Button.static.world = Button.new(Instance.new("Frame")):disableAllStyling():silence():enable()
 
 function Button:isWorld()
     return self == Button.world
@@ -814,6 +825,37 @@ end
 --[[
     User Input Handling
 --]]
+Button.static.onHoveredButtonChangedCallbacks = table.create(16) :: { (button: "KDKit.Button"?) -> nil }
+function Button.static:onHoveredButtonChanged(callback: (button: "KDKit.Button"?) -> nil): { Disconnect: () -> boolean }
+    table.insert(Button.onHoveredButtonChangedCallbacks, callback)
+
+    local disconnected = false
+    return {
+        Disconnect = function()
+            if disconnected then
+                return false
+            end
+            disconnected = true
+
+            local i = table.find(Button.onHoveredButtonChangedCallbacks, callback)
+            if i then
+                table.remove(Button.onHoveredButtonChangedCallbacks, i)
+                return true
+            end
+
+            return false
+        end,
+    }
+end
+
+local function invokeHoveredButtonChangedCallbacks(newHoveredButton: "KDKit.Button"?)
+    Utils:aggregateErrors(function(aggregate)
+        for _, cb in Button.onHoveredButtonChangedCallbacks do
+            aggregate(cb, newHoveredButton)
+        end
+    end)
+end
+
 local function updateGuiState()
     debug.profilebegin("KDKit.Button.updateGuiState")
 
@@ -851,10 +893,15 @@ local function updateGuiState()
         end
     end
 
-    local actualHoveredButton = if topmostHoveredButton
-        then topmostHoveredButton
-        elseif topmostHoveredInstance then Button.other
-        else Button.world
+    local actualHoveredButton
+    if topmostHoveredButton then
+        actualHoveredButton = topmostHoveredButton
+    elseif topmostHoveredInstance then
+        Button.other.instance = topmostHoveredInstance
+        actualHoveredButton = Button.other
+    else
+        actualHoveredButton = Button.world
+    end
 
     local persistableHoveredButton = if Button.active == nil or actualHoveredButton == Button.active
         then actualHoveredButton
@@ -871,6 +918,8 @@ local function updateGuiState()
             Button.static.hovered = persistableHoveredButton
             persistableHoveredButton:visualStateChanged()
         end
+
+        task.defer(invokeHoveredButtonChangedCallbacks, persistableHoveredButton)
     end
 
     if
