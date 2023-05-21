@@ -281,19 +281,19 @@ end
     Converts a string to a certain casing. Uses `KDKit.Utils.detectCasingAndExtractWords` to detect words in the source string.
 
     Supported modes are:
-        - none: hello world
-        - sentence: Hello world
-        - title: Hello World
-        - pascal: HelloWorld
-        - camel: helloWorld
-        - snake: hello_world
-        - upperSnake: HELLO_WORLD
-        - kebab: hello-world
-        - upperKebab: HELLO-WORLD
-        - acronym: hw
-        - upperAcronym: HW
-        - dottedAcronym: h.w.
-        - upperDottedAcronym: H.W.
+        * none: hello world
+        * sentence: Hello world
+        * title: Hello World
+        * pascal: HelloWorld
+        * camel: helloWorld
+        * snake: hello_world
+        * upperSnake: HELLO_WORLD
+        * kebab: hello-world
+        * upperKebab: HELLO-WORLD
+        * acronym: hw
+        * upperAcronym: HW
+        * dottedAcronym: h.w.
+        * upperDottedAcronym: H.W.
     ```lua
     Humanize:casing("hello world", "pascal") -> "HelloWorld"
     Humanize:casing("HelloWorld", "none") -> "hello world"
@@ -588,6 +588,13 @@ function Humanize:number(number, options)
     end
 
     return str
+end
+
+--[[
+    Simply a shortcut for Humanize:number(x, { addCommas = true, decimalPlaces = 0 })
+--]]
+function Humanize:integer(number: number): string
+    return self:number(number, { addCommas = true, decimalPlaces = 0 })
 end
 
 --[[
