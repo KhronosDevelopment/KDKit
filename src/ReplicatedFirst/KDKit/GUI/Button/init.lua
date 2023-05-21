@@ -768,14 +768,16 @@ function Button:disable(root): "Button"?
     return self
 end
 
-function Button:delete(root)
+function Button:delete(...)
     local staticCall = self == Button
 
     if staticCall then
-        self:applyToAll(root, "delete")
+        local root, instant = ...
+        self:applyToAll(root, "delete", instant)
     else
+        local instant = ...
         self:loadWith(nil)
-        self:style(self.styles.original)
+        self:style(self.styles.original, if instant then 0 else nil)
 
         for _, conn in self.connections do
             conn:Disconnect()
