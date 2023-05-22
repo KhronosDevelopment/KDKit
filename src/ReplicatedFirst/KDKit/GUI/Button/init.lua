@@ -777,7 +777,7 @@ function Button:delete(...)
     else
         local instant = ...
         self:loadWith(nil)
-        self:style(self.styles.original, if instant then 0 else nil)
+        self:style(self.styles.original, if instant then 0 elseif Button.active == self then 0.02 else 0.1)
 
         for _, conn in self.connections do
             conn:Disconnect()
@@ -787,6 +787,13 @@ function Button:delete(...)
         Button.list[self.instance] = nil
         table.clear(self)
         setmetatable(self, Button.DELETED_METATABLE)
+
+        if Button.hovered == self then
+            Button.static.hovered = nil
+        end
+        if Button.active == self then
+            Button.static.active = nil
+        end
     end
 end
 
