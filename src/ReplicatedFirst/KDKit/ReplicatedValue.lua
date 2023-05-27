@@ -1,3 +1,57 @@
+--[[
+    A dead-simple way to replicate complicated data to clients in real time.
+
+    Server:
+    ```lua
+    local rv = ReplicatedValue:get("leaderboards")
+
+    while task.wait(1) do
+        rv:set("level", fetchHighestLevelPlayers())
+        rv:set("money", fetchRichestPlayers())
+    end
+    ```
+
+    Client:
+    ```lua
+    local rv = ReplicatedValue:get("leaderboards")
+
+    rv:listen("level", updateLevelLeaderboardsGui)
+    rv:listen("money", updateMoneyLeaderboardsGui)
+    ```
+
+    It also supports functionality to easily parse subsections of tables,
+    so that you can _very_ easily access only the data you're interested in!
+    ```lua
+    print("The current #1 player is:", rv:evaluate("level.firstPlace.name"))
+    print("The current #1 player is:", rv:evaluate().level.firstPlace.name)
+
+    rv:listen("level.firstPlace.name", function(name)
+        print("The current #1 player is:", name)
+    end)
+    ```
+
+    You can also set the `Permission`s for these values, so that only certain players can access them.
+    ```lua
+    local rv = ReplicatedValue:get("leaderboards", game.Players.gaberocksall)
+    -- Now, only `gaberocksall` can access the "leaderboards" key. Other players will never receive updates for it.
+    ```
+
+    This module is optimized for speed and network usage. It only supports values that can pass through RemoteEvents.
+
+    You can use non-string keys like so:
+    ```lua
+    rv:listen({ "money", 1, "name" }, function(name)
+        print("The current #1 player is:", name)
+    end)
+    ```
+
+    or you can listen to the top level key like so:
+    ```lua
+    rv:listen("", function(leaderboards) -- an empty table will work the same
+        print("The current #1 player is:", leaderboards.money[1].name)
+    end)
+    ```
+--]]
 local RunService = game:GetService("RunService")
 local IS_SERVER = RunService:IsServer()
 
