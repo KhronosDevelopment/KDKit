@@ -266,7 +266,9 @@ function Utils:mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1) -> (K2, V2),
     local output = table.create(16)
     for k1, v1 in tab do
         local k2, v2 = transform(v1, k1)
-        output[k2] = v2
+        if k2 ~= nil then
+            output[k2] = v2
+        end
     end
     return output
 end
