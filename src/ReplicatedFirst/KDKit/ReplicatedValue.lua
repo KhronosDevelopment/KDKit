@@ -344,8 +344,6 @@ end
 
 if IS_SERVER then
     ReplicatedValue.remotes.subscribe:connect(function(player: Player, key: string)
-        print("ReplicatedValue.remotes.subscribe", key)
-
         local rv = ReplicatedValue.map[key]
         if not rv then
             return ReplicatedValue:addPendingSubscriber(player, key)
@@ -355,8 +353,6 @@ if IS_SERVER then
     end)
 
     ReplicatedValue.remotes.unsubscribe:connect(function(player: Player, key: string)
-        print("ReplicatedValue.remotes.unsubscribe", key)
-
         local rv = ReplicatedValue.map[key]
         if not rv then
             return
@@ -372,7 +368,6 @@ if IS_SERVER then
     end)
 else
     ReplicatedValue.remotes.update:connect(function(key: string, path: Path, value: any)
-        print("ReplicatedValue.remotes.update", key)
         local rv = ReplicatedValue.map[key]
         if not rv then
             return
