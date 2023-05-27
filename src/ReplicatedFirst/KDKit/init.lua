@@ -18,7 +18,7 @@ return {
     RateLimit = require(script:WaitForChild("RateLimit")),
     Remote = require(script:WaitForChild("Remote")),
     Remotes = require(script:WaitForChild("Remotes")),
-    ReplicatedTable = require(script:WaitForChild("ReplicatedTable")),
+    ReplicatedValue = require(script:WaitForChild("ReplicatedValue")),
     Tickrate = require(script:WaitForChild("Tickrate")),
     Time = require(script:WaitForChild("Time")),
     TimeBasedPassword = require(script:WaitForChild("TimeBasedPassword")),
