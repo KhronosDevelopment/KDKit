@@ -142,7 +142,12 @@ game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
     end
 end)
 
-function ReplicatedValue:__init(key: string, permission: Permission?, internallyHandlingLifecycle: boolean?)
+function ReplicatedValue:__init(
+    key: string,
+    value: any?,
+    permission: Permission?,
+    internallyHandlingLifecycle: boolean?
+)
     if not internallyHandlingLifecycle then
         error("Please use ReplicatedValue:get(...) instead of ReplicatedValue.new(...)")
     end
@@ -150,7 +155,7 @@ function ReplicatedValue:__init(key: string, permission: Permission?, internally
     self.key = key
     self.permission = permission
 
-    self.currentValue = nil
+    self.currentValue = value
 
     self.subscribers = {} :: { Player }
     self.listeners = {} :: { Listener }
