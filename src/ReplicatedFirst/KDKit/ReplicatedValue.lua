@@ -84,7 +84,7 @@ ReplicatedValue.static.remotes = {
 export type Permission = (player: Player) -> boolean | { Player } | Player
 export type Path = { any }
 export type PathLike = Path | string
-export type Listener = { path: Path, callback: (value: any) -> nil }
+export type Listener = { path: Path, callback: (value: any) -> nil, default: any? }
 
 function ReplicatedValue.static:get(key: string, initialValue: any?, initialPermission: Permission?): "ReplicatedValue"
     local rv = self.map[key]
@@ -254,12 +254,12 @@ end
 function ReplicatedValue:notifyListenersOfChangeAt(path: Path)
     for _, listener in self.listeners do
         if ReplicatedValue:changeAtLocationAffectsPath(path, listener.path) then
-            task.defer(listener.callback, self:evaluate(listener.path))
+            task.defer(listener.callback, self:evaluate(listener.path, listener.default))
         end
     end
 end
 
-function ReplicatedValue:evaluate(path: PathLike?): any
+function ReplicatedValue:evaluate(path: PathLike?, default: any?): any
     if not path then
         return self.currentValue
     elseif type(path) == "string" then
@@ -269,7 +269,7 @@ function ReplicatedValue:evaluate(path: PathLike?): any
     local value = self.currentValue
     for _, pathPart in path do
         if type(value) ~= "table" then
-            return nil
+            return default
         end
 
         value = value[pathPart]
@@ -310,14 +310,14 @@ function ReplicatedValue:unsubscribe(player: Player)
     end
 end
 
-function ReplicatedValue:listen(path: PathLike, callback: (value: any) -> nil): { Disconnect: () -> nil }
+function ReplicatedValue:listen(path: PathLike, callback: (value: any) -> nil, default: any?): { Disconnect: () -> nil }
     if type(path) == "string" then
         path = Utils:split(path, ".")
     end
 
-    local listener = { path = path, callback = callback } :: Listener
+    local listener = { path = path, callback = callback, default = default } :: Listener
     table.insert(self.listeners, listener)
-    task.defer(callback, self:evaluate(path))
+    task.defer(callback, self:evaluate(path, default))
 
     return {
         Disconnect = function()
