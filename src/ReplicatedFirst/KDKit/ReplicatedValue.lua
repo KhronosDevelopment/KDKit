@@ -86,18 +86,18 @@ export type Path = { any }
 export type PathLike = Path | string
 export type Listener = { path: Path, callback: (value: any) -> nil }
 
-function ReplicatedValue.static:get(key: string, permission: Permission?): "ReplicatedTable"
-    local rt = self.map[key]
-    if not rt then
-        rt = self.new(key, permission, true)
-        self.map[key] = rt
+function ReplicatedValue.static:get(key: string, permission: Permission?): "ReplicatedValue"
+    local rv = self.map[key]
+    if not rv then
+        rv = self.new(key, permission, true)
+        self.map[key] = rv
 
         if not IS_SERVER then
             ReplicatedValue.remotes.subscribe(key)
         end
     end
 
-    return rt
+    return rv
 end
 
 function ReplicatedValue.static:free(key: string)
@@ -337,39 +337,39 @@ if IS_SERVER then
     ReplicatedValue.remotes.subscribe:connect(function(player: Player, key: string)
         print("ReplicatedValue.remotes.subscribe", key)
 
-        local rt = ReplicatedValue.map[key]
-        if not rt then
+        local rv = ReplicatedValue.map[key]
+        if not rv then
             return ReplicatedValue:addPendingSubscriber(player, key)
         end
 
-        rt:subscribe(player)
+        rv:subscribe(player)
     end)
 
     ReplicatedValue.remotes.unsubscribe:connect(function(player: Player, key: string)
         print("ReplicatedValue.remotes.unsubscribe", key)
 
-        local rt = ReplicatedValue.map[key]
-        if not rt then
+        local rv = ReplicatedValue.map[key]
+        if not rv then
             return
         end
 
-        rt:unsubscribe(player)
+        rv:unsubscribe(player)
     end)
 
     RunService.Heartbeat:Connect(function()
-        for _, rt in ReplicatedValue.map do
-            rt:publishPendingSubscriberNotifications()
+        for _, rv in ReplicatedValue.map do
+            rv:publishPendingSubscriberNotifications()
         end
     end)
 else
     ReplicatedValue.remotes.update:connect(function(key: string, path: Path, value: any)
         print("ReplicatedValue.remotes.update", key)
-        local rt = ReplicatedValue.map[key]
-        if not rt then
+        local rv = ReplicatedValue.map[key]
+        if not rv then
             return
         end
 
-        rt:receiveNewValueAt(value, path)
+        rv:receiveNewValueAt(value, path)
     end)
 end
 
