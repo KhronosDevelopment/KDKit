@@ -838,7 +838,7 @@ end
 --]]
 function Utils:lerp(a: number, b: number, f: number, clamp: boolean?): number
     if clamp then
-        return math.clamp((b - a) * f + a, a, b)
+        return math.clamp((b - a) * f + a, math.min(a, b), math.max(a, b))
     else
         return (b - a) * f + a
     end
