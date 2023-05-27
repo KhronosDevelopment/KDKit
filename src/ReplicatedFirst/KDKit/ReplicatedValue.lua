@@ -32,7 +32,7 @@
 
     You can also set the `Permission`s for these values, so that only certain players can access them.
     ```lua
-    local rv = ReplicatedValue:get("leaderboards", game.Players.gaberocksall)
+    local rv = ReplicatedValue:get("leaderboards", {}, game.Players.gaberocksall)
     -- Now, only `gaberocksall` can access the "leaderboards" key. Other players will never receive updates for it.
     ```
 
@@ -86,10 +86,10 @@ export type Path = { any }
 export type PathLike = Path | string
 export type Listener = { path: Path, callback: (value: any) -> nil }
 
-function ReplicatedValue.static:get(key: string, permission: Permission?): "ReplicatedValue"
+function ReplicatedValue.static:get(key: string, initialValue: any?, initialPermission: Permission?): "ReplicatedValue"
     local rv = self.map[key]
     if not rv then
-        rv = self.new(key, permission, true)
+        rv = self.new(key, initialValue, initialPermission, true)
         self.map[key] = rv
 
         if not IS_SERVER then
