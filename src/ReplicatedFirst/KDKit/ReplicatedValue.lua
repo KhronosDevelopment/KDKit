@@ -280,6 +280,10 @@ function ReplicatedValue:evaluate(path: PathLike?, default: any?): any
         value = value[pathPart]
     end
 
+    if value == nil then
+        return default
+    end
+
     return value
 end
 
