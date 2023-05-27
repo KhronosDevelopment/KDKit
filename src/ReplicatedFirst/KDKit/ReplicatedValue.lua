@@ -197,7 +197,7 @@ function ReplicatedValue:receiveNewValueAt(value: any, path: Path, mustSucceed: 
         for pathDepth, pathPart in path do
             if type(adjust) ~= "table" then
                 (if mustSucceed then error else warn)(
-                    ("Illegal update made to ReplicatedValue `%s`. Was notified of a change which set `%s` to `%s`, but one of its ancestors is not a table (instead it was of type '%s'). The update was simply dropped."):format(
+                    ("Illegal update made to ReplicatedValue `%s`. Was notified of a change which set `%s` to `%s`, but one of its ancestors is not a table (instead it was of type '%s')."):format(
                         self.key,
                         table.concat(path, "."),
                         Utils:repr(value),
