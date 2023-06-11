@@ -4,34 +4,40 @@ local Time = {
         time = os.time(),
         fetchedAt = nil,
     },
-    ATTRIBUTE = "KDKit_Time_now",
+    REMOTE_FUNCTION_NAME = "KDKit.Time.now",
     INITIALIZATION_WARNING_INTERVAL = 3,
 }
 
 if game:GetService("RunService"):IsServer() then
     Time.config = require(game:GetService("ServerStorage"):WaitForChild("KDKit.Configuration"):WaitForChild("Time"))
+    Time.remoteFunction = Instance.new("RemoteFunction", game:GetService("ReplicatedStorage"))
+    Time.remoteFunction.Name = Time.REMOTE_FUNCTION_NAME
 
-    function Time:fetchRemoteAndPing()
-        local before = os.clock()
-        local remoteTime = self.config:fetchRemoteTime()
-        local ping = os.clock() - before
+    Time.remoteFunction.OnServerInvoke = function(...)
+        return Time:now()
+    end
 
-        return remoteTime, ping
+    function Time:fetchRemoteTime()
+        return self.config:fetchRemoteTime()
     end
 else
     Time.config = {
         remoteFetchRate = 1, -- rather fast remote fetch rate since it's a simple workspace:GetAttribute()
-        catchupRate = 0.1, -- rather slow catchup rate since the client and server should stay relatively in sync
+        catchupRate = 0.5, -- rather fast catchup rate since the client and server should stay relatively in sync
     }
+    Time.remoteFunction = game:GetService("ReplicatedStorage"):WaitForChild(Time.REMOTE_FUNCTION_NAME) :: RemoteFunction
 
-    function Time:fetchRemoteAndPing()
-        local remoteTime
-        repeat
-            remoteTime = workspace:GetAttribute(Time.ATTRIBUTE)
-        until remoteTime or workspace:GetAttributeChangedSignal(Time.ATTRIBUTE):Wait()
-
-        return remoteTime, game:GetService("Players").LocalPlayer:GetNetworkPing()
+    function Time:fetchRemoteTime()
+        return self.remoteFunction:InvokeServer()
     end
+end
+
+function Time:fetchRemoteAndPing()
+    local before = os.clock()
+    local remoteTime = self:fetchRemoteTime()
+    local ping = os.clock() - before
+
+    return remoteTime, ping
 end
 
 function Time:updateRemoteTime()
@@ -97,14 +103,6 @@ coroutine.wrap(function()
     end
 end)()
 
-if game:GetService("RunService"):IsServer() then
-    task.defer(function()
-        while true do
-            workspace:SetAttribute(Time.ATTRIBUTE, Time:now())
-            task.wait(1)
-        end
-    end)
-end
 
 return setmetatable(Time, {
     __call = Time.now,
