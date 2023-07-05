@@ -131,9 +131,30 @@ function KDRandom:number(a: NumberRange | number?, b: number?): number
     return self.rng:NextNumber(a or 0, b or 1)
 end
 
+--[[
+    Returns true or false with the given odds (between 0 and 1).
+--]]
+function KDRandom:test(chance: number): boolean
+    return self.rng:NextNumber(0, 1) < chance
+end
+
 function KDRandom:normal()
     -- inspired by https://github.com/Bytebit-Org/lua-statistics/blob/3bd0c0bdad2c5bbe46efd1895206287aef903d6d/src/statistics.lua#L193-L201
     return math.sqrt(-2 * math.log(self.rng:NextNumber(0.0001, 1))) * math.cos(TWO_PI * self.rng:NextNumber())
+end
+
+--[[
+    Randomly rounds up or down based on how close it is to either side.
+    For example, 1.75 will have a 75% chance of rounding up and 25% of rounding down.
+    Similarly, 82.4 will have a 60% chance of rounding down and 40% of rounding up.
+    Negative numbers work as expected, -1.99 has a 99% chance of rounding to -2.
+--]]
+function KDRandom:round(n: number): number
+    if self:test(n % 1) then
+        return math.ceil(n)
+    else
+        return math.floor(n)
+    end
 end
 
 return KDRandom
