@@ -1109,6 +1109,42 @@ function Utils:minKey(...): any
 end
 
 --[[
+    Identical to `Utils.min` but, you know.
+--]]
+function Utils:max<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V, K)
+    local maxValue, maxKey = nil, nil
+
+    if key then
+        local maximumEvaluation = nil
+
+        for k, v in tab do
+            local evaluation = key(v, k)
+            if maximumEvaluation == nil or evaluation > maximumEvaluation then
+                maxValue = v
+                maxKey = k
+                maximumEvaluation = evaluation
+            end
+        end
+    else
+        for k, v in tab do
+            if maxValue == nil or v > maxValue then
+                maxValue = v
+                maxKey = k
+            end
+        end
+    end
+
+    return maxValue, maxKey
+end
+
+--[[
+    Same as `Utils.minKey` but, you know.
+--]]
+function Utils:maxKey(...): any
+    return select(2, self:max(...))
+end
+
+--[[
     Pretty self explanatory, I think.
     ```lua
     Utils:sum({ 1, 2, 3 }) -> 6
