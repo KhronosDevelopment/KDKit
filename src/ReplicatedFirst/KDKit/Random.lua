@@ -123,6 +123,14 @@ function KDRandom:vector(minMagnitude, maxMagnitude)
     return v.Unit * self.rng:NextNumber(minMagnitude, maxMagnitude or minMagnitude)
 end
 
+function KDRandom:integer(a: NumberRange | number?, b: number?): number
+    if typeof(a) == "NumberRange" then
+        a, b = a.Min, a.Max
+    end
+
+    return self.rng:NextInteger(a or 0, b or 1)
+end
+
 function KDRandom:number(a: NumberRange | number?, b: number?): number
     if typeof(a) == "NumberRange" then
         a, b = a.Min, a.Max
