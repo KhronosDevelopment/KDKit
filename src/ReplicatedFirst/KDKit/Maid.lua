@@ -14,13 +14,13 @@ local Maid = Class.new("KDKit.Maid")
 Maid.static.ERROR_ON_UNKNOWN_CLEANS = game:GetService("RunService"):IsStudio()
 
 function Maid.static:isTaskValid(task): boolean
-    if Utils:callable(Utils:getattr(task, "clean")) or Utils:callable(Utils:getattr(task, "Clean")) then
+    if typeof(task) == "Instance" or typeof(task) == "RBXScriptConnection" or Utils:callable(task) then
+        return true
+    elseif Utils:callable(Utils:getattr(task, "clean")) or Utils:callable(Utils:getattr(task, "Clean")) then
         return true
     elseif Utils:callable(Utils:getattr(task, "destroy")) or Utils:callable(Utils:getattr(task, "Destroy")) then
         return true
     elseif Utils:callable(Utils:getattr(task, "disconnect")) or Utils:callable(Utils:getattr(task, "Disconnect")) then
-        return true
-    elseif Utils:callable(task) then
         return true
     end
 
