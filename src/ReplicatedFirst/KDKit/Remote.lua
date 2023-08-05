@@ -22,18 +22,21 @@ function Remote.static:waitForFolder()
 end
 
 function Remote:__init(
-    instance: RemoteEvent | RemoteFunction,
+    instance: RemoteEvent | RemoteFunction | BindableEvent | BindableFunction,
     rateLimit: "KDKit.RateLimit"?, -- only enforced for client -> server requests
     clientDropsCallsWhenLimitExceeded: boolean? -- set to true for requests that don't really matter & you don't want to see "rate limit exceeded" errors
 )
     self.template = instance
     self.rateLimit = rateLimit
     self.name = instance:GetFullName()
-    self.functional = instance:IsA("RemoteFunction")
+    self.functional = instance:IsA("RemoteFunction") or instance:IsA("BindableFunction")
+    self.bindable = instance:IsA("BindableEvent") or instance:IsA("BindableFunction")
     self.clientDropsCallsWhenLimitExceeded = not not clientDropsCallsWhenLimitExceeded
 
     if self.clientDropsCallsWhenLimitExceeded and self.functional then
-        error("You cannot set `clientDropsCallsWhenLimitExceeded = true` for RemoteFunctions. What would be returned?")
+        error(
+            "You cannot set `clientDropsCallsWhenLimitExceeded = true` for functional remotes. What would be returned?"
+        )
     end
     if self.clientDropsCallsWhenLimitExceeded and not self.rateLimit then
         error(
@@ -53,7 +56,7 @@ function Remote:__init(
     end
 end
 
-function Remote:waitForInstance()
+function Remote:waitForInstance(): RemoteEvent | RemoteFunction | BindableEvent | BindableFunction
     while not self.instance do
         task.wait()
     end
@@ -61,6 +64,15 @@ function Remote:waitForInstance()
 end
 
 function Remote:__call(...)
+    if self.bindable then
+        if self.functional then
+            return (self:waitForInstance() :: BindableFunction):Invoke(...)
+        else
+            (self:waitForInstance() :: BindableEvent):Fire(...)
+            return
+        end
+    end
+
     if RunService:IsServer() then
         if self.functional then
             return self:waitForInstance():InvokeClient(...)
@@ -93,13 +105,17 @@ function Remote:__iter()
     return next, self
 end
 
-function Remote:connect(callback)
+function Remote:connect(callback): RBXScriptConnection?
+    if self.bindable then
+        return (self:waitForInstance() :: BindableEvent).Event:Connect(callback)
+    end
+
     if RunService:IsServer() then
         local function errorLoggedCallback(player, ...)
             local args = { ... }
             return Utils:ensure(function(failed, traceback)
                 if failed then
-                    Remote.onServerError(self, player, args, traceback)
+                    Remote.logServerError(self, player, args, traceback)
                 end
             end, callback, player, ...)
         end
@@ -118,20 +134,24 @@ function Remote:connect(callback)
         if self.functional then
             self:waitForInstance().OnServerInvoke = rateLimitedCallback
         else
-            self:waitForInstance().OnServerEvent:Connect(rateLimitedCallback)
+            return self:waitForInstance().OnServerEvent:Connect(rateLimitedCallback)
         end
     else
         if self.functional then
             self:waitForInstance().OnClientInvoke = callback
         else
-            self:waitForInstance().OnClientEvent:Connect(callback)
+            return self:waitForInstance().OnClientEvent:Connect(callback)
         end
     end
 end
 
 function Remote:wait()
     if self.functional then
-        error("Cannot :wait() on a RemoteFunction")
+        error("Cannot :wait() on a functional remote")
+    end
+
+    if self.bindable then
+        return (self:waitForInstance() :: BindableEvent).Event:Wait()
     end
 
     if RunService:IsServer() then
@@ -150,15 +170,16 @@ if RunService:IsServer() then
     Remote.static.logClientError.Name = "KDKit.Remote.logClientError"
     Remote.static.logClientError = Remote.new(Remote.static.logClientError, RateLimit.new(5, 300), true)
 
-    Remote.static.onServerError = function(remote, player, args, traceback)
-        -- override me! I get called after every server error!
-    end
+    Remote.static.logServerError = Instance.new("BindableEvent", game:GetService("ServerStorage"))
+    Remote.static.logServerError.Name = "KDKit.Remote.logServerError"
+    Remote.static.logServerError = Remote.new(Remote.static.logServerError, RateLimit.new(5, 300), true)
 else
     Remote.static.rateLimitExceeded = Remote.new(
         game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.rateLimitExceeded"),
         RateLimit.new(0),
         true
     )
+
     Remote.static.logClientError = Remote.new(
         game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.logClientError"),
         RateLimit.new(5, 300),
