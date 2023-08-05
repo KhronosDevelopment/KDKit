@@ -199,6 +199,11 @@ function ReplicatedValue:receiveNewValueAt(value: any, path: Path, mustSucceed: 
         self.currentValue = value
     else
         local adjust = self.currentValue
+        if adjust == nil then
+            adjust = {}
+            self.currentValue = adjust
+        end
+
         for pathDepth, pathPart in path do
             if type(adjust) ~= "table" then
                 (if mustSucceed then error else warn)(
@@ -215,6 +220,9 @@ function ReplicatedValue:receiveNewValueAt(value: any, path: Path, mustSucceed: 
             if pathDepth == pathLength then
                 adjust[pathPart] = value
             else
+                if adjust[pathPart] == nil then
+                    adjust[pathPart] = {}
+                end
                 adjust = adjust[pathPart]
             end
         end
