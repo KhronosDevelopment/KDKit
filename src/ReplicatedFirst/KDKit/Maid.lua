@@ -96,9 +96,13 @@ function Maid:clean(task, skipDebugProfile: boolean): nil
 
     local s, r
     if typeof(task) == "RBXScriptConnection" then
-        s, r = pcall(task.Disconnect, task)
+        s, r = xpcall(function()
+            return task:Disconnect()
+        end, debug.traceback)
     elseif typeof(task) == "Instance" then
-        s, r = pcall(task.Destroy, task)
+        s, r = xpcall(function()
+            return task:Destroy()
+        end, debug.traceback)
     else
         s, r = xpcall(
             coroutine.wrap(function()
