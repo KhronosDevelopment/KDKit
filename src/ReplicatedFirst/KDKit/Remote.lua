@@ -33,6 +33,10 @@ function Remote:__init(
     self.bindable = instance:IsA("BindableEvent") or instance:IsA("BindableFunction")
     self.clientDropsCallsWhenLimitExceeded = not not clientDropsCallsWhenLimitExceeded
 
+    if self.bindable and not self.functional then
+        error("wtf lol")
+    end
+
     if self.clientDropsCallsWhenLimitExceeded and self.functional then
         error(
             "You cannot set `clientDropsCallsWhenLimitExceeded = true` for functional remotes. What would be returned?"
@@ -170,9 +174,27 @@ if RunService:IsServer() then
     Remote.static.logClientError.Name = "KDKit.Remote.logClientError"
     Remote.static.logClientError = Remote.new(Remote.static.logClientError, RateLimit.new(5, 300), true)
 
-    Remote.static.logServerError = Instance.new("BindableEvent", game:GetService("ServerStorage"))
-    Remote.static.logServerError.Name = "KDKit.Remote.logServerError"
-    Remote.static.logServerError = Remote.new(Remote.static.logServerError, RateLimit.new(5, 300), true)
+    function Remote:logServerError(player: Player, dirtyArgs: table, traceback: string)
+        warn(
+            "A server-sided error occurred an a KDKit.Remote and wasn't logged. "
+                .. "Consider overwriting `function Remote:logServerError`"
+        )
+        -- Seriously! overwrite this function. For example:
+        --[[
+            ```lua
+            function KDKit.Remote:logServerError(player: Player, dirtyArgs: table, traceback: string)
+                (KDKit.API.log / "error"):dpePOST(player, {
+                    title = "Unhandled Server Remote Exception",
+                    description = traceback,
+                    fields = {
+                        remote = self.name,
+                        args = KDKit.Utils:repr(dirtyArgs):sub(1, 16384),
+                    },
+                })
+            end
+            ```
+        --]]
+    end
 else
     Remote.static.rateLimitExceeded = Remote.new(
         game:GetService("ReplicatedStorage"):WaitForChild("KDKit.Remote.rateLimitExceeded"),
