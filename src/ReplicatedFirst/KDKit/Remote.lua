@@ -33,10 +33,6 @@ function Remote:__init(
     self.bindable = instance:IsA("BindableEvent") or instance:IsA("BindableFunction")
     self.clientDropsCallsWhenLimitExceeded = not not clientDropsCallsWhenLimitExceeded
 
-    if self.bindable and not self.functional then
-        error("wtf lol")
-    end
-
     if self.clientDropsCallsWhenLimitExceeded and self.functional then
         error(
             "You cannot set `clientDropsCallsWhenLimitExceeded = true` for functional remotes. What would be returned?"
