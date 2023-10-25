@@ -354,7 +354,7 @@ function Button:__init(instance: GuiObject, onClick: (button: "KDKit.GUI.Button"
         self.styles[state][property] = value
     end
 
-    self:visualStateChanged()
+    self:visualStateChanged(0)
 end
 Button.__init = Remote:wrapWithClientErrorLogging(Button.__init, "KDKit.GUI.Button.__init", Button.GET_DEBUG_UIS_STATE)
 
@@ -515,13 +515,17 @@ end
     Stateful Rendering
 --]]
 function Button:style(style, animationTime)
-    local t = TweenService:Create(
-        self.instance,
-        TweenInfo.new(animationTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0),
-        style
-    )
-    t:Play()
-    return t
+    if animationTime == 0 then
+        for name, value in style do
+            self.instance[name] = value
+        end
+    else
+        TweenService:Create(
+            self.instance,
+            TweenInfo.new(animationTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0),
+            style
+        ):Play()
+    end
 end
 
 function Button:updateStyle(state, property, value)
@@ -566,7 +570,7 @@ function Button:getVisualState()
     return state
 end
 
-function Button:visualStateChanged()
+function Button:visualStateChanged(animationTime: number?)
     local visualState = self:getVisualState()
     local previousVisualState = self._previousVisualState
     self._previousVisualState = table.clone(visualState)
@@ -592,7 +596,7 @@ function Button:visualStateChanged()
         style[property] = self:determinePropertyValueDuringState(property, visualState)
     end
 
-    return self:style(style, if activeChanged then 0.02 else 0.1)
+    self:style(style, animationTime or (if activeChanged then 0.02 else 0.1))
 end
 
 --[[
@@ -732,37 +736,39 @@ function Button.static:applyToAll(root, funcName, ...)
     end
 end
 
-function Button:enable(root): "Button"?
+function Button:enable(rootOrAnimationTime: "Button" | number | nil, animationTime: number?): "Button"?
     local staticCall = self == Button
 
     if staticCall then
-        self:applyToAll(root, "enable")
+        self:applyToAll(rootOrAnimationTime, "enable", animationTime)
 
         return nil
     elseif not self.enabled then
+        animationTime = rootOrAnimationTime
         self.enabled = true
         if Button.active == self and self:pressable() then
             task.defer(self.firePressCallbacks, self)
         end
-        self:visualStateChanged()
+        self:visualStateChanged(animationTime)
     end
 
     return self
 end
 
-function Button:disable(root): "Button"?
+function Button:disable(rootOrAnimationTime: "Button" | number | nil, animationTime: number?): "Button"?
     local staticCall = self == Button
 
     if staticCall then
-        self:applyToAll(root, "disable")
+        self:applyToAll(rootOrAnimationTime, "disable", animationTime)
 
         return nil
     elseif self.enabled then
+        animationTime = rootOrAnimationTime
         if Button.active == self and self:pressable() then
             task.defer(self.fireReleaseCallbacks, self)
         end
         self.enabled = false
-        self:visualStateChanged()
+        self:visualStateChanged(animationTime)
     end
 
     return self
