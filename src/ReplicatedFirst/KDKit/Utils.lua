@@ -609,35 +609,12 @@ end
 --]]
 function Utils:isort<K, V>(tab: { [K]: V }, key: ((value: V) -> any)?): nil
     local rankings = table.create(#tab)
-    local aRanking, bRanking, aRank, bRank
 
     table.sort(tab, function(a, b)
-        aRanking = rankings[a] or key(a)
-        bRanking = rankings[b] or key(b)
-        rankings[a] = aRanking
-        rankings[b] = bRanking
+        rankings[a] = rankings[a] or key(a)
+        rankings[b] = rankings[b] or key(b)
 
-        if type(aRanking) == "table" and type(bRanking) == "table" then
-            for i = 1, math.huge do
-                aRank, bRank = aRanking[i], bRanking[i]
-
-                if aRank == nil then
-                    if bRank == nil then
-                        return false -- order not important
-                    else
-                        return true -- nothing comes before something
-                    end
-                elseif bRank == nil then
-                    return false -- nothing comes before something
-                elseif aRank == bRank then
-                    continue -- this priority level is not decisive, move to next one
-                else
-                    return aRank < bRank
-                end
-            end
-        else
-            return aRanking < bRanking
-        end
+        return self:compare(rankings[a], rankings[b]) == -1
     end)
 end
 
@@ -993,6 +970,42 @@ function Utils:all<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | s
 end
 
 --[[
+    Returns:
+        -1 if a < b
+        0 if a == b
+        1 if a > b
+    If both `a` and `b` are arrays,  corresponding elements are compared
+    in order until a tie is broken. (similar to tuple comparison in Python)
+    ```lua
+    Utils:compare(5, 10) -> -1
+    Utils:compare(10, 10) -> 0
+    Utils:compare(15, 10) -> 1
+    Utils:compare({ "a", "y" }, { "a", "z" }) -> -1
+    Utils:compare({ "a", "b" }, { "a", "b" }) -> 0
+    Utils:compare({ "a", "z" }, { "a", "y" }) -> 1
+    Utils:compare({ "a", "z" }, { "b", "y" }) -> -1
+    ```
+--]]
+function Utils:compare(a, b)
+    if a == b then
+        return 0
+    elseif type(a) == "table" and type(b) == "table" then
+        for i = 1, math.huge do
+            local c = self:compare(a[i], b[i])
+            if c ~= 0 then
+                return c
+            end
+        end
+
+        return 0
+    elseif a < b then
+        return -1
+    else
+        return 1
+    end
+end
+
+--[[
     Returns the insertion index of the provided element, using binary search.
     if you provide a key, it must return something that is comparable.
     Similar to python's builtin `bisect.bisect` function.
@@ -1018,7 +1031,7 @@ function Utils:bisect<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V
     while low < high do
         middle = math.floor((low + high) / 2)
 
-        if element >= key(tab[middle], middle) then
+        if self:compare(element, key(tab[middle], middle)) >= 0 then
             low = middle + 1
         else
             high = middle
