@@ -141,6 +141,13 @@ function App:__init(module: ModuleScript)
         end
 
         self.pages[page.name] = page
+    end
+
+    if not self.pages.home then
+        error("You must have a page called `home`.")
+    end
+
+    for _, page in self.pages do
         if require(page.module) ~= page then
             error(
                 ("Your module `%s` was expected to call `app:getPage(%s)` and return that page. Instead, the module returned `%s`."):format(
@@ -153,10 +160,6 @@ function App:__init(module: ModuleScript)
 
         page:rawOpen(App.Transition.new(self, self.common.transitionSources.INITIAL_SETUP, nil, page, true))
         page:rawClose(App.Transition.new(self, self.common.transitionSources.INITIAL_SETUP, page, nil, false))
-    end
-
-    if not self.pages.home then
-        error("You must have a page called `home`.")
     end
 
     self.last16Transitions = table.create(16)
