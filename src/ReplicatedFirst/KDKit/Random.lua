@@ -29,6 +29,19 @@ function KDRandom:choice(options)
     return options[k]
 end
 
+function KDRandom:ichoices(options, n)
+    local nOptions = #options
+    local choices = {}
+    for i = 0, n - 1 do
+        table.insert(choices, table.remove(options, self:number(1, nOptions - i)))
+    end
+    return choices
+end
+
+function KDRandom:choices(options, n)
+    return self:ichoices(table.clone(options), n)
+end
+
 function KDRandom:color(saturation, value)
     return Color3.fromHSV(
         self.rng:NextNumber(0, 1),
