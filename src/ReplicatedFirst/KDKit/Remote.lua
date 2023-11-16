@@ -32,6 +32,7 @@ function Remote:__init(
     self.functional = instance:IsA("RemoteFunction") or instance:IsA("BindableFunction")
     self.bindable = instance:IsA("BindableEvent") or instance:IsA("BindableFunction")
     self.clientDropsCallsWhenLimitExceeded = not not clientDropsCallsWhenLimitExceeded
+    self.nonconcurrent = not not instance:GetAttribute("nonconcurrent")
 
     if self.clientDropsCallsWhenLimitExceeded and self.functional then
         error(
@@ -47,6 +48,7 @@ function Remote:__init(
     -- ReplicatedFirst doesn't exactly preserve instance references properly,
     -- so we will need to clone them into ReplicatedStorage, where they can be correctly resolved.
     if RunService:IsServer() then
+        self.activeCallers = {} :: { [Player]: boolean }
         self.instance = self.template:Clone()
         self.instance.Parent = Remote:waitForFolder()
     else
@@ -131,10 +133,24 @@ function Remote:connect(callback): RBXScriptConnection?
             return errorLoggedCallback(player, ...)
         end
 
+        local function concurrencyHandledCallback(player, ...)
+            if self.nonconcurrent then
+                if self.activeCallers[player] then
+                    Remote.rateLimitExceeded(player, self:waitForInstance())
+                    error("Concurrent call to nonconcurrent Remote.")
+                end
+            end
+
+            self.activeCallers[player] = true
+            return Utils:ensure(function()
+                self.activeCallers[player] = nil
+            end, rateLimitedCallback, player, ...)
+        end
+
         if self.functional then
-            self:waitForInstance().OnServerInvoke = rateLimitedCallback
+            self:waitForInstance().OnServerInvoke = concurrencyHandledCallback
         else
-            return self:waitForInstance().OnServerEvent:Connect(rateLimitedCallback)
+            return self:waitForInstance().OnServerEvent:Connect(concurrencyHandledCallback)
         end
     else
         if self.functional then
