@@ -24,7 +24,8 @@ end
 function Remote:__init(
     instance: RemoteEvent | RemoteFunction | BindableEvent | BindableFunction,
     rateLimit: "KDKit.RateLimit"?, -- only enforced for client -> server requests
-    clientDropsCallsWhenLimitExceeded: boolean? -- set to true for requests that don't really matter & you don't want to see "rate limit exceeded" errors
+    clientDropsCallsWhenLimitExceeded: boolean?, -- set to true for requests that don't really matter & you don't want to see "rate limit exceeded" errors
+    nonconcurrent: boolean?
 )
     self.template = instance
     self.rateLimit = rateLimit
@@ -32,7 +33,7 @@ function Remote:__init(
     self.functional = instance:IsA("RemoteFunction") or instance:IsA("BindableFunction")
     self.bindable = instance:IsA("BindableEvent") or instance:IsA("BindableFunction")
     self.clientDropsCallsWhenLimitExceeded = not not clientDropsCallsWhenLimitExceeded
-    self.nonconcurrent = not not instance:GetAttribute("nonconcurrent")
+    self.nonconcurrent = not not nonconcurrent
 
     if self.clientDropsCallsWhenLimitExceeded and self.functional then
         error(
