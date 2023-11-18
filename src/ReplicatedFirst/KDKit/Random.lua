@@ -136,6 +136,14 @@ function KDRandom:vector(minMagnitude, maxMagnitude)
     return v.Unit * self.rng:NextNumber(minMagnitude, maxMagnitude or minMagnitude)
 end
 
+function KDRandom:angle()
+    return CFrame.Angles(
+        self.rng:NextNumber(-math.pi, math.pi),
+        self.rng:NextNumber(-math.pi, math.pi),
+        self.rng:NextNumber(-math.pi, math.pi)
+    )
+end
+
 function KDRandom:integer(a: NumberRange | number?, b: number?): number
     if typeof(a) == "NumberRange" then
         a, b = a.Min, a.Max
