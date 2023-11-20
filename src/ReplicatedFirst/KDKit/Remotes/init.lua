@@ -16,7 +16,7 @@ for _, instance in script:GetChildren() do
         error(("`%s` occurs multiple times. Remote names must be unique."):format(instance:GetFullName()))
     end
 
-    local rateLimit_Limit = instance:GetAttribute("rateLimit") or 60
+    local rateLimit_Limit = instance:GetAttribute("rateLimit") or 300
     local rateLimit_Period = instance:GetAttribute("rateLimitPeriod") or 60
     local rateLimit_PoolKey = instance:GetAttribute("rateLimitPool") or instance
 
