@@ -35,6 +35,7 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
     end
 
     local checkedCommons = false
+    local checkedUtils = false
     for _, configInstance in rootConfigInstance:GetChildren() do
         if configInstance:IsA("Folder") and configInstance.Name == "common" then
             if checkedCommons then
@@ -44,9 +45,15 @@ function ConfigGroup.new(groupInstance: ModuleScript, skipNameWarning: boolean?)
             end
             checkedCommons = true
             continue
+        elseif configInstance:IsA("Folder") and configInstance.Name == "utils" then
+            if checkedUtils then
+                error("You may only have one utils folder, but you have at least two. " .. configInstance:GetFullName())
+            end
+            checkedUtils = true
+            continue
         elseif not configInstance:IsA("ModuleScript") then
             error(
-                "All children of a ConfigGroup must be either a ModuleScript or a Folder named 'commons'. Found "
+                "All children of a ConfigGroup must be either a ModuleScript, a Folder named 'commons', or a Folder named 'utils'. Found "
                     .. configInstance:GetFullName()
                     .. " instead."
             )

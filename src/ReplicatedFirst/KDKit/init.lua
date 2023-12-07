@@ -23,4 +23,5 @@ return {
     Time = require(script:WaitForChild("Time")),
     TimeBasedPassword = require(script:WaitForChild("TimeBasedPassword")),
     Utils = require(script:WaitForChild("Utils")),
+    Vibes = require(script:WaitForChild("Vibes")),
 }

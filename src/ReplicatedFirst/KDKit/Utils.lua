@@ -1092,7 +1092,7 @@ function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V
 
         for k, v in tab do
             local evaluation = key(v, k)
-            if minimumEvaluation == nil or evaluation < minimumEvaluation then
+            if minimumEvaluation == nil or self:compare(evaluation, minimumEvaluation) < 0 then
                 minValue = v
                 minKey = k
                 minimumEvaluation = evaluation
@@ -1100,7 +1100,7 @@ function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V
         end
     else
         for k, v in tab do
-            if minValue == nil or v < minValue then
+            if minValue == nil or self:compare(v, minValue) < 0 then
                 minValue = v
                 minKey = k
             end
@@ -1132,7 +1132,7 @@ function Utils:max<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V
 
         for k, v in tab do
             local evaluation = key(v, k)
-            if maximumEvaluation == nil or evaluation > maximumEvaluation then
+            if maximumEvaluation == nil or self:compare(evaluation, maximumEvaluation) > 0 then
                 maxValue = v
                 maxKey = k
                 maximumEvaluation = evaluation
@@ -1140,7 +1140,7 @@ function Utils:max<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V
         end
     else
         for k, v in tab do
-            if maxValue == nil or v > maxValue then
+            if maxValue == nil or self:compare(v, maxValue) > 0 then
                 maxValue = v
                 maxKey = k
             end
