@@ -31,7 +31,7 @@ function MusicLightingAndTerrain:getLightingTweenInfo()
 end
 
 function MusicLightingAndTerrain:getMusicTweenInfo()
-    return TweenInfo.new(1, Enum.EasingStyle.Linear)
+    return TweenInfo.new(5, Enum.EasingStyle.Linear)
 end
 
 function MusicLightingAndTerrain:animateIn(args)
