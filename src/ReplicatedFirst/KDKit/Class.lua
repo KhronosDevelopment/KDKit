@@ -71,6 +71,8 @@
     -- Derived.f2    derived
     ```
 --]]
+local Utils = require(script.Parent:WaitForChild("Utils"))
+
 local class__newindex = function(self, name, value)
     if type(value) ~= "function" then
         error(
@@ -96,8 +98,14 @@ setmetatable(Class, { __index = Class.static, __newindex = class__newindex })
 function Class.static.new(name, superclass)
     superclass = superclass or Class.Object
 
-    assert(type(name) == "string")
-    assert(superclass == nil or type(superclass) == "table")
+    if typeof(name) ~= "string" then
+        error("All classes must have a <string> name.")
+    end
+
+    if superclass and not Class:isProbablyAClass(superclass) then
+        error(("Cannot inherit from non-class value: %s"):format(Utils:repr(superclass)))
+    end
+
     local class = {
         static = setmetatable(
             { __name = name, __class = Class, __super = superclass },
@@ -132,6 +140,19 @@ end
 
 function Class.static:isInstance(instance: table, of: "KDKit.Class")
     return type(instance.__class) == "table" and self:isSubClass(instance.__class, of)
+end
+
+function Class.static:isProbablyAClass(t: any): boolean
+    if
+        typeof(t) ~= "table"
+        or typeof(getmetatable(t)) ~= "table"
+        or getmetatable(t).__newindex ~= class__newindex -- if a non-class passes this test, there is malicious intent!
+    then
+        return false
+    end
+
+    local success, isSubClass = Utils:try(self.isSubClass, self, t, self.Object):result()
+    return success and isSubClass
 end
 
 Class.static.Object = Class.new("Object")
