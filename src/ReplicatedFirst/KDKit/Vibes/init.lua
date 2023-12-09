@@ -12,7 +12,7 @@ Vibes.configs = require(script:WaitForChild("VibeConfigs"))
 Vibes.current = nil :: "VibeConfig"?
 Vibes.mutex = Mutex.new(1)
 
-local EMPTY_DEFAULT_ARGS = table.freeze({ characterPosition = Vector3.new(0, 0, 0), alive = false })
+local EMPTY_DEFAULT_ARGS = table.freeze({ characterPosition = Vector3.new(0, 0, 0), alive = false, everAlive = false })
 local lastDefaultArgs = EMPTY_DEFAULT_ARGS
 
 function Vibes:getDefaultArgs(): { characterPosition: Vector3 }
@@ -37,7 +37,7 @@ function Vibes:getDefaultArgs(): { characterPosition: Vector3 }
         return table.freeze(lastDefaultArgs)
     end
 
-    lastDefaultArgs = table.freeze({ characterPosition = rootPart.Position, alive = true })
+    lastDefaultArgs = table.freeze({ characterPosition = rootPart.Position, alive = true, everAlive = true })
     return lastDefaultArgs
 end
 
