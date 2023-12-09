@@ -1,7 +1,10 @@
+if game:GetService("RunService"):IsServer() then
+    return nil
+end
+
 local Utils = require(script.Parent:WaitForChild("Utils"))
 local Remote = require(script.Parent:WaitForChild("Remote"))
 local Mutex = require(script.Parent:WaitForChild("Mutex"))
-local IS_CLIENT = game:GetService("RunService"):IsClient()
 
 local Vibes = {}
 
@@ -13,10 +16,6 @@ local EMPTY_DEFAULT_ARGS = table.freeze({ characterPosition = Vector3.new(0, 0, 
 local lastDefaultArgs = EMPTY_DEFAULT_ARGS
 
 function Vibes:getDefaultArgs(): { characterPosition: Vector3 }
-    if not IS_CLIENT then
-        return EMPTY_DEFAULT_ARGS
-    end
-
     local character = game.Players.LocalPlayer.Character
     if not character then
         lastDefaultArgs = table.clone(lastDefaultArgs)
@@ -119,20 +118,18 @@ function Vibes:update(): boolean
         :result()
 end
 
-if IS_CLIENT then
-    task.defer(function()
-        local backoff = 1
-        while true do
-            if not Vibes:update() then
-                task.wait(0.25 * backoff)
-                backoff *= 2
-            else
-                backoff = 1
-            end
-
-            task.wait()
+task.defer(function()
+    local backoff = 1
+    while true do
+        if not Vibes:update() then
+            task.wait(0.25 * backoff)
+            backoff *= 2
+        else
+            backoff = 1
         end
-    end)
-end
+
+        task.wait()
+    end
+end)
 
 return Vibes
