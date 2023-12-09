@@ -12,7 +12,7 @@ do -- instances
 end
 
 export type Config = {
-    stopConnections: { [Sound]: RBXScriptConnection },
+    endedConnection: RBXScriptConnection?,
     queue: { Sound },
     nextQueue: { Sound },
     instance: SoundGroup,
@@ -57,7 +57,6 @@ function Music:iGenerateNextQueue(config: Config)
 end
 
 function Music:playNext(config: Config)
-    print("Music:playNext()", config)
     if not next(config.queue) then
         config.queue = config.nextQueue
         self:iGenerateNextQueue(config)
@@ -67,11 +66,17 @@ function Music:playNext(config: Config)
         return
     end
 
+    if config.endedConnection then
+        config.endedConnection:Disconnect()
+    end
     config.instance:ClearAllChildren()
     table.remove(config.queue, 1):Clone().Parent = config.instance
+    config.endedConnection = config.instance.sound.Ended:Connect(function()
+        self:playNext(config)
+    end)
 
     local v = config.instance.sound.Volume
-    config.instance.Volume = 0
+    config.instance.sound.Volume = 0
     TweenService:Create(
         config.instance.sound,
         TweenInfo.new(
@@ -89,7 +94,6 @@ function Music:parse(instance: Instance, name: string?): Config
     local cfg = {
         name = name,
         instance = self.instanceTemplate:Clone(),
-        stopConnections = {},
     }
     if name then
         cfg.instance.Name ..= " - " .. name
@@ -104,11 +108,6 @@ function Music:parse(instance: Instance, name: string?): Config
             s.Looped = false
             s.SoundGroup = cfg.instance
             s.Name = "sound"
-
-            cfg.stopConnections[s] = s.Stopped:Connect(function()
-                self:playNext(cfg)
-            end)
-
             return s
         end,
         Utils:select(instance:GetChildren(), function(s)
