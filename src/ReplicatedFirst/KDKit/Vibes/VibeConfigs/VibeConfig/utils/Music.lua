@@ -53,7 +53,7 @@ function Music:iGenerateNextQueue(config: Config)
     KDRandom:ishuffle(cpy)
     Utils:iextend(nextQueue, cpy)
 
-    return nextQueue
+    config.nextQueue = nextQueue
 end
 
 function Music:playNext(config: Config)
