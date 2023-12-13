@@ -166,6 +166,7 @@ end
 function KDRandom:test(chance: number): boolean
     return self.rng:NextNumber(0, 1) < chance
 end
+KDRandom.chance = KDRandom.test
 
 function KDRandom:normal()
     -- inspired by https://github.com/Bytebit-Org/lua-statistics/blob/3bd0c0bdad2c5bbe46efd1895206287aef903d6d/src/statistics.lua#L193-L201
