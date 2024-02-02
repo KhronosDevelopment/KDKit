@@ -115,4 +115,13 @@ function Mutex:destroy()
     self.destroyed = true
 end
 
+function Mutex:wrap(func)
+    return function(...)
+        local args = { ... }
+        return self:lock(function()
+            return func(table.unpack(args))
+        end)
+    end
+end
+
 return Mutex
