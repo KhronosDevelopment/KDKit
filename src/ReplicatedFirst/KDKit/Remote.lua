@@ -125,11 +125,11 @@ function Remote:connect(callback): RBXScriptConnection?
 
         local function rateLimitedCallback(player, ...)
             if self.rateLimit then
-                Utils:ensure(function(failed)
-                    if failed then
-                        Remote.rateLimitExceeded(player, self:waitForInstance())
-                    end
-                end, self.rateLimit.use, self.rateLimit, player.UserId)
+                local success, err = pcall(self.rateLimit.use, self.rateLimit, player.UserId)
+                if not success then
+                    Remote.rateLimitExceeded(player, self:waitForInstance())
+                    error(("RateLimit for remote `%s` failed: %s"):format(self:waitForInstance().Name, err))
+                end
             end
             return errorLoggedCallback(player, ...)
         end
