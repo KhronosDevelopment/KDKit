@@ -160,6 +160,14 @@ function KDRandom:number(a: NumberRange | number?, b: number?): number
     return self.rng:NextNumber(a or 0, b or 1)
 end
 
+function KDRandom:sign(): number
+    if self:number() < 0.5 then
+        return -1
+    else
+        return 1
+    end
+end
+
 --[[
     Returns true or false with the given odds (between 0 and 1).
 --]]
