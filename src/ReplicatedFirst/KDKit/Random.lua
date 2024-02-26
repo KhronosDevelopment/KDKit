@@ -33,7 +33,7 @@ function KDRandom:ichoices(options, n)
     local nOptions = #options
     local choices = {}
     for i = 0, n - 1 do
-        table.insert(choices, table.remove(options, self:number(1, nOptions - i)))
+        table.insert(choices, table.remove(options, self:integer(1, nOptions - i)))
     end
     return choices
 end
