@@ -35,7 +35,8 @@ for _, instance in script:GetChildren() do
         )
     end
 
-    Remotes.list[instance.Name] = Remote.new(instance, rateLimit, nil, instance:GetAttribute("nonconcurrent"))
+    Remotes.list[instance.Name] =
+        Remote.new(instance, rateLimit, instance:GetAttribute("silentDrop"), instance:GetAttribute("nonconcurrent"))
 end
 
 return setmetatable(Remotes, { __index = Remotes.list }) -- so you can do Remotes.myRemote(...)
