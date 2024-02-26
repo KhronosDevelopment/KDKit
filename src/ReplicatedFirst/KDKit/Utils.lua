@@ -841,7 +841,11 @@ end
 function Utils:callable(maybeCallable: any): boolean
     if type(maybeCallable) == "function" then
         return true
-    elseif type(maybeCallable) == "table" and type(rawget(getmetatable(maybeCallable), "__call")) == "function" then
+    elseif
+        type(maybeCallable) == "table"
+        and type(getmetatable(maybeCallable)) == "table"
+        and type(rawget(getmetatable(maybeCallable), "__call")) == "function"
+    then
         return true
     end
 
