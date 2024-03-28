@@ -1303,10 +1303,14 @@ end
     end) -> {2, 4}
     ```
 --]]
-function Utils:select<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean): { [K]: V }
+function Utils:select<K, V>(tab: { [K]: V }, shouldSelect: string | (value: V, key: K) -> boolean): { [K]: V }
+    if typeof(shouldSelect) == "string" then
+        shouldSelect = self:plucker(shouldSelect)
+    end
+
     local selected = table.create(16)
     for k, v in tab do
-        if func(v, k) then
+        if shouldSelect(v, k) then
             selected[k] = v
         end
     end
@@ -1316,10 +1320,14 @@ end
 --[[
     Logical opposite of Utils:select
 --]]
-function Utils:reject<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean): { [K]: V }
+function Utils:reject<K, V>(tab: { [K]: V }, shouldReject: string | (value: V, key: K) -> boolean): { [K]: V }
+    if typeof(shouldReject) == "string" then
+        shouldReject = self:plucker(shouldReject)
+    end
+
     local selected = table.create(16)
     for k, v in tab do
-        if not func(v, k) then
+        if not shouldReject(v, k) then
             selected[k] = v
         end
     end
