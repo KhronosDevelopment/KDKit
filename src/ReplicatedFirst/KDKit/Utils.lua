@@ -1308,12 +1308,23 @@ function Utils:select<K, V>(tab: { [K]: V }, shouldSelect: string | (value: V, k
         shouldSelect = self:plucker(shouldSelect)
     end
 
-    local selected = table.create(16)
-    for k, v in tab do
+    local checkedKeys = {} :: { [K]: boolean }
+    local selected = {} :: { [K]: V }
+
+    for k, v in ipairs(tab) do
+        checkedKeys[k] = true
+
         if shouldSelect(v, k) then
+            table.insert(selected, v)
+        end
+    end
+
+    for k, v in pairs(tab) do
+        if not checkedKeys[k] and shouldSelect(v, k) then
             selected[k] = v
         end
     end
+
     return selected
 end
 
@@ -1325,13 +1336,9 @@ function Utils:reject<K, V>(tab: { [K]: V }, shouldReject: string | (value: V, k
         shouldReject = self:plucker(shouldReject)
     end
 
-    local selected = table.create(16)
-    for k, v in tab do
-        if not shouldReject(v, k) then
-            selected[k] = v
-        end
-    end
-    return selected
+    return self:select(tab, function(...)
+        return not shouldReject(...)
+    end)
 end
 
 --[[
