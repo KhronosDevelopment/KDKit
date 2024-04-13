@@ -10,7 +10,6 @@ local Vibes = {}
 
 Vibes.configs = require(script:WaitForChild("VibeConfigs"))
 Vibes.current = nil :: "VibeConfig"?
-Vibes.mutex = Mutex.new(1)
 
 local EMPTY_DEFAULT_ARGS = table.freeze({ characterPosition = Vector3.new(0, 0, 0), alive = false, everAlive = false })
 local lastDefaultArgs = EMPTY_DEFAULT_ARGS
@@ -60,38 +59,36 @@ function Vibes:determineCurrent(): ("VibeConfig"?, table?)
 end
 
 function Vibes:mustUpdate()
-    Vibes.mutex:lock(function()
-        local old = self.current
-        local new, args = self:determineCurrent()
+    local old = self.current
+    local new, args = self:determineCurrent()
 
-        if old == new then
-            return
-        end
+    if old == new then
+        return
+    end
 
-        if old then
-            old:beforeDeactivated(new)
-        end
+    if old then
+        old:beforeDeactivated(new)
+    end
 
-        if new then
-            new:beforeActivated(args, old)
-        end
+    if new then
+        new:beforeActivated(args, old)
+    end
 
-        if old then
-            old:animateOut(new)
-        end
-        if new then
-            new:animateIn(args, old)
-        end
-        self.current = new
+    if old then
+        old:animateOut(new)
+    end
+    if new then
+        new:animateIn(args, old)
+    end
+    self.current = new
 
-        if old then
-            old:afterDeactivated(new)
-        end
+    if old then
+        old:afterDeactivated(new)
+    end
 
-        if new then
-            new:afterActivated(args, old)
-        end
-    end)
+    if new then
+        new:afterActivated(args, old)
+    end
 end
 
 function Vibes:update(): boolean

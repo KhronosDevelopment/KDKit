@@ -101,9 +101,42 @@ function Mutex:lock(fnToExecuteWithLock)
         end
 
         self.locked = false
+
         Utils:ensure(function()
             me = self:newOwner()
-        end, self.lock, self, fnToExecuteWithoutLock)
+        end, function()
+            local returnValue, returnTraceback
+            local function wrapped()
+                Utils:try(fnToExecuteWithoutLock)
+                    :proceed(function(...)
+                        returnValue = { ... }
+                    end)
+                    :catch(function(traceback)
+                        returnTraceback = traceback
+                    end)
+            end
+
+            local co = coroutine.create(wrapped)
+            coroutine.resume(co)
+
+            if returnValue then
+                return table.unpack(returnValue)
+            elseif returnTraceback then
+                error(returnTraceback)
+            elseif not self.locked and self.owner == me then
+                error("You may not unlock a function which yields before acquiring the mutex lock.")
+            end
+
+            while coroutine.status(co) ~= "dead" do
+                task.wait()
+            end
+
+            if returnValue then
+                return table.unpack(returnValue)
+            elseif returnTraceback then
+                error(returnTraceback)
+            end
+        end)
     end
 
     return Utils:ensure(function()
