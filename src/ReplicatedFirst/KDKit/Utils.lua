@@ -34,20 +34,55 @@ function Utils:try<Arguments, ReturnValue>(
     ...: Arguments
 ): {
     success: boolean,
-    traceback: string?,
-    results: { ReturnValue } | { string },
+    traceback: string?, -- note that this only includes frames from AFTER :try()
+    results: { ReturnValue }?,
     catch: ("self", (err: string) -> nil) -> "self",
     proceed: ("self", (...ReturnValue) -> nil) -> "self",
     after: ("self", (err: string?) -> nil) -> "self",
     raise: () -> nil,
     result: (() -> (boolean, ...ReturnValue | string)) | (() -> ...ReturnValue),
 }
-    local results = table.pack(xpcall(func, debug.traceback, ...))
+    local function nonReEntrantWrapper(...: Arguments): ...ReturnValue
+        return func(...)
+    end
+
+    local function buildTraceback(err: string)
+        local i = 2
+        while true do
+            local info = table.pack(debug.info(i, "slnf"))
+            i += 1
+
+            if info.n == 0 then
+                -- should theoretically never happen due to nonReEntrantWrapper
+                break
+            end
+
+            local s, l, n, f = table.unpack(info)
+
+            if f == nonReEntrantWrapper then
+                break
+            end
+
+            if s == "[C]" or l < 0 then
+                continue
+            end
+
+            if n and n:gsub("%s", "") ~= "" then
+                err ..= ("\n%s:%s: in function %s"):format(s, l, n)
+            else
+                err ..= ("\n%s:%s:"):format(s, l)
+            end
+        end
+
+        return err
+    end
+
+    local results = table.pack(xpcall(nonReEntrantWrapper, buildTraceback, ...))
     local success = table.remove(results, 1)
 
     return {
-        results = results,
         success = success,
+        results = if success then results else nil,
         traceback = if success then nil else results[1],
         _raise_called = false,
         catch = function(ctx, cb: (err: string) -> nil)
@@ -80,7 +115,7 @@ function Utils:try<Arguments, ReturnValue>(
             if not ctx.success then
                 error(
                     ("The following error occurred during a KDKit.Utils.try call.\n%s"):format(
-                        self:indent(self:rstrip(ctx.traceback), "|   ")
+                        self:indent(ctx.traceback, "|   ")
                     )
                 )
             end
@@ -91,8 +126,10 @@ function Utils:try<Arguments, ReturnValue>(
         result = function(ctx)
             if ctx._raise_called then
                 return table.unpack(ctx.results)
+            elseif ctx.success then
+                return true, table.unpack(ctx.results)
             else
-                return ctx.success, table.unpack(ctx.results)
+                return false, ctx.traceback
             end
         end,
     }
@@ -1254,32 +1291,31 @@ end
     Utils.lua:950
     ```
 --]]
-function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> A2?) -> T): T
+function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> (boolean, A2 | string)) -> T): T
     local errors = {}
 
     local function aggregate(f, ...)
-        local x = table.pack(xpcall(f, debug.traceback, ...))
-        local success = table.remove(x, 1)
-        if not success then
-            table.insert(errors, self:strip(x[1]))
-            return nil
+        local tried = self:try(f, ...)
+
+        if tried.success then
+            return true, table.unpack(tried.results)
         else
-            return table.unpack(x)
+            table.insert(errors, tried.traceback)
+            return false, tried.traceback
         end
     end
 
-    local result = table.pack(xpcall(func, debug.traceback, aggregate))
-    local success = table.remove(result, 1)
-    if not success then
+    local tried = self:try(func, aggregate)
+    if not tried.success then
         table.insert(
             errors,
             ("This error occurred outside of a call to `aggregate`, so it was not protected and the function exited early.\n%s"):format(
-                result[1]
+                tried.traceback
             )
         )
     end
 
-    if #errors > 0 then
+    if next(errors) then
         self:imap(function(err: string, index: number)
             return ("Error %d:\n"):format(index) .. self:indent(self:rstrip(err), "|   ")
         end, errors)
@@ -1291,7 +1327,7 @@ function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A
         )
     end
 
-    return table.unpack(result)
+    return table.unpack(tried.results)
 end
 
 --[[
