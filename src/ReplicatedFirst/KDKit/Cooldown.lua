@@ -1,8 +1,23 @@
-local Class = require(script.Parent:WaitForChild("Class"))
-local Cooldown = Class.new("KDKit.Cooldown")
+--!strict
 
-function Cooldown:__init()
-    self.cooldowns = {}
+type CooldownImpl = {
+    __index: CooldownImpl,
+    new: () -> Cooldown,
+    start: (Cooldown, any, number) -> (),
+    stop: (Cooldown, any) -> (),
+    ready: (Cooldown, any) -> boolean,
+}
+export type Cooldown = typeof(setmetatable({} :: { cooldowns: { [any]: number } }, {} :: CooldownImpl))
+
+local Cooldown: CooldownImpl = {} :: CooldownImpl
+Cooldown.__index = Cooldown
+
+function Cooldown.new()
+    local self = setmetatable({
+        cooldowns = {},
+    }, Cooldown) :: Cooldown
+
+    return self
 end
 
 function Cooldown:start(id, seconds)
