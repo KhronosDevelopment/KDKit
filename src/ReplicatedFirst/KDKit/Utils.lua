@@ -80,7 +80,7 @@ type _Try<Ret...> = {
 
 type TryNotRaised<Ret...> = _Try<Ret...> & {
     _raise_called: false,
-    result: (self: TryNotRaised<Ret...>) -> any, -- actually: (boolean, string | Ret...),
+    result: (self: TryNotRaised<Ret...>) -> (boolean, string | any), -- the 'any' is actually 'Ret...',
 }
 
 type TryRaised<Ret...> = _Try<Ret...> & {
