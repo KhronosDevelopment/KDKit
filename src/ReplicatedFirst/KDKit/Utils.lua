@@ -1,3 +1,5 @@
+--!strict
+
 --[[
     KDKit.Utils is a collection of various utility functions that are "missing" from the standard library and the language itself.
     Yes, all of KDKit could be considered a "collection of various utility functions", but these are functions which don't quite
@@ -7,10 +9,44 @@ local Utils = {
     PRIMITIVE_TYPES = { string = true, boolean = true, number = true, ["nil"] = true },
 }
 
+type Evaluator<K, V, T> = ((V, K) -> T) | string?
+function Utils.evaluator<K, V, T>(e: Evaluator<K, V, T>): (V, K) -> T
+    if e == nil then
+        return function(v: V, k: K)
+            return (v :: any) :: T
+        end
+    elseif typeof(e) == "string" then
+        return function(v: V, k: K)
+            return ((v :: any) :: { [string]: T })[e]
+        end
+    else
+        return e
+    end
+end
+
+--[[
+    same as `xpcall` but packs the results (for easier use)
+--]]
+function Utils.packedXPCall<HandledError, Arg..., Ret...>(
+    func: (Arg...) -> Ret...,
+    handleError: (err: string) -> HandledError,
+    ...: Arg...
+): (boolean, HandledError | { any }) -- actually packed { Ret... }
+    local successAndResults = table.pack(xpcall(func, handleError, ...))
+    local success = table.remove(successAndResults, 1) :: boolean
+    if success then
+        local results = successAndResults
+        return true, results :: { any }
+    else
+        local handledError = table.remove(successAndResults, 1)
+        return false, (handledError :: any) :: HandledError
+    end
+end
+
 --[[
     try/catch syntax
     ```lua
-    local result = Utils:try(function()
+    local result = Utils.try(function()
         return 1 + "a"
     end):catch(function(err)
         print("uh oh that didn't work")
@@ -29,70 +65,99 @@ local Utils = {
                    * `raise` has already been called: It returns the result of the original function
                    * `raise` has not been called: It returns a success boolean and either an error string or the function result
 --]]
-function Utils:try<Arguments, ReturnValue>(
-    func: (...Arguments) -> ...ReturnValue,
-    ...: Arguments
-): {
+
+type _AnyTry<Ret...> = TryNotRaised<Ret...> | TryRaised<Ret...>
+
+type _Try<Ret...> = {
     success: boolean,
     traceback: string?, -- note that this only includes frames from AFTER :try()
-    results: { ReturnValue }?,
-    catch: ("self", (err: string) -> nil) -> "self",
-    proceed: ("self", (...ReturnValue) -> nil) -> "self",
-    after: ("self", (err: string?) -> nil) -> "self",
-    raise: () -> nil,
-    result: (() -> (boolean, ...ReturnValue | string)) | (() -> ...ReturnValue),
+    results: { any }?, -- actually packed { Ret... }
+    catch: (self: _AnyTry<Ret...>, (err: string) -> nil) -> _AnyTry<Ret...>,
+    proceed: (self: _AnyTry<Ret...>, (Ret...) -> nil) -> _AnyTry<Ret...>,
+    after: (self: _AnyTry<Ret...>, (err: string?) -> nil) -> _AnyTry<Ret...>,
+    raise: (self: _AnyTry<Ret...>) -> TryRaised<Ret...>,
 }
-    local function nonReEntrantWrapper(...: Arguments): ...ReturnValue
+
+type TryNotRaised<Ret...> = _Try<Ret...> & {
+    _raise_called: false,
+    result: (self: TryNotRaised<Ret...>) -> any, -- actually: (boolean, string | Ret...),
+}
+
+type TryRaised<Ret...> = _Try<Ret...> & {
+    _raise_called: true,
+    result: (self: TryRaised<Ret...>) -> Ret...,
+}
+
+-- type TryResult<Ret...> = {
+--     success: boolean,
+--     _raise_called: boolean,
+--     traceback: string?, -- note that this only includes frames from AFTER :try()
+--     results: { any }?, -- actually packed { Ret... }
+--     catch: (self: TryResult<Ret...>, (err: string) -> nil) -> TryResult<Ret...>,
+--     proceed: (self: TryResult<Ret...>, (Ret...) -> nil) -> TryResult<Ret...>,
+--     after: (self: TryResult<Ret...>, (err: string?) -> nil) -> TryResult<Ret...>,
+--     raise: (self: TryResult<Ret...>) -> TryResult<Ret...>,
+--     result: (self: TryResult<Ret...>) -> any, -- actually returns: ...ReturnValue | (boolean, ...ReturnValue) | (boolean, string)
+-- }
+
+-- type RaisedTryResult<Ret...> = {
+--     success: boolean,
+--     _raise_called: boolean,
+--     traceback: string?, -- note that this only includes frames from AFTER :try()
+--     results: { any }?, -- actually packed { Ret... }
+--     catch: (self: TryResult<Ret...>, (err: string) -> nil) -> TryResult<Ret...>,
+--     proceed: (self: TryResult<Ret...>, (Ret...) -> nil) -> TryResult<Ret...>,
+--     after: (self: TryResult<Ret...>, (err: string?) -> nil) -> TryResult<Ret...>,
+--     raise: (self: TryResult<Ret...>) -> TryResult<Ret...>,
+--     result: (self: TryResult<Ret...>) -> any, -- actually returns: ...ReturnValue | (boolean, ...ReturnValue) | (boolean, string)
+-- }
+
+function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNotRaised<Ret...>
+    local function nonReEntrantWrapper(...: Arg...): Ret...
         return func(...)
     end
 
-    local function buildTraceback(err: string)
+    local function buildTraceback(err: string): string
         local i = 2
         while true do
-            local info = table.pack(debug.info(i, "slnf"))
+            local s, l, n, f = debug.info(i, "slnf")
             i += 1
-
-            if info.n == 0 then
-                -- should theoretically never happen due to nonReEntrantWrapper
-                break
-            end
-
-            local s, l, n, f = table.unpack(info)
 
             if f == nonReEntrantWrapper then
                 break
             end
 
-            if s == "[C]" or l < 0 then
+            if s == "[C]" or l == nil or l < 0 then
                 continue
             end
 
             if n and n:gsub("%s", "") ~= "" then
-                err ..= ("\n%s:%s: in function %s"):format(s, l, n)
+                err ..= ("\n%s:%d: in function %s"):format(s, l, n)
             else
-                err ..= ("\n%s:%s:"):format(s, l)
+                err ..= ("\n%s:%d:"):format(s, l)
             end
         end
 
         return err
     end
 
-    local results = table.pack(xpcall(nonReEntrantWrapper, buildTraceback, ...))
-    local success = table.remove(results, 1)
+    local success, results = Utils.packedXPCall(nonReEntrantWrapper, buildTraceback, ...)
 
     return {
         success = success,
-        results = if success then results else nil,
-        traceback = if success then nil else results[1],
-        _raise_called = false,
-        catch = function(ctx, cb: (err: string) -> nil)
+        results = if success then results :: { any } else nil,
+        traceback = if success then results :: string else nil,
+        _raise_called = false :: false,
+        catch = function(ctx: _AnyTry<Ret...>, cb: (err: string) -> nil): _AnyTry<Ret...>
             if not ctx.success then
-                self:try(cb, ctx.traceback):catch(function(cbErr)
+                assert(ctx.traceback)
+
+                Utils.try(cb, ctx.traceback):catch(function(cbErr)
                     task.defer(
                         error,
-                        ("The following error occurred during the :catch() callback of a KDKit.Utils:try() attempt. The error was ignored.\nOriginal error that was passed to the callback:\n%s\nError that occurred within the callback:\n%s"):format(
-                            self:indent(ctx.traceback, "|   "),
-                            self:indent(cbErr, "|   ")
+                        ("The following error occurred during the :catch() callback of a KDKit.Utils.try() attempt. The error was ignored.\nOriginal error that was passed to the callback:\n%s\nError that occurred within the callback:\n%s"):format(
+                            Utils.indent(ctx.traceback, "|   "),
+                            Utils.indent(cbErr, "|   ")
                         )
                     )
                 end)
@@ -100,33 +165,41 @@ function Utils:try<Arguments, ReturnValue>(
 
             return ctx
         end,
-        proceed = function(ctx, cb: (...ReturnValue) -> nil)
+        proceed = function(ctx: _AnyTry<Ret...>, cb: (Ret...) -> nil): _AnyTry<Ret...>
             if ctx.success then
+                assert(ctx.results)
+
                 cb(table.unpack(ctx.results))
             end
 
             return ctx
         end,
-        after = function(ctx, cb: (err: string?) -> nil)
+        after = function(ctx: _AnyTry<Ret...>, cb: (err: string?) -> nil): _AnyTry<Ret...>
             cb(ctx.traceback)
             return ctx
         end,
-        raise = function(ctx)
+        raise = function(ctx: _AnyTry<Ret...>): TryRaised<Ret...>
             if not ctx.success then
+                assert(ctx.traceback)
+
                 error(
                     ("The following error occurred during a KDKit.Utils.try call.\n%s"):format(
-                        self:indent(ctx.traceback, "|   ")
+                        Utils.indent(ctx.traceback, "|   ")
                     )
                 )
             end
 
-            ctx._raise_called = true
-            return ctx
+            local typeAdjustedCtx = ctx :: TryRaised<Ret...>
+            typeAdjustedCtx._raise_called = true
+
+            return typeAdjustedCtx
         end,
-        result = function(ctx)
+        result = function(ctx: _AnyTry<Ret...>): any
             if ctx._raise_called then
+                assert(ctx.results)
                 return table.unpack(ctx.results)
             elseif ctx.success then
+                assert(ctx.results)
                 return true, table.unpack(ctx.results)
             else
                 return false, ctx.traceback
@@ -138,7 +211,7 @@ end
 --[[
     Ensures that the first function runs after the second one does, regardless of if the second function errors.
     ```lua
-    Utils:ensure(function(failed, traceback)
+    Utils.ensure(function(failed, traceback)
         if failed then
             print("uh oh, something went wrong :(", traceback) -- prints traceback including "im throwing an error"
         else
@@ -147,10 +220,14 @@ end
     end, error, "im throwing an error")
     ```
 --]]
-function Utils:ensure<A, T>(callback: (failed: boolean, traceback: string?) -> any, func: (...A) -> T, ...: A): T
-    return self:try(func, ...)
+function Utils.ensure<Arg..., Ret...>(
+    callback: (failed: boolean, traceback: string?) -> any,
+    func: (Arg...) -> Ret...,
+    ...: Arg...
+): Ret...
+    return Utils.try(func, ...)
         :after(function(err: string?)
-            self:try(callback, not not err, err):catch(function(cbErr)
+            Utils.try(callback, not not err, err):catch(function(cbErr)
                 task.defer(
                     error,
                     ("The following error occurred during the callback to a KDKit.Utils.ensure call. The error was ignored.\n%s"):format(
@@ -166,11 +243,11 @@ end
 --[[
     Returns the keys of the table.
     ```lua
-    Utils:keys({a=1, b=2, c=3}) -> { "a", "b", "c" }
-    Utils:keys({"a", "b", "c"}) -> { 1, 2, 3 }
+    Utils.keys({a=1, b=2, c=3}) -> { "a", "b", "c" }
+    Utils.keys({"a", "b", "c"}) -> { 1, 2, 3 }
     ```
 --]]
-function Utils:keys<K>(tab: { [K]: any }): { K }
+function Utils.keys<K>(tab: { [K]: any }): { K }
     local keys = table.create(16)
     for key, _value in tab do
         table.insert(keys, key)
@@ -181,11 +258,11 @@ end
 --[[
     Returns the values of the table.
     ```lua
-    Utils:keys({a=1, b=2, c=3}) -> { 1, 2, 3 }
-    Utils:keys({"a", "b", "c"}) -> { "a", "b", "c" }
+    Utils.keys({a=1, b=2, c=3}) -> { 1, 2, 3 }
+    Utils.keys({"a", "b", "c"}) -> { "a", "b", "c" }
     ```
 --]]
-function Utils:values<V>(tab: { [any]: V }): { V }
+function Utils.values<V>(tab: { [any]: V }): { V }
     local values = table.create(16)
     for _key, value in tab do
         table.insert(values, value)
@@ -198,21 +275,21 @@ end
     Similar to Python's builtin `str.rstrip` method.
 
     ```lua
-    Utils:rstrip("  hello there  ") -> "  hello there"
-    Utils:rstrip(" \n\t it strips all types of whitespace \n like this \n\t ") -> " \n\t it strips all types of whitespace \n like this"
+    Utils.rstrip("  hello there  ") -> "  hello there"
+    Utils.rstrip(" \n\t it strips all types of whitespace \n like this \n\t ") -> " \n\t it strips all types of whitespace \n like this"
     ```
 --]]
-function Utils:rstrip(str: string): string
+function Utils.rstrip(str: string): string
     local x, _ = str:gsub("%s+$", "")
     return x
 end
 
 --[[
-    Identical to `Utils:rstrip()` except removes whitespace from the left.
+    Identical to `Utils.rstrip()` except removes whitespace from the left.
     Similar to Python's builtin `str.lstrip` method.
     ```
 --]]
-function Utils:lstrip(str: string): string
+function Utils.lstrip(str: string): string
     local x, _ = str:gsub("^%s+", "")
     return x
 end
@@ -221,8 +298,8 @@ end
     Simply removes surrounding whitespace from a string.
     Similar to Python's builtin `str.strip` method.
 --]]
-function Utils:strip(str: string): string
-    return self:lstrip(self:rstrip(str))
+function Utils.strip(str: string): string
+    return Utils.lstrip(Utils.rstrip(str))
 end
 
 --[[
@@ -230,13 +307,13 @@ end
     Similar to Python's builtin `str.split` method.
 
     ```lua
-    Utils:split("Hello there, my name is Gabe!") -> { "Hello", "there,", "my", "name", "is", "Gabe!" }
-    Utils:split("  \r\n whitespace   is  \t\t    stripped   \n ") -> { "whitespace", "is", "stripped" }
-    Utils:split("a_b_c", "_") -> { "a", "b", "c" }
-    Utils:split("abc123xyz", "%d") -> { "abc", "xyz" }
+    Utils.split("Hello there, my name is Gabe!") -> { "Hello", "there,", "my", "name", "is", "Gabe!" }
+    Utils.split("  \r\n whitespace   is  \t\t    stripped   \n ") -> { "whitespace", "is", "stripped" }
+    Utils.split("a_b_c", "_") -> { "a", "b", "c" }
+    Utils.split("abc123xyz", "%d") -> { "abc", "xyz" }
     ```
 --]]
-function Utils:split(str: string, delimiter: string?): { string }
+function Utils.split(str: string, delimiter: string?): { string }
     local words = table.create(16)
 
     local wordPattern = if delimiter then ("[^%s]+"):format(delimiter) else "%S+"
@@ -251,10 +328,10 @@ end
     Returns a table containing the characters of the string.
     Similar to Python's builtin `list(string)`
     ```lua
-    Utils:characters("abc") -> { "a", "b", "c" }
+    Utils.characters("abc") -> { "a", "b", "c" }
     ```
 --]]
-function Utils:characters(s: string): { string }
+function Utils.characters(s: string): { string }
     local characters = table.create(s:len())
     for i = 1, s:len() do
         table.insert(characters, s:sub(i, i))
@@ -268,13 +345,15 @@ end
 
     ```lua
     local x = { 1, 2, 3 }
-    Utils:imap(function(v) return v * v end, x)
+    Utils.imap(function(v) return v * v end, x)
     print(x) -> { 1, 4, 9 }
     ```
 --]]
-function Utils:imap<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): nil
+function Utils.imap<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V })
+    local typeAdjustedTab = (tab :: any) :: { [K]: T }
+
     for key, value in tab do
-        tab[key] = transform(value, key)
+        typeAdjustedTab[key] = transform(value, key)
     end
 end
 
@@ -283,24 +362,24 @@ end
     Similar to Python's builtin `map` function, but is eagerly evaluated.
 
     ```lua
-    Utils:map(function(v) return v ^ 3 end, { 1, 2, 3 }) -> { 1, 8, 27 }
+    Utils.map(function(v) return v ^ 3 end, { 1, 2, 3 }) -> { 1, 8, 27 }
     ```
 --]]
-function Utils:map<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
+function Utils.map<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
     local copy = table.clone(tab)
-    self:imap(transform, copy)
-    return copy
+    Utils.imap(transform, copy)
+    return (copy :: any) :: { [K]: T }
 end
 
 --[[
-    Similar to Utils:map, except you can specify both the key and the value.
+    Similar to Utils.map, except you can specify both the key and the value.
 
     ```lua
-    Utils:mapf(function(v, k) return k + 1, v ^ 2 end, { 1, 2, 3 }) -> { [2] = 1, [3] = 4, [4] = 9 }
+    Utils.mapf(function(v, k) return k + 1, v ^ 2 end, { 1, 2, 3 }) -> { [2] = 1, [3] = 4, [4] = 9 }
     ```
 --]]
-function Utils:mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1) -> (K2, V2), tab: { [K1]: V1 }): { [K2]: V2 }
-    local output = table.create(16)
+function Utils.mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1) -> (K2, V2), tab: { [K1]: V1 }): { [K2]: V2 }
+    local output = {}
     for k1, v1 in tab do
         local k2, v2 = transform(v1, k1)
         if k2 ~= nil then
@@ -314,17 +393,36 @@ end
     Returns a string which represents the provided value while retaining as much information as possible about the value.
     Similar to Python's builtin `repr` function.
 --]]
-function Utils:repr(
+function Utils.repr(
     x: any,
     tableDepth: number?,
     tableVerbosity: number?,
     tableIndent: (string | boolean)?,
-    alreadySeenTables: table?
+    alreadySeenTables: { [{ any }]: boolean }?
 ): string
-    tableDepth = math.floor(tableDepth or 4)
-    tableVerbosity = math.floor(tableVerbosity or 10)
-    tableIndent = if tableIndent == nil or tableIndent == true then "  " else nil
-    alreadySeenTables = alreadySeenTables or table.create(16)
+    if not tableDepth then
+        tableDepth = 4
+    end
+    assert(tableDepth)
+    tableDepth = math.floor(tableDepth)
+
+    if not tableVerbosity then
+        tableVerbosity = 10
+    end
+    assert(tableVerbosity)
+    tableVerbosity = math.floor(tableVerbosity)
+
+    if tableIndent == nil or tableIndent == true then
+        tableIndent = "  "
+    else
+        tableIndent = nil
+    end
+    assert(tableIndent == nil or type(tableIndent) == "string")
+
+    if not alreadySeenTables then
+        alreadySeenTables = {}
+    end
+    assert(alreadySeenTables)
 
     local tx = typeof(x)
     if tx == "string" then
@@ -352,14 +450,14 @@ function Utils:repr(
         local function process(key, value)
             if n < tableVerbosity then
                 local part = ("[%s] = %s"):format(
-                    self:repr(
+                    Utils.repr(
                         key,
                         tableDepth - 1,
                         math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
                         false,
                         alreadySeenTables
                     ),
-                    self:repr(
+                    Utils.repr(
                         value,
                         tableDepth - 1,
                         math.min(tableVerbosity, math.max(3, tableVerbosity / 2)),
@@ -368,15 +466,15 @@ function Utils:repr(
                     )
                 )
                 if tableIndent then
-                    part = tableIndent .. part
-                    part = part:gsub("\n", "\n" .. tableIndent)
+                    part = (tableIndent :: string) .. part
+                    part = part:gsub("\n", "\n" .. (tableIndent :: string))
                 end
                 table.insert(parts, part)
                 n += 1
                 return true
             else
                 if tableIndent then
-                    table.insert(parts, tableIndent .. "...")
+                    table.insert(parts, (tableIndent :: string) .. "...")
                 end
 
                 table.insert(parts, "...")
@@ -424,14 +522,14 @@ end
     return true if the provided string only contains alphabet characters [a-zA-Z]
     similar to Python's builtin `str.isalpha` method
     ```lua
-    Utils:isAlpha("Hello") -> true
-    Utils:isAlpha("Hello!") -> false
-    Utils:isAlpha("hello there") -> false
-    Utils:isAlpha("iHave3Apples") -> false
-    Utils:isAlpha("") -> true
+    Utils.isAlpha("Hello") -> true
+    Utils.isAlpha("Hello!") -> false
+    Utils.isAlpha("hello there") -> false
+    Utils.isAlpha("iHave3Apples") -> false
+    Utils.isAlpha("") -> true
     ```
 --]]
-function Utils:isAlpha(str: string): boolean
+function Utils.isAlpha(str: string): boolean
     return str:match("[^a-zA-Z]") == nil
 end
 
@@ -439,15 +537,15 @@ end
     returns true if the provided string does not contain lowercase letters [a-z]
     similar to Python's builtin `str.isupper` method, but handles non-alpha characters differently
     ```lua
-    Utils:isUpper("HELLO") -> true
-    Utils:isUpper("Hello") -> false
-    Utils:isUpper("hello") -> false
-    Utils:isUpper("HELLO123") -> true
-    Utils:isUpper("123") -> true
-    Utils:isUpper("") -> true
+    Utils.isUpper("HELLO") -> true
+    Utils.isUpper("Hello") -> false
+    Utils.isUpper("hello") -> false
+    Utils.isUpper("HELLO123") -> true
+    Utils.isUpper("123") -> true
+    Utils.isUpper("") -> true
     ```
 --]]
-function Utils:isUpper(str: string): boolean
+function Utils.isUpper(str: string): boolean
     return str:match("[a-z]") == nil
 end
 
@@ -455,15 +553,15 @@ end
     returns true if the provided string does not contain uppercase letters [A-Z]
     similar to Python's builtin `str.islower` method, but handles non-alpha characters differently
     ```lua
-    Utils:isLower("hello") -> true
-    Utils:isLower("Hello") -> false
-    Utils:isLower("HELLO") -> false
-    Utils:isLower("hello123") -> true
-    Utils:isLower("123") -> true
-    Utils:isLower("") -> true
+    Utils.isLower("hello") -> true
+    Utils.isLower("Hello") -> false
+    Utils.isLower("HELLO") -> false
+    Utils.isLower("hello123") -> true
+    Utils.isLower("123") -> true
+    Utils.isLower("") -> true
     ```
 --]]
-function Utils:isLower(str: string): boolean
+function Utils.isLower(str: string): boolean
     return str:match("[A-Z]") == nil
 end
 
@@ -473,14 +571,14 @@ end
 
     !! Warning: returns false when the string contains a period `.` or a negative sign `-`
     ```lua
-    Utils:isNumeric("123") -> true
-    Utils:isNumeric("123.456") -> false
-    Utils:isNumeric("-5") -> false
-    Utils:isNumeric("hello") -> false
-    Utils:isNumeric("") -> true
+    Utils.isNumeric("123") -> true
+    Utils.isNumeric("123.456") -> false
+    Utils.isNumeric("-5") -> false
+    Utils.isNumeric("hello") -> false
+    Utils.isNumeric("") -> true
     ```
 --]]
-function Utils:isNumeric(str: string): boolean
+function Utils.isNumeric(str: string): boolean
     return str:match("[^0-9]") == nil
 end
 
@@ -488,17 +586,17 @@ end
     return true if the provided string only contains alphanumeric characters [a-zA-Z0-9]
     similar to Python's builtin `str.isalphanum` method
     ```lua
-    Utils:isAlphanumeric("abc123") -> true
-    Utils:isAlphanumeric("abc") -> true
-    Utils:isAlphanumeric("123") -> true
-    Utils:isAlphanumeric("abc 123") -> false
-    Utils:isAlphanumeric("123 + 456") -> false
-    Utils:isAlphanumeric("hello!") -> false
-    Utils:isAlphanumeric("123.456") -> false
-    Utils:isAlphanumeric("") -> true
+    Utils.isAlphanumeric("abc123") -> true
+    Utils.isAlphanumeric("abc") -> true
+    Utils.isAlphanumeric("123") -> true
+    Utils.isAlphanumeric("abc 123") -> false
+    Utils.isAlphanumeric("123 + 456") -> false
+    Utils.isAlphanumeric("hello!") -> false
+    Utils.isAlphanumeric("123.456") -> false
+    Utils.isAlphanumeric("") -> true
     ```
 --]]
-function Utils:isAlphanumeric(str: string): boolean
+function Utils.isAlphanumeric(str: string): boolean
     return str:match("[^0-9a-zA-Z]") == nil
 end
 
@@ -506,14 +604,14 @@ end
     returns true if the provided string starts with the provided prefix
     similar to Python's builtin `string.startswith` method
     ```lua
-    Utils:startsWith("hello world", "hello") -> true
-    Utils:startsWith("abcdefg", "abc") -> true
-    Utils:startsWith("abcdefg", "xyz") -> false
-    Utils:startsWith("abcdefg", "") -> true
-    Utils:startsWith("", "abc") -> false
+    Utils.startsWith("hello world", "hello") -> true
+    Utils.startsWith("abcdefg", "abc") -> true
+    Utils.startsWith("abcdefg", "xyz") -> false
+    Utils.startsWith("abcdefg", "") -> true
+    Utils.startsWith("", "abc") -> false
     ```
 --]]
-function Utils:startsWith(str: string, prefix: string): boolean
+function Utils.startsWith(str: string, prefix: string): boolean
     return str:sub(1, prefix:len()) == prefix
 end
 
@@ -521,28 +619,28 @@ end
     returns true if the provided string ends with the provided suffix
     similar to Python's builtin `string.endswith` method
     ```lua
-    Utils:endsWith("hello world", "world") -> true
-    Utils:endsWith("abcdefg", "efg") -> true
-    Utils:endsWith("abcdefg", "xyz") -> false
-    Utils:endsWith("abcdefg", "") -> true
-    Utils:endsWith("", "abc") -> false
+    Utils.endsWith("hello world", "world") -> true
+    Utils.endsWith("abcdefg", "efg") -> true
+    Utils.endsWith("abcdefg", "xyz") -> false
+    Utils.endsWith("abcdefg", "") -> true
+    Utils.endsWith("", "abc") -> false
     ```
 --]]
-function Utils:endsWith(str: string, suffix: string): boolean
+function Utils.endsWith(str: string, suffix: string): boolean
     return str:sub(str:len() - suffix:len() + 1) == suffix
 end
 
 --[[
     returns true if and only if the keys in the provided table are continuous increasing integers that start at 1
     ```lua
-    Utils:isLinearArray({ "a", "b", "c" }) -> true
-    Utils:isLinearArray({ "a", "b", "c", extra = "d" }) -> false
-    Utils:isLinearArray({ a = 1, b = 2, c = 3 }) -> false
-    Utils:isLinearArray({ [2] = "a", [1] = "b", [3] = "c" }) -> true
-    Utils:isLinearArray({ [2] = "a", [3] = "c" }) -> false
+    Utils.isLinearArray({ "a", "b", "c" }) -> true
+    Utils.isLinearArray({ "a", "b", "c", extra = "d" }) -> false
+    Utils.isLinearArray({ a = 1, b = 2, c = 3 }) -> false
+    Utils.isLinearArray({ [2] = "a", [1] = "b", [3] = "c" }) -> true
+    Utils.isLinearArray({ [2] = "a", [3] = "c" }) -> false
     ```
 --]]
-function Utils:isLinearArray(x: table): boolean
+function Utils.isLinearArray(x: { any }): boolean
     local last = 0
     for key, _value in x do
         if key ~= last + 1 then
@@ -559,10 +657,10 @@ end
     If the parameter is not a table, then it is returned without adjustment
     unless the depth parameter is < 0, then `"<exceeded maximum depth>"` is returned.
     ```lua
-    Utils:truncateAfterMaxDepth({ a = 1, b = 2, c = { 1, 2, 3 }}, 1) -> { a = 1, b = 2, c = "<exceeded maximum depth>" }
+    Utils.truncateAfterMaxDepth({ a = 1, b = 2, c = { 1, 2, 3 }}, 1) -> { a = 1, b = 2, c = "<exceeded maximum depth>" }
     ```
 --]]
-function Utils:truncateAfterMaxDepth(x: any, depth: number): any
+function Utils.truncateAfterMaxDepth(x: any, depth: number): any
     if depth < 0 then
         return "<exceeded maximum depth>"
     elseif type(x) ~= "table" then
@@ -572,7 +670,7 @@ function Utils:truncateAfterMaxDepth(x: any, depth: number): any
     local copy = table.clone(x)
 
     for key, value in copy do
-        copy[key] = self:truncateAfterMaxDepth(value, depth - 1)
+        copy[key] = Utils.truncateAfterMaxDepth(value, depth - 1)
     end
 
     return copy
@@ -582,17 +680,21 @@ end
     Returns a *deep copy* of the table, which is guaranteed to be generally serializable, while losing as little information as possible.
     Specifically designed to be serialized via JSON.
     ```lua
-    Utils:makeSerializable({ "hi", true, workspace.MyPart, Enum.Material.Wood, { "sub table", value = 123 } })
+    Utils.makeSerializable({ "hi", true, workspace.MyPart, Enum.Material.Wood, { "sub table", value = 123 } })
      -> { "hi", true, "<Instance.Part> Workspace.MyPart", "Enum.Material.Wood", { ["1"] = "sub table", value = 123 } }
     ```
 --]]
-function Utils:makeSerializable(tab: any, alreadySeen: table?): table
+function Utils.makeSerializable(tab: any, alreadySeen: { [{ any }]: boolean }?): string | { any }
     if type(tab) ~= "table" then
         tab = { data = tab }
     end
 
-    alreadySeen = alreadySeen or table.create(16)
-    local isLinearArray = self:isLinearArray(tab)
+    if not alreadySeen then
+        alreadySeen = {}
+    end
+    assert(alreadySeen)
+
+    local isLinearArray = Utils.isLinearArray(tab)
     local copy = table.create(if isLinearArray then #tab else 16)
 
     if alreadySeen[tab] then
@@ -606,7 +708,7 @@ function Utils:makeSerializable(tab: any, alreadySeen: table?): table
         -- If the table can be represented as an array (with continuous increasing integer keys)
         -- then do so. Otherwise, stringify all of the keys and go full hashmap.
         if not isLinearArray and type(key) ~= "string" then
-            key = self:repr(key)
+            key = Utils.repr(key)
         end
 
         -- values must be primitive or serializable tables
@@ -614,9 +716,9 @@ function Utils:makeSerializable(tab: any, alreadySeen: table?): table
         if Utils.PRIMITIVE_TYPES[tv] then
             -- pass
         elseif tv == "table" then
-            value = self:makeSerializable(value, alreadySeen)
+            value = Utils.makeSerializable(value, alreadySeen)
         else
-            value = self:repr(value)
+            value = Utils.repr(value)
         end
 
         copy[key] = value
@@ -631,12 +733,12 @@ end
     If the data contains non-serializable values, an attempt will be made to retain as much information as possible.
     See KDKit.Utils.makeSerializable
     ```lua
-    Utils:safeJSONEncode({ "hi", true, workspace.MyPart, Enum.Material.Wood, { "sub table", value = 123 } })
+    Utils.safeJSONEncode({ "hi", true, workspace.MyPart, Enum.Material.Wood, { "sub table", value = 123 } })
      -> '["hi", true, "<Instance.Part> Workspace.MyPart", "Enum.Material.Wood", {"1": "sub table", "value": 123}]'
     ```
 --]]
-function Utils:safeJSONEncode(data: any): string
-    return game:GetService("HttpService"):JSONEncode(self:makeSerializable(data))
+function Utils.safeJSONEncode(data: any): string
+    return game:GetService("HttpService"):JSONEncode(Utils.makeSerializable(data))
 end
 
 --[[
@@ -644,23 +746,23 @@ end
     Similar to passing a `key` to Python's builtin `list.sort` function.
     You may also return a table to include tiebreakers.
 --]]
-function Utils:isort<K, V>(tab: { [K]: V }, key: ((value: V) -> any)?): nil
-    local rankings = table.create(#tab)
+function Utils.isort<K, V>(tab: { V }, key: (value: V) -> any)
+    local rankings = {}
 
     table.sort(tab, function(a, b)
         rankings[a] = rankings[a] or key(a)
         rankings[b] = rankings[b] or key(b)
 
-        return self:compare(rankings[a], rankings[b]) == -1
+        return Utils.compare(rankings[a], rankings[b]) == -1
     end)
 end
 
 --[[
     Similar to Utils.isort, but makes a copy first.
 --]]
-function Utils:sort<K, V>(tab: { [K]: V }, key: ((value: V) -> any)?): { [K]: V }
+function Utils.sort<K, V>(tab: { V }, key: (value: V) -> any): { V }
     tab = table.clone(tab)
-    self:isort(tab, key)
+    Utils.isort(tab, key)
     return tab
 end
 
@@ -673,7 +775,7 @@ end
 
     Note: this function does not consider physical locations of SurfaceGuis and BillboardGuis within the workspace.
 --]]
-function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
+function Utils.guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean?
     local aGui = a:FindFirstAncestorOfClass("ScreenGui")
         or a:FindFirstAncestorOfClass("SurfaceGui")
         or a:FindFirstAncestorOfClass("BillboardGui")
@@ -691,26 +793,28 @@ function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
         return nil -- ambiguous
     end
 
+    assert(aGui and bGui)
+
     -- different gui? ez pz
     if aGui ~= bGui then
-        -- prioritize ScreenGui over world Guis
-        if aGui:IsA("ScreenGui") and not bGui:IsA("ScreenGui") then
+        if aGui:IsA("ScreenGui") and bGui:IsA("ScreenGui") then
+            if aGui.DisplayOrder ~= bGui.DisplayOrder then
+                return aGui.DisplayOrder > bGui.DisplayOrder
+            else
+                if bGui:IsDescendantOf(aGui) then
+                    return false
+                elseif aGui:IsDescendantOf(bGui) then
+                    return true
+                end
+                -- else, ambiguous
+            end
+        elseif aGui:IsA("ScreenGui") and not bGui:IsA("ScreenGui") then
             return true
         elseif not aGui:IsA("ScreenGui") and bGui:IsA("ScreenGui") then
             return false
         end
 
-        -- they are both on the same "surface", just compare DisplayOrder
-        if aGui.DisplayOrder ~= bGui.DisplayOrder then
-            return aGui.DisplayOrder > bGui.DisplayOrder
-        else
-            -- descendant?
-            if bGui:IsDescendantOf(aGui) then
-                return false
-            elseif aGui:IsDescendantOf(bGui) then
-                return true
-            end
-        end
+        -- TODO: figure out how SurfaceGui/BillboardGui works
 
         return nil -- ambiguous
     end
@@ -754,11 +858,11 @@ function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
     local bAncestor = b
     while not firstCommonAncestor do
         if aAncestor.Parent then
-            aAncestor = aAncestor.Parent
+            aAncestor = aAncestor.Parent :: GuiObject
             aAncestors[aAncestor] = true
         end
         if bAncestor.Parent then
-            bAncestor = bAncestor.Parent
+            bAncestor = bAncestor.Parent :: GuiObject
             bAncestors[bAncestor] = true
         end
 
@@ -770,11 +874,11 @@ function Utils:guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean
     end
 
     local aFirstDescendantOfCommonAncestor, bFirstDescendantOfCommonAncestor
-    for _, v in ipairs(firstCommonAncestor:GetChildren()) do
-        if aAncestors[v] then
-            aFirstDescendantOfCommonAncestor = v
-        elseif bAncestors[v] then
-            bFirstDescendantOfCommonAncestor = v
+    for _, v in firstCommonAncestor:GetChildren() do
+        if aAncestors[v :: any] then
+            aFirstDescendantOfCommonAncestor = v :: GuiObject
+        elseif bAncestors[v :: any] then
+            bFirstDescendantOfCommonAncestor = v :: GuiObject
         end
     end
 
@@ -791,28 +895,28 @@ end
     local x = { a = 1, b = 2, c = 3 }
     local y = { a = 2, b = 3, d = 4 }
 
-    Utils:imerge(x, y)
+    Utils.imerge(x, y)
 
     x -> { a = 2, b = 3, c = 3, d = 4 } -- (a, b, and d modified in place)
     y -> { a = 2, b = 3, d = 4 } -- (unchanged)
     ```
 --]]
-function Utils:imerge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 })
+function Utils.imerge(dst: { [any]: any }, src: { [any]: any })
     for key, value in src do
         dst[key] = value
     end
 end
 
 --[[
-    Same as Utils:imerge but makes a copy first.
+    Same as Utils.imerge but makes a copy first.
     ```lua
-    Utils:merge({ a = 1, b = 2 }, { a = 2, c = 3 }}) -> { a = 2, b = 2, c = 3 }
+    Utils.merge({ a = 1, b = 2 }, { a = 2, c = 3 }}) -> { a = 2, b = 2, c = 3 }
     ```
 --]]
-function Utils:merge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
+function Utils.merge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
     dst = table.clone(dst)
-    self:imerge(dst, src)
-    return dst
+    Utils.imerge(dst, src)
+    return dst :: { [K1 | K2]: V1 | V2 }
 end
 
 --[[
@@ -822,35 +926,35 @@ end
     local x = { 'a', 'b' }
     local y = { 'c', 'd' }
 
-    Utils:iextend(x, y)
+    Utils.iextend(x, y)
 
     x -> { 'a', 'b', 'c', 'd' } -- (c and d inserted)
     y -> { 'c', 'd' } -- (unchanged)
     ```
 --]]
-function Utils:iextend<V1, V2>(left: { V1 }, right: { V2 }): nil
+function Utils.iextend(left: { any }, right: { any })
     table.move(right, 1, #right, #left + 1, left)
 end
 
 --[[
-    Same as Utils:iextend but makes a copy first.
+    Same as Utils.iextend but makes a copy first.
     ```lua
-    Utils:extend({ 'a', 'b' }, { 'c', 'd' }) -> { 'a', 'b', 'c', 'd' }
+    Utils.extend({ 'a', 'b' }, { 'c', 'd' }) -> { 'a', 'b', 'c', 'd' }
     ```
 --]]
-function Utils:extend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
-    left = table.clone(left)
-    self:iextend(left, right)
-    return left
+function Utils.extend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
+    local output = table.clone(left) :: { V1 | V2 }
+    Utils.iextend(output, right)
+    return output
 end
 
 --[[
     Linear interpolation.
     ```lua
-    Utils:lerp(0, 20, 0.1) -> 2
+    Utils.lerp(0, 20, 0.1) -> 2
     ```
 --]]
-function Utils:lerp(a: number, b: number, f: number, clamp: boolean?): number
+function Utils.lerp(a: number, b: number, f: number, clamp: boolean?): number
     if clamp then
         return math.clamp((b - a) * f + a, math.min(a, b), math.max(a, b))
     else
@@ -861,10 +965,10 @@ end
 --[[
     Inverse of Utils.lerp
     ```lua
-    Utils:unlerp(10, 20, 12) -> 0.2
+    Utils.unlerp(10, 20, 12) -> 0.2
     ```
 --]]
-function Utils:unlerp(a: number, b: number, x: number, clamp: boolean?): number
+function Utils.unlerp(a: number, b: number, x: number, clamp: boolean?): number
     if clamp then
         return math.clamp((x - a) / (b - a), 0, 1)
     else
@@ -875,7 +979,7 @@ end
 --[[
     Checks if the given value is callable, i.e. that it is a function or a callable table.
 --]]
-function Utils:callable(maybeCallable: any): boolean
+function Utils.callable(maybeCallable: any): boolean
     if type(maybeCallable) == "function" then
         return true
     elseif
@@ -893,13 +997,13 @@ end
     Gets the attribute, if present, otherwise returns the provided default value.
     Similar to Python's builtin `getattr`
     ```lua
-    Utils:getattr({a = 123}, 'b', 456) -> 456
-    Utils:getattr(Vector3.new(), 'blah') -> nil
+    Utils.getattr({a = 123}, 'b', 456) -> 456
+    Utils.getattr(Vector3.new(), 'blah') -> nil
     ```
 --]]
-function Utils:getattr(x: any, attr: any, default: any)
+function Utils.getattr<K, V, T>(x: { [K]: V } | any, attr: K, default: T?): V | T?
     local s, r = pcall(function()
-        return x[attr]
+        return (x :: { [K]: V })[attr]
     end)
 
     if not s or r == nil then
@@ -913,7 +1017,7 @@ end
     Pretty simple. Welds two parts together using a WeldConstraint.
     Note that you will need to set the parent of the returned WeldConstraint in order to make it effective.
 --]]
-function Utils:weld(a: BasePart, b: BasePart, reuse: WeldConstraint): WeldConstraint
+function Utils.weld(a: BasePart, b: BasePart, reuse: WeldConstraint): WeldConstraint
     local weld = reuse or Instance.new("WeldConstraint")
 
     weld.Part0 = a
@@ -926,62 +1030,55 @@ end
 --[[
     Returns a function that, when invoked, will access the provided key.
 --]]
-function Utils:plucker(...: string): (value: any, key: any?) -> any
+type Pluckable<K, T> = { [K]: Pluckable<K, T> | T }
+function Utils.plucker<K, T>(...: K): (value: Pluckable<K, T>, key: K) -> T
     local chain = { ... }
-    return function(value: any, _key: any?)
+    return function(value: Pluckable<K, T>, _key: K): T
+        local result: Pluckable<K, T> | T = value
+
         for _, key in chain do
-            value = value[key]
+            result = (result :: Pluckable<K, T>)[key]
         end
 
-        return value
+        return result :: T
     end
 end
 
 --[[
-    Basically equivalent to Utils:imap(Utils:plucker(attribute), tab)
+    Basically equivalent to Utils.imap(Utils.plucker(attribute), tab)
 --]]
-function Utils:ipluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: { [K]: V }): nil
-    if typeof(plucker) == "string" then
-        plucker = self:plucker(plucker)
-    end
-
-    self:imap(plucker, tab)
+function Utils.ipluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V })
+    Utils.imap(Utils.evaluator(plucker), tab)
 end
 
 --[[
-    Same as Utils:ipluck, but makes a copy first.
+    Same as Utils.ipluck, but makes a copy first.
 --]]
-function Utils:pluck<K, V, T>(plucker: string | (value: K, key: V) -> T, tab: { [K]: V }): { [K]: T }
-    tab = table.clone(tab)
-    self:ipluck(plucker, tab)
-    return tab
+function Utils.pluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V }): { [K]: T }
+    local t2 = table.clone(tab)
+    Utils.ipluck(plucker, t2)
+    return (t2 :: any) :: { [K]: T }
 end
 
 --[[
     Returns true if at least one of the elements of the table are truthy.
     Optionally, you may specify a function which will be used to judge the truthiness of each element.
     Note that this function is lazy, so any elements that occur after a truthy one will not be evaluated.
-    If you wish to avoid this lazy behavior, use Utils:any(Utils:map(collection, evaluator)).
+    If you wish to avoid this lazy behavior, use Utils.any(Utils.map(collection, evaluator)).
     * Very similar to Python's builtin `any` function.
 
     ```lua
-    Utils:any({false, true, false}) -> true
-    Utils:any({false, false}) -> false
-    Utils:any({}) -> false
-    Utils:any({1, 2, 3, -5}, function(x) return x < 0 end) -> true
+    Utils.any({false, true, false}) -> true
+    Utils.any({false, false}) -> false
+    Utils.any({}) -> false
+    Utils.any({1, 2, 3, -5}, function(x) return x < 0 end) -> true
     ```
 --]]
-function Utils:any<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | string)?): boolean
-    if evaluator == nil then
-        evaluator = function(x)
-            return x
-        end
-    elseif typeof(evaluator) == "string" then
-        evaluator = self:plucker(evaluator)
-    end
+function Utils.any<K, V>(collection: { [K]: V }, evaluator: Evaluator<K, V, boolean>): boolean
+    local e = Utils.evaluator(evaluator) :: (V, K) -> boolean
 
     for k, v in collection do
-        if evaluator(v, k) then
+        if e(v, k) then
             return true
         end
     end
@@ -990,19 +1087,13 @@ function Utils:any<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | s
 end
 
 --[[
-    Similar to Utils:any(), but checks if _all_ the elements are truthy.
+    Similar to Utils.any(), but checks if _all_ the elements are truthy.
 --]]
-function Utils:all<K, V>(collection: { [K]: V }, evaluator: (((V, K) -> any) | string)?): boolean
-    if evaluator == nil then
-        evaluator = function(x)
-            return x
-        end
-    elseif typeof(evaluator) == "string" then
-        evaluator = self:plucker(evaluator)
-    end
+function Utils.all<K, V>(collection: { [K]: V }, evaluator: Evaluator<K, V, boolean>): boolean
+    local e = Utils.evaluator(evaluator) :: (V, K) -> boolean
 
     for k, v in collection do
-        if not evaluator(v, k) then
+        if not e(v, k) then
             return false
         end
     end
@@ -1018,21 +1109,21 @@ end
     If both `a` and `b` are arrays,  corresponding elements are compared
     in order until a tie is broken. (similar to tuple comparison in Python)
     ```lua
-    Utils:compare(5, 10) -> -1
-    Utils:compare(10, 10) -> 0
-    Utils:compare(15, 10) -> 1
-    Utils:compare({ "a", "y" }, { "a", "z" }) -> -1
-    Utils:compare({ "a", "b" }, { "a", "b" }) -> 0
-    Utils:compare({ "a", "z" }, { "a", "y" }) -> 1
-    Utils:compare({ "a", "z" }, { "b", "y" }) -> -1
+    Utils.compare(5, 10) -> -1
+    Utils.compare(10, 10) -> 0
+    Utils.compare(15, 10) -> 1
+    Utils.compare({ "a", "y" }, { "a", "z" }) -> -1
+    Utils.compare({ "a", "b" }, { "a", "b" }) -> 0
+    Utils.compare({ "a", "z" }, { "a", "y" }) -> 1
+    Utils.compare({ "a", "z" }, { "b", "y" }) -> -1
     ```
 --]]
-function Utils:compare(a, b)
+function Utils.compare(a: any, b: any): number
     if a == b then
         return 0
     elseif type(a) == "table" and type(b) == "table" then
         for i = 1, math.huge do
-            local c = self:compare(a[i], b[i])
+            local c = Utils.compare(a[i], b[i])
             if c ~= 0 then
                 return c
             end
@@ -1053,17 +1144,12 @@ end
 
     ```lua
     local x = {10, 11, 12, 14, 15}
-    Utils:bisect(x, 13) -> 4
+    Utils.bisect(x, 13) -> 4
     ```
 --]]
-function Utils:bisect<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V) -> any)?): number
-    if not key then
-        key = function(x)
-            return x
-        end
-    end
-
-    element = key(element, nil)
+function Utils.bisect<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>): number
+    local e = Utils.evaluator(key) :: (V, number?) -> any
+    local elementEvaluation = e(element, nil)
 
     local low = 1
     local high = #tab + 1
@@ -1072,7 +1158,7 @@ function Utils:bisect<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V
     while low < high do
         middle = math.floor((low + high) / 2)
 
-        if self:compare(element, key(tab[middle], middle)) >= 0 then
+        if Utils.compare(elementEvaluation, e(tab[middle], middle)) >= 0 then
             low = middle + 1
         else
             high = middle
@@ -1086,14 +1172,14 @@ end
     Insert `element` into `tab` such that it remains sorted (with an optional sorting key).
     Similar to Python's builtin `bisect.insort` function.
 --]]
-function Utils:insort<K, V>(tab: { [K]: V }, element: V, key: ((value: K, key: V) -> any)?): nil
-    table.insert(tab, self:bisect(tab, element, key), element)
+function Utils.insort<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
+    table.insert(tab, Utils.bisect(tab, element, key), element)
 end
 
 --[[
     Returns an un-parented Part that has CanCollide/Anchored on, and everything else off.
 --]]
-function Utils:getBlankPart(parent: Instance?): Part
+function Utils.getBlankPart(parent: Instance?): Part
     local part = Instance.new("Part")
 
     part.TopSurface = Enum.SurfaceType.SmoothNoOutlines
@@ -1121,19 +1207,20 @@ end
         - it returns the index of the minimum value along with the value itself
 
     ```lua
-    Utils:min({3, 1, 8}) -> 1, 2
-    Utils:min({-8, 3}, math.abs) -> 3, 2
+    Utils.min({3, 1, 8}) -> 1, 2
+    Utils.min({-8, 3}, math.abs) -> 3, 2
     ```
 --]]
-function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V, K)
+function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>): (V, K)
+    local e = Utils.evaluator(key) :: (V, K) -> any
     local minValue, minKey = nil, nil
 
     if key then
         local minimumEvaluation = nil
 
         for k, v in tab do
-            local evaluation = key(v, k)
-            if minimumEvaluation == nil or self:compare(evaluation, minimumEvaluation) < 0 then
+            local evaluation = e(v, k)
+            if minimumEvaluation == nil or Utils.compare(evaluation, minimumEvaluation) < 0 then
                 minValue = v
                 minKey = k
                 minimumEvaluation = evaluation
@@ -1141,7 +1228,7 @@ function Utils:min<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V
         end
     else
         for k, v in tab do
-            if minValue == nil or self:compare(v, minValue) < 0 then
+            if minValue == nil or Utils.compare(v, minValue) < 0 then
                 minValue = v
                 minKey = k
             end
@@ -1155,25 +1242,26 @@ end
     Exactly the same as Utils.min, but only returns the key of the minimum value.
     Similar to Python's `numpy.argmin`
     ```lua
-    Utils:minKey({a = 2, b = 1, c = 4}) -> "b"
+    Utils.minKey({a = 2, b = 1, c = 4}) -> "b"
     ```
 --]]
-function Utils:minKey(...): any
-    return select(2, self:min(...))
+function Utils.minKey(...): any
+    return select(2, Utils.min(...))
 end
 
 --[[
     Identical to `Utils.min` but, you know.
 --]]
-function Utils:max<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V, K)
+function Utils.max<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>): (V, K)
+    local e = Utils.evaluator(key) :: (V, K) -> any
     local maxValue, maxKey = nil, nil
 
     if key then
         local maximumEvaluation = nil
 
         for k, v in tab do
-            local evaluation = key(v, k)
-            if maximumEvaluation == nil or self:compare(evaluation, maximumEvaluation) > 0 then
+            local evaluation = e(v, k)
+            if maximumEvaluation == nil or Utils.compare(evaluation, maximumEvaluation) > 0 then
                 maxValue = v
                 maxKey = k
                 maximumEvaluation = evaluation
@@ -1181,7 +1269,7 @@ function Utils:max<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> any)?): (V
         end
     else
         for k, v in tab do
-            if maxValue == nil or self:compare(v, maxValue) > 0 then
+            if maxValue == nil or Utils.compare(v, maxValue) > 0 then
                 maxValue = v
                 maxKey = k
             end
@@ -1194,30 +1282,24 @@ end
 --[[
     Same as `Utils.minKey` but, you know.
 --]]
-function Utils:maxKey(...): any
-    return select(2, self:max(...))
+function Utils.maxKey(...): any
+    return select(2, Utils.max(...))
 end
 
 --[[
     Pretty self explanatory, I think.
     ```lua
-    Utils:sum({ 1, 2, 3 }) -> 6
-    Utils:sum({ 4, "5", 6 }) -> 15
+    Utils.sum({ 1, 2, 3 }) -> 6
+    Utils.sum({ 4, "5", 6 }) -> 15
     ```
 --]]
-function Utils:sum<K, V>(tab: { [K]: V }, key: ((value: V, key: K) -> number)?): number
+function Utils.sum<K, V>(tab: { [K]: V }, key: Evaluator<K, V, number>): number
+    local e = Utils.evaluator(key) :: (V, K) -> number
+
     local total = 0
-
-    if key then
-        for k, v in tab do
-            total += key(v, k)
-        end
-    else
-        for k, v in tab do
-            total += v
-        end
+    for k, v in tab do
+        total += e(v, k)
     end
-
     return total
 end
 
@@ -1225,11 +1307,11 @@ end
     Swaps the keys and values of the provided table.
     If there are duplicate values, the last occurrence will be kept.
     ```lua
-    Utils:invert({ a = "b", c = "d" }) -> { b = "a", d = "c" }
+    Utils.invert({ a = "b", c = "d" }) -> { b = "a", d = "c" }
     ```
 --]]
-function Utils:invert<K, V>(tab: { [K]: V }): { [V]: K }
-    local inverted = table.create(#tab)
+function Utils.invert<K, V>(tab: { [K]: V }): { [V]: K }
+    local inverted = {}
     for k, v in tab do
         inverted[v] = k
     end
@@ -1240,21 +1322,22 @@ end
     Returns the unique values in the provided table.
     Equivalent to Ruby's `Array::uniq`
     ```lua
-    Utils:unique({ "a", "b", "c", "a", "b" }) -> { "a", "b", "c" }
+    Utils.unique({ "a", "b", "c", "a", "b" }) -> { "a", "b", "c" }
     ```
 --]]
-function Utils:unique<V>(tab: { [any]: V }): { V }
-    return self:keys(self:invert(tab))
+function Utils.unique<V>(tab: { [any]: V }): { V }
+    return Utils.keys(Utils.invert(tab))
 end
 
 --[[
     Indents each line of the provided string.
     ```lua
-    Utils:indent("hello\nworld") -> "    hello\n    world"
+    Utils.indent("hello\nworld") -> "    hello\n    world"
     ```
 --]]
-function Utils:indent(str: string, using: string?): string
+function Utils.indent(str: string, using: string?): string
     using = using or "    "
+    assert(using)
     return using .. str:gsub("\n", "\n" .. using)
 end
 
@@ -1262,7 +1345,7 @@ end
     Waits to throw errors until after the block is complete.
     Inspired by Ruby RSpec's "aggregate_failures"
     ```lua
-    Utils:aggregateErrors(function(aggregate)
+    Utils.aggregateErrors(function(aggregate)
         for i = 1, 3 do
             aggregate(function()
                 error(("I am throwing an error. (%d)"):format(i))
@@ -1291,22 +1374,25 @@ end
     Utils.lua:950
     ```
 --]]
-function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> (boolean, A2 | string)) -> T): T
+function Utils.aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> (boolean, A2 | string)) -> T): T
     local errors = {}
 
     local function aggregate(f, ...)
-        local tried = self:try(f, ...)
+        local tried = Utils.try(f, ...)
 
         if tried.success then
+            assert(tried.results)
             return true, table.unpack(tried.results)
         else
+            assert(tried.traceback)
             table.insert(errors, tried.traceback)
             return false, tried.traceback
         end
     end
 
-    local tried = self:try(func, aggregate)
+    local tried = Utils.try(func, aggregate)
     if not tried.success then
+        assert(tried.traceback)
         table.insert(
             errors,
             ("This error occurred outside of a call to `aggregate`, so it was not protected and the function exited early.\n%s"):format(
@@ -1316,8 +1402,8 @@ function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A
     end
 
     if next(errors) then
-        self:imap(function(err: string, index: number)
-            return ("Error %d:\n"):format(index) .. self:indent(self:rstrip(err), "|   ")
+        Utils.imap(function(err: string, index: number)
+            return ("Error %d:\n"):format(index) .. Utils.indent(Utils.rstrip(err), "|   ")
         end, errors)
         error(
             ("The following %d error(s) occurred within a call to Utils.aggregateErrors:\n%s"):format(
@@ -1327,6 +1413,7 @@ function Utils:aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A
         )
     end
 
+    assert(tried.results)
     return table.unpack(tried.results)
 end
 
@@ -1334,29 +1421,17 @@ end
     Select elements from the provided table.
     Similar to Ruby's `Array::select` (which I think is added by ActiveSupport but I'm too lazy to check)
     ```lua
-    Utils:select({1, 2, 3, 4, 5}, function(x)
+    Utils.select({1, 2, 3, 4, 5}, function(x)
         return x % 2 == 0
     end) -> {2, 4}
     ```
 --]]
-function Utils:select<K, V>(tab: { [K]: V }, shouldSelect: string | (value: V, key: K) -> boolean): { [K]: V }
-    if typeof(shouldSelect) == "string" then
-        shouldSelect = self:plucker(shouldSelect)
-    end
-
-    local checkedKeys = {} :: { [K]: boolean }
+function Utils.select<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>): { [K]: V }
+    local e = Utils.evaluator(shouldSelect) :: (V, K) -> boolean
     local selected = {} :: { [K]: V }
 
-    for k, v in ipairs(tab) do
-        checkedKeys[k] = true
-
-        if shouldSelect(v, k) then
-            table.insert(selected, v)
-        end
-    end
-
-    for k, v in pairs(tab) do
-        if not checkedKeys[k] and shouldSelect(v, k) then
+    for k, v in tab do
+        if e(v, k) then
             selected[k] = v
         end
     end
@@ -1365,24 +1440,29 @@ function Utils:select<K, V>(tab: { [K]: V }, shouldSelect: string | (value: V, k
 end
 
 --[[
-    Logical opposite of Utils:select
+    Logical opposite of Utils.select
 --]]
-function Utils:reject<K, V>(tab: { [K]: V }, shouldReject: string | (value: V, key: K) -> boolean): { [K]: V }
-    if typeof(shouldReject) == "string" then
-        shouldReject = self:plucker(shouldReject)
+function Utils.reject<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>): { [K]: V }
+    local e = Utils.evaluator(shouldReject) :: (V, K) -> boolean
+    local selected = {} :: { [K]: V }
+
+    for k, v in tab do
+        if not e(v, k) then
+            selected[k] = v
+        end
     end
 
-    return self:select(tab, function(...)
-        return not shouldReject(...)
-    end)
+    return selected
 end
 
 --[[
     Returns the first value in the table where the `func` returns `true`.
 --]]
-function Utils:find<K, V>(tab: { [K]: V }, func: (value: V, key: K) -> boolean): (V?, K?)
+function Utils.find<K, V>(tab: { [K]: V }, evaluator: Evaluator<K, V, boolean>): (V?, K?)
+    local e = Utils.evaluator(evaluator) :: (V, K) -> boolean
+
     for k, v in tab do
-        if func(v, k) then
+        if e(v, k) then
             return v, k
         end
     end
@@ -1394,7 +1474,7 @@ end
     Returns the index of the value in the table, or nil if it wasn't found.
     Similar to Python's `list.index`, but does not throw an error.
 --]]
-function Utils:index<K>(tab: { [K]: any }, value: any): K?
+function Utils.index<K>(tab: { [K]: any }, value: any): K?
     for k, v in tab do
         if value == v then
             return k
@@ -1410,7 +1490,7 @@ end
 
     Will return true for points that are exactly on the surface of the part.
 --]]
-function Utils:partTouchesPoint(part: Part, point: Vector3): boolean
+function Utils.partTouchesPoint(part: Part, point: Vector3): boolean
     point = part.CFrame:PointToObjectSpace(point)
     return math.abs(point.X) <= part.Size.X / 2
         and math.abs(point.Y) <= part.Size.Y / 2
@@ -1421,14 +1501,14 @@ end
     Returns true if and only if the two provided tables have the same keys with equivalent values.
     Does not recurse into table values; if that is desirable, see deepEqual.
     ```lua
-    Utils:shallowEqual({a=1, b=2}, {b=2, a=1}) -> true
-    Utils:shallowEqual({a=1, b=2}, {a=3, b=4}) -> false
-    Utils:shallowEqual({a=1}, {a=1, b=2}) -> false
-    Utils:shallowEqual({}, {}) -> true
-    Utils:shallowEqual({a=1, b={1,2,3}}, {a=1, b={1,2,3}}) -> false -- see deepEqual
+    Utils.shallowEqual({a=1, b=2}, {b=2, a=1}) -> true
+    Utils.shallowEqual({a=1, b=2}, {a=3, b=4}) -> false
+    Utils.shallowEqual({a=1}, {a=1, b=2}) -> false
+    Utils.shallowEqual({}, {}) -> true
+    Utils.shallowEqual({a=1, b={1,2,3}}, {a=1, b={1,2,3}}) -> false -- see deepEqual
     ```
 --]]
-function Utils:shallowEqual(a: table | any, b: table | any): boolean
+function Utils.shallowEqual(a: any, b: any): boolean
     if a == b then
         return true
     end
@@ -1454,10 +1534,10 @@ end
 --[[
     Equivalent to shallowEqual, but also compares nested tables.
     ```lua
-    Utils:deepEqual({a=1, b={1,2,3}}, {a=1, b={1,2,3}}) -> true
+    Utils.deepEqual({a=1, b={1,2,3}}, {a=1, b={1,2,3}}) -> true
     ```
 --]]
-function Utils:deepEqual(a: table | any, b: table | any): boolean
+function Utils.deepEqual(a: any, b: any): boolean
     if a == b then
         return true
     end
@@ -1466,13 +1546,13 @@ function Utils:deepEqual(a: table | any, b: table | any): boolean
     end
 
     for k, v in a do
-        if not self:deepEqual(v, b[k]) then
+        if not Utils.deepEqual(v, b[k]) then
             return false
         end
     end
 
     for k, v in b do
-        if a[k] == nil or not self:deepEqual(v, a[k]) then
+        if a[k] == nil or not Utils.deepEqual(v, a[k]) then
             return false
         end
     end
@@ -1491,7 +1571,7 @@ local NORMAL_IDS_EXCEPT_TOP: { [Enum.NormalId]: Vector3 } = {
     [Enum.NormalId.Back] = Vector3.fromNormalId(Enum.NormalId.Back),
     [Enum.NormalId.Bottom] = Vector3.fromNormalId(Enum.NormalId.Bottom),
 }
-function Utils:resolveNormalId(part: Part, normal: Vector3): Enum.NormalId
+function Utils.resolveNormalId(part: Part, normal: Vector3): Enum.NormalId
     for normalId, untransformedTrueNormal in NORMAL_IDS_EXCEPT_TOP do
         --[[
         Un-optimized solution:
