@@ -1,10 +1,13 @@
+--!strict
+
 local RunService = game:GetService("RunService")
-local GuiService = game:GetService("GuiService")
-local UserInputService = game:GetService("UserInputService")
 
 if RunService:IsServer() then
-    return nil
+    return { "Cannot use the mouse on the server!" }
 end
+
+local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
 
 local Mouse = {
     cursors = {
@@ -12,46 +15,49 @@ local Mouse = {
         grabbing = "rbxasset://textures/Cursors/KeyboardMouse/ArrowCursor.png",
         dragging = "rbxasset://textures/Cursors/mouseIconCameraTrack.png",
     },
-    cursorByContext = {},
-    contexts = {},
+    cursorByContext = {} :: { [string]: string },
+    contexts = {} :: { string },
 }
 
-function Mouse:setIcon(context, cursor)
+function Mouse.setIcon(context: string?, cursor: string?)
     context = context or "global"
-    cursor = self.cursors[cursor] or cursor
+    cursor = Mouse.cursors[cursor] or cursor
 
-    if self.cursorByContext[context] == cursor then
+    assert(context)
+    assert(cursor)
+
+    if Mouse.cursorByContext[context] == cursor then
         return
     end
-    self.cursorByContext[context] = cursor
+    Mouse.cursorByContext[context] = cursor
 
     -- move this context to the back, since it most recently changed
     -- or delete it if the cursor was cleared
-    local i = table.find(self.contexts, context)
+    local i = table.find(Mouse.contexts, context)
     if i then
-        table.remove(self.contexts, i)
+        table.remove(Mouse.contexts, i)
     end
     if cursor then
-        table.insert(self.contexts, context)
+        table.insert(Mouse.contexts, context)
     end
 
     -- update the cursor
-    self:updateIcon()
+    Mouse.updateIcon()
 end
 
-function Mouse:updateIcon()
-    local icon = self.cursorByContext[self.contexts[#self.contexts]]
+function Mouse.updateIcon(): string
+    local icon = Mouse.cursorByContext[Mouse.contexts[#Mouse.contexts]]
         or "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"
     UserInputService.MouseIcon = icon
     return icon
 end
 
-function Mouse:getRay(offset)
-    local x, y = self:getPosition()
+function Mouse.getRay(offset: number): Ray
+    local x, y = Mouse.getPosition()
     return workspace.CurrentCamera:ScreenPointToRay(x, y, offset)
 end
 
-function Mouse:getPosition(topIsZero)
+function Mouse.getPosition(topIsZero: boolean?): (number, number)
     local pos = UserInputService:GetMouseLocation()
 
     if not topIsZero then
@@ -62,5 +68,5 @@ function Mouse:getPosition(topIsZero)
     return pos.X, pos.Y
 end
 
-Mouse:updateIcon()
+Mouse.updateIcon()
 return Mouse
