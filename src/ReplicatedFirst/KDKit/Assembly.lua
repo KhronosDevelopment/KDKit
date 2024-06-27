@@ -1,28 +1,47 @@
+--!strict
 --[[
     Network ownership, made easy.
 --]]
-local Class = require(script.Parent:WaitForChild("Class"))
 local Utils = require(script.Parent:WaitForChild("Utils"))
-local Assembly = Class.new("Assembly")
 
-type AUTO = "auto"
-Assembly.static.AUTO = "auto"
-Assembly.static.autoFlush = {} :: { ["Class.Assembly"]: boolean }
+type NetworkOwner = (Player | "auto")?
+type AssemblyImpl = {
+    __index: AssemblyImpl,
+    new: (BasePart?, NetworkOwner) -> Assembly,
+    getOwningPlayer: (Assembly) -> Player?,
+    clean: (Assembly) -> (),
+    setNetworkOwner: (Assembly, NetworkOwner) -> (),
+    setInstance: (Assembly, BasePart?) -> (),
+    flush: (Assembly, boolean?) -> (),
+    autoFlush: { [Assembly]: boolean },
+}
+export type Assembly = typeof(setmetatable(
+    {} :: { instance: BasePart?, networkOwner: NetworkOwner, cleaned: boolean },
+    {} :: AssemblyImpl
+))
 
-function Assembly:__init(instance: BasePart?, networkOwner: (Player | AUTO)?)
-    self.instance = instance
-    self.networkOwner = networkOwner
-    self.cleaned = false
+local Assembly: AssemblyImpl = {
+    autoFlush = {},
+} :: AssemblyImpl
+Assembly.__index = Assembly
+
+function Assembly.new(instance, networkOwner)
+    local self = setmetatable({
+        instance = instance,
+        networkOwner = networkOwner,
+        cleaned = false,
+    }, Assembly) :: Assembly
 
     self:flush(true)
+    Assembly.autoFlush[self] = networkOwner ~= "auto"
 
-    Assembly.autoFlush[self] = networkOwner ~= Assembly.AUTO
+    return self
 end
 
-function Assembly:getOwningPlayer(): Player?
+function Assembly:getOwningPlayer()
     -- returns `nil` if the server owns the assembly or if the ownership is AUTO
     -- otherwise, returns self.networkOwner
-    if self.networkOwner == nil or self.networkOwner == Assembly.AUTO then
+    if self.networkOwner == nil or self.networkOwner == "auto" then
         return nil
     else
         return self.networkOwner
@@ -34,27 +53,27 @@ function Assembly:clean()
     self.cleaned = true
 end
 
-function Assembly:setNetworkOwner(networkOwner: (Player | AUTO)?)
+function Assembly:setNetworkOwner(networkOwner: NetworkOwner)
     self.networkOwner = networkOwner
     self:flush()
 
     if not self.cleaned then -- theoretically unnecessary, you should not be invoking this function after cleaning!
-        Assembly.autoFlush[self] = networkOwner ~= Assembly.AUTO
+        Assembly.autoFlush[self] = networkOwner ~= "auto"
     end
 end
 
-function Assembly:setInstance(instance: BasePart?)
+function Assembly:setInstance(instance)
     self.instance = instance
     self:flush()
 end
 
-function Assembly:flush(suppressWarnings: boolean?)
-    Utils:try(function()
+function Assembly:flush(suppressWarnings)
+    Utils.try(function()
         if not self.instance or self.instance.Anchored then
             return
         end
 
-        if self.networkOwner == Assembly.AUTO then
+        if self.networkOwner == "auto" then
             self.instance:SetNetworkOwnershipAuto()
         else
             self.instance:SetNetworkOwner(self.networkOwner)
