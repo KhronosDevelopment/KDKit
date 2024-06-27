@@ -1,3 +1,5 @@
+--!strict
+
 local RunService = game:GetService("RunService")
 local Utils = require(script.Parent:WaitForChild("Utils"))
 local Time = require(script.Parent:WaitForChild("Time"))
@@ -6,6 +8,8 @@ local Time = require(script.Parent:WaitForChild("Time"))
     Humans are unpredictable and like to read data in comfortable formats. This module contains utilities to navigate
     the complex problem of communicating with humans.
 --]]
+type Casing = { transformer: (string, number) -> string, separator: string }
+type TimeUnit = { seconds: number, name: string }
 local Humanize = {
     CASING = {
         none = {
@@ -72,7 +76,7 @@ local Humanize = {
             end,
             separator = "", -- handled within the transformer, since there is a trailing dot
         },
-    },
+    } :: { [string]: Casing },
     TIME_UNITS = {
         {
             seconds = 60 * 60 * 24 * (365 + 1 / 4 - 1 / 100 + 1 / 400), -- math is for leap years
@@ -98,7 +102,7 @@ local Humanize = {
             seconds = 1,
             name = "second",
         },
-    },
+    } :: { TimeUnit },
     IRREGULAR_NOUNS_PLURALIZATION = {
         -- Based on this list, from an American perspective: http://www.esldesk.com/vocabulary/irregular-nouns
         -- There are a couple of words that have different plural versions depending on the context (i.e. "There are 10 fish in my aquarium." and "I caught 2 fishes today, 15 salmon and 10 tuna.")
@@ -208,7 +212,7 @@ local Humanize = {
         wife = "wives",
         wolf = "wolves",
         woman = "women",
-    },
+    } :: { [string]: string },
 }
 
 --[[
@@ -226,18 +230,17 @@ local Humanize = {
     Humanize:detectCasingAndExtractWords("complex_-_Strings are \t REASONABLY_SUPPORTED, \n yes---really") -> { "complex", "Strings", "are", "REASONABLY", "SUPPORTED", "yes", "really" }
     ```
 --]]
-function Humanize:detectCasingAndExtractWords(text)
+function Humanize.detectCasingAndExtractWords(text: string): { string }
     local words = table.create(16)
 
-    local wordStartedAt = nil
+    local wordStartedAt: number? = nil
     local previousCharacterIsLetter = false
     local previousCharacterIsNumber = false
-    local previousLetterIsUpper = false -- variable is actually unused, but it's kept here for consistency
     local previousLetterIsLower = false
     for characterIndex = 1, text:len() do
         local character = text:sub(characterIndex, characterIndex)
-        local characterIsLetter = Utils:isAlpha(character)
-        local characterIsNumber = Utils:isNumeric(character)
+        local characterIsLetter = Utils.isAlpha(character)
+        local characterIsNumber = Utils.isNumeric(character)
         local letterIsUpper = characterIsLetter and (character == character:upper())
         local letterIsLower = characterIsLetter and not letterIsUpper
 
@@ -266,7 +269,6 @@ function Humanize:detectCasingAndExtractWords(text)
 
         previousCharacterIsLetter = characterIsLetter
         previousCharacterIsNumber = characterIsNumber
-        previousLetterIsUpper = letterIsUpper
         previousLetterIsLower = letterIsLower
     end
 
@@ -301,21 +303,21 @@ end
     Humanize:casing("complex_-_Strings are \t REASONABLY_SUPPORTED!", "upperKebab") -> "COMPLEX-STRINGS-ARE-REASONABLY-SUPPORTED"
     ```
 --]]
-function Humanize:casing(text, mode)
-    local casing = self.CASING[mode]
+function Humanize.casing(text: string, mode: string)
+    local casing = Humanize.CASING[mode]
     if not casing then
         error(
             ("Invalid casing mode `%s`. Valid options are %s."):format(
-                Utils:repr(mode),
-                self:list(Utils:map(function(option)
-                    return Utils:repr(option)
-                end, Utils:keys(self.CASING)))
+                Utils.repr(mode),
+                Humanize.list(Utils.map(function(option)
+                    return Utils.repr(option)
+                end, Utils.keys(Humanize.CASING)))
             )
         )
     end
 
-    local words = self:detectCasingAndExtractWords(text)
-    Utils:imap(casing.transformer, words)
+    local words = Humanize.detectCasingAndExtractWords(text)
+    Utils.imap(casing.transformer, words)
     return table.concat(words, casing.separator)
 end
 
@@ -328,8 +330,8 @@ end
     Humanize:list({"a", "b", "c"}, 2, "item") -> "a, b, and 1 other item"
     ```
 --]]
-function Humanize:list(array, maxItems, name)
-    if not Utils:isLinearArray(array) then
+function Humanize.list(array: { string }, maxItems: number?, name: string?)
+    if not Utils.isLinearArray(array) then
         error("You may only pass linear arrays to `KDKit.Humanize.list`.")
     end
     local n = #array
@@ -350,16 +352,16 @@ function Humanize:list(array, maxItems, name)
         end
 
         if extra > 0 then
-            table.insert(items, ("and %d other %s"):format(extra, self:plural(name, extra)))
+            table.insert(items, ("and %d other %s"):format(extra, Humanize.plural(name :: string, extra)))
         else
             items[n] = "and " .. items[n]
         end
 
         return table.concat(items, ", ")
     else
-        local items = Utils:map(function(item)
+        local items = Utils.map(function(item)
             if type(item) ~= "string" then
-                return Utils:repr(item)
+                return Utils.repr(item)
             else
                 return item
             end
@@ -382,7 +384,7 @@ end
     Humanize:timestamp(0, nil, true) -> "1970-01-01 12:00:00 AM GMT"
     ```
 --]]
-function Humanize:timestamp(unixTimestamp, format, addTimezone)
+function Humanize.timestamp(unixTimestamp: number, format: string?, addTimezone: boolean?): string
     -- on the server, add the timezone by default
     -- but on the client, the player likely already knows
     -- what timezone they are in, so do *not* add it by default.
@@ -393,7 +395,7 @@ function Humanize:timestamp(unixTimestamp, format, addTimezone)
     local str = os.date(format or "%Y-%m-%d %I:%M:%S %p", unixTimestamp or Time())
 
     if addTimezone then
-        str ..= " " .. self:casing(
+        str ..= " " .. Humanize.casing(
             os.date("%Z"), -- ex: "Pacific Daylight Time"
             "upper_acronym"
         )
@@ -408,8 +410,8 @@ end
     Humanize:date(0) -> "1970-01-01"
     ```
 --]]
-function Humanize:date(unixTimestamp, addTimezone)
-    return self:timestamp(unixTimestamp, "%Y-%m-%d", addTimezone)
+function Humanize.date(unixTimestamp: number, addTimezone: boolean?): string
+    return Humanize.timestamp(unixTimestamp, "%Y-%m-%d", addTimezone)
 end
 
 --[[
@@ -432,13 +434,13 @@ end
     Humanize:timeDelta(-86400 * 7 * 3) -> "-3 weeks"
     ```
 --]]
-function Humanize:timeDelta(seconds, short)
+function Humanize.timeDelta(seconds: number, short: boolean?): string
     local sign = seconds < 0 and "-" or ""
     seconds = math.abs(seconds)
 
     local value
     local unit
-    for _, unitOption in self.TIME_UNITS do
+    for _, unitOption in Humanize.TIME_UNITS do
         unit = unitOption
         value = math.floor(seconds / unit.seconds)
         if value >= 1 then
@@ -449,7 +451,7 @@ function Humanize:timeDelta(seconds, short)
     if short then
         return ("%s%d%s"):format(sign, value, unit.name:sub(1, 1))
     else
-        return ("%s%d %s"):format(sign, value, self:plural(unit.name, value))
+        return ("%s%d %s"):format(sign, value, Humanize.plural(unit.name, value))
     end
 end
 
@@ -469,34 +471,34 @@ end
     Humanize:plural("fish", 5) -> "fish"
     ```
 --]]
-function Humanize:plural(word, count)
+function Humanize.plural(word: string, count: number?): string
     if count == 1 then
         return word
     end
 
-    local irregularPluralVersion = self.IRREGULAR_NOUNS_PLURALIZATION[Utils:strip(word):lower()]
+    local irregularPluralVersion = Humanize.IRREGULAR_NOUNS_PLURALIZATION[Utils.strip(word):lower()]
     if irregularPluralVersion then
-        if Utils:isUpper(word) then
+        if Utils.isUpper(word) then
             return irregularPluralVersion:upper()
-        elseif Utils:isLower(word) then
+        elseif Utils.isLower(word) then
             return irregularPluralVersion:lower()
         else
-            return self:casing(irregularPluralVersion, "sentence")
+            return Humanize.casing(irregularPluralVersion, "sentence")
         end
     end
 
     local ending = "s"
     if
-        Utils:endsWith(word, "s")
-        or Utils:endsWith(word, "sh")
-        or Utils:endsWith(word, "ch")
-        or Utils:endsWith(word, "z")
-        or Utils:endsWith(word, "x")
+        Utils.endsWith(word, "s")
+        or Utils.endsWith(word, "sh")
+        or Utils.endsWith(word, "ch")
+        or Utils.endsWith(word, "z")
+        or Utils.endsWith(word, "x")
     then
         ending = "es"
     end
 
-    if Utils:isUpper(word) then
+    if Utils.isUpper(word) then
         ending = ending:upper()
     end
 
@@ -520,7 +522,7 @@ end
     Humanize:percent(500 / 100) -> "100%"
     ```
 --]]
-function Humanize:percent(odds)
+function Humanize.percent(odds: number): string
     if odds <= 1 / 1_000_000 then
         return "0%"
     end
@@ -551,14 +553,15 @@ end
     Humanize:number(1, { decimalPlaces = 4, removeTrailingZeros = false }) -> "1.0000"
     ```
 --]]
-function Humanize:number(number, options)
+type NumberFmtOptions = { decimalPlaces: number?, addCommas: boolean?, removeTrailingZeros: boolean? }
+function Humanize.number(number: number, options: NumberFmtOptions): string
     options.decimalPlaces = options.decimalPlaces or 7
     options.addCommas = options.addCommas or false
     if options.removeTrailingZeros == nil then
         options.removeTrailingZeros = true
     end
 
-    local fmt = "%." .. options.decimalPlaces .. "f"
+    local fmt = "%." .. (options.decimalPlaces :: number) .. "f"
     local str = fmt:format(number)
 
     if options.addCommas then
@@ -593,8 +596,8 @@ end
 --[[
     Simply a shortcut for Humanize:number(x, { addCommas = true, decimalPlaces = 0 })
 --]]
-function Humanize:integer(number: number): string
-    return self:number(number, { addCommas = true, decimalPlaces = 0 })
+function Humanize.integer(number: number): string
+    return Humanize.number(number, { addCommas = true, decimalPlaces = 0 })
 end
 
 --[[
@@ -610,20 +613,22 @@ end
     Humanize:money(85.98, false, "pound") -> "85.98 pounds"
     ```
 --]]
-function Humanize:money(number, noCents, unit)
+function Humanize.money(number: number, noCents: boolean?, unit: string?): string
     if noCents then
         number = math.floor(number)
     else
         number = math.floor(number) + math.floor((number % 1) * 100) / 100
     end
 
-    local result, _ =
-        self:number(number, { addCommas = true, decimalPlaces = if noCents then 0 else 2, removeTrailingZeros = false })
-            :gsub("%.00$", "")
+    local result, _ = Humanize.number(number, {
+        addCommas = true,
+        decimalPlaces = if noCents then 0 else 2,
+        removeTrailingZeros = false,
+    }):gsub("%.00$", "")
 
     if unit then
         if not (result == "1.00" or result == "-1.00" or result == "1" or result == "-1") then
-            unit = self:plural(unit)
+            unit = Humanize.plural(unit)
         end
 
         return ("%s %s"):format(result, unit)
@@ -639,7 +644,7 @@ end
     Humanize:hex("\0\n\t\v\0") -> "000A090B00"
     ```
 --]]
-function Humanize:hex(string)
+function Humanize.hex(string: string): string
     return string:gsub(".", function(c)
         return ("%02X"):format(c:byte())
     end)
@@ -652,9 +657,9 @@ end
     Humanize:hex("000A090B00") -> "\0\n\t\v\0"
     ```
 --]]
-function Humanize:unhex(hex)
+function Humanize.unhex(hex: string): string
     return hex:gsub("..", function(h)
-        return string.char(tonumber(h, 16))
+        return string.char(tonumber(h, 16) or 0)
     end)
 end
 
@@ -666,11 +671,11 @@ end
     Humanize:colorToHex(Color3.fromRGB(255, 255, 255)) -> "FFFFFF"
     ```
 --]]
-function Humanize:colorToHex(color)
+function Humanize.colorToHex(color: Color3): string
     return ("%02X%02X%02X"):format(
-        math.clamp(math.round(color.r * 255), 0, 255),
-        math.clamp(math.round(color.g * 255), 0, 255),
-        math.clamp(math.round(color.b * 255), 0, 255)
+        math.clamp(math.round(color.R * 255), 0, 255),
+        math.clamp(math.round(color.G * 255), 0, 255),
+        math.clamp(math.round(color.B * 255), 0, 255)
     )
 end
 
@@ -682,15 +687,15 @@ end
     Humanize:colorToHex("FFFFFF") -> Color3.fromRGB(255, 255, 255))
     ```
 --]]
-function Humanize:hexToColor(hex)
+function Humanize:hexToColor(hex: string): Color3
     if hex:len() ~= 6 then
-        error(("Invalid hex code: %s"):format(Utils:repr(hex)))
+        error(("Invalid hex code: %s"):format(Utils.repr(hex)))
     end
 
     local r, g, b = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
 
     if not r or not g or not b then
-        error(("Invalid hex code: %s"):format(Utils:repr(hex)))
+        error(("Invalid hex code: %s"):format(Utils.repr(hex)))
     end
 
     return Color3.fromRGB(r, g, b)
