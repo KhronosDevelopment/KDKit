@@ -221,7 +221,7 @@ end
     ```
 --]]
 function Utils.ensure<Arg..., Ret...>(
-    callback: (failed: boolean, traceback: string?) -> any,
+    callback: (failed: boolean, traceback: string?) -> nil,
     func: (Arg...) -> Ret...,
     ...: Arg...
 ): Ret...

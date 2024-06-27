@@ -1,3 +1,5 @@
+--!strict
+
 local Utils = require(script.Parent:WaitForChild("Utils"))
 
 local KDRandom = {
@@ -12,7 +14,7 @@ function KDRandom.integer(a: NumberRange | number?, b: number?): number
         a, b = a.Min, a.Max
     end
 
-    return KDRandom.rng:NextInteger(a or 0, b or 1)
+    return KDRandom.rng:NextInteger((a or 0) :: number, b or 1)
 end
 
 function KDRandom.number(a: NumberRange | number?, b: number?): number
@@ -20,7 +22,7 @@ function KDRandom.number(a: NumberRange | number?, b: number?): number
         a, b = a.Min, a.Max
     end
 
-    return KDRandom.rng:NextNumber(a or 0, b or 1)
+    return KDRandom.rng:NextNumber((a or 0) :: number, b or 1)
 end
 
 function KDRandom.linearChoice<V>(options: { V }): V
@@ -122,7 +124,7 @@ function KDRandom.uuid(strlen: number, avoidCollisions: { [string]: any }?, hat:
     end
 end
 
-function KDRandom.withRNG(rng, f, ...)
+function KDRandom.withRNG<Arg..., Ret...>(rng: Random, f: (Arg...) -> Ret..., ...: Arg...): Ret...
     local oldRNG = KDRandom.rng
     KDRandom.rng = rng
 
@@ -131,17 +133,17 @@ function KDRandom.withRNG(rng, f, ...)
     end, f, ...)
 end
 
-function KDRandom.withSeed(seed, f, ...)
+function KDRandom.withSeed<Arg..., Ret...>(seed: number?, f: (Arg...) -> Ret..., ...: Arg...): Ret...
     return KDRandom.withRNG(Random.new(seed), f, ...)
 end
 
-function KDRandom.vector(minMagnitude, maxMagnitude)
+function KDRandom.vector(minMagnitude: number, maxMagnitude: number?): Vector3
     local v = Vector3.new(KDRandom.number(-1, 1), KDRandom.number(-1, 1), KDRandom.number(-1, 1))
 
     return v.Unit * KDRandom.number(minMagnitude, maxMagnitude or minMagnitude)
 end
 
-function KDRandom.angle()
+function KDRandom.angle(): CFrame
     return CFrame.Angles(
         KDRandom.number(-math.pi, math.pi),
         KDRandom.number(-math.pi, math.pi),
@@ -165,7 +167,7 @@ function KDRandom.test(chance: number): boolean
 end
 KDRandom.chance = KDRandom.test
 
-function KDRandom.normal()
+function KDRandom.normal(): number
     -- inspired by https://github.com/Bytebit-Org/lua-statistics/blob/3bd0c0bdad2c5bbe46efd1895206287aef903d6d/src/statistics.lua#L193-L201
     return math.sqrt(-2 * math.log(KDRandom.number(0.0001, 1))) * math.cos(TWO_PI * KDRandom.number())
 end
