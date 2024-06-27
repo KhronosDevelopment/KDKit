@@ -9,6 +9,7 @@ local Mutex = require(script.Parent:WaitForChild("Mutex"))
 local Vibes = {}
 
 Vibes.configs = require(script:WaitForChild("VibeConfigs"))
+Vibes.Music = require(script.VibeConfigs.VibeConfig.utils.Music)
 Vibes.current = nil :: "VibeConfig"?
 
 local EMPTY_DEFAULT_ARGS = table.freeze({ characterPosition = Vector3.new(0, 0, 0), alive = false, everAlive = false })

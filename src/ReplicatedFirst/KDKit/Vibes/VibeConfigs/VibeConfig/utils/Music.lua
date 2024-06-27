@@ -3,7 +3,11 @@ local TweenService = game:GetService("TweenService")
 local Utils = require(script.Parent.Parent.Parent.Parent.Parent:WaitForChild("Utils"))
 local KDRandom = require(script.Parent.Parent.Parent.Parent.Parent:WaitForChild("Random"))
 
-local Music = {}
+local Music = {
+    muted = false,
+    group = Instance.new("SoundGroup", SoundService),
+}
+Music.group.Volume = 1
 
 do -- instances
     Music.instanceTemplate = Instance.new("SoundGroup")
@@ -100,7 +104,7 @@ function Music:parse(instance: Instance, name: string?): Config
     end
 
     cfg.instance.Volume = 0
-    cfg.instance.Parent = SoundService
+    cfg.instance.Parent = self.group
 
     cfg.queue = KDRandom:shuffle(Utils:map(
         function(s: Sound)
@@ -127,6 +131,14 @@ end
 
 function Music:fadeOut(config: Config, tweenInfo: TweenInfo)
     TweenService:Create(config.instance, tweenInfo, { Volume = 0 }):Play()
+end
+
+function Music:setVolume(volume: number)
+    self.group.Volume = volume
+end
+
+function Music:getVolume(): number
+    return self.group.Volume
 end
 
 return Music
