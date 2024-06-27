@@ -5,75 +5,78 @@ local KDRandom = {
 }
 
 local TWO_PI = math.pi * 2
-local UUID_HAT = Utils:characters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+local UUID_HAT = Utils.characters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-function KDRandom:linearChoice(options)
-    return options[self.rng:NextInteger(1, #options)]
-end
-
-function KDRandom:keyChoice(options)
-    local keys = table.create(#options)
-    for key, _ in options do
-        table.insert(keys, key)
+function KDRandom.integer(a: NumberRange | number?, b: number?): number
+    if typeof(a) == "NumberRange" then
+        a, b = a.Min, a.Max
     end
 
-    return self:linearChoice(keys)
+    return KDRandom.rng:NextInteger(a or 0, b or 1)
 end
 
-function KDRandom:choice(options)
-    local k = self:keyChoice(options)
-    if k == nil then
-        return nil
+function KDRandom.number(a: NumberRange | number?, b: number?): number
+    if typeof(a) == "NumberRange" then
+        a, b = a.Min, a.Max
     end
 
-    return options[k]
+    return KDRandom.rng:NextNumber(a or 0, b or 1)
 end
 
-function KDRandom:ichoices(options, n)
-    local nOptions = #options
+function KDRandom.linearChoice<V>(options: { V }): V
+    return options[KDRandom.integer(1, #options)]
+end
+
+function KDRandom.keyChoice<K, V>(options: { [K]: V }): K
+    return KDRandom.linearChoice(Utils.keys(options))
+end
+
+function KDRandom.choice<K, V>(options: { [K]: V }): V
+    return options[KDRandom.keyChoice(options)]
+end
+
+function KDRandom.ichoices<V>(options: { V }, n: number): { V }
     local choices = {}
-    for i = 0, n - 1 do
-        table.insert(choices, table.remove(options, self:integer(1, nOptions - i)))
+
+    for i = #options, #options - n + 1, -1 do
+        table.insert(choices, table.remove(options, KDRandom.integer(1, i)) :: V)
     end
+
     return choices
 end
 
-function KDRandom:choices(options, n)
-    return self:ichoices(table.clone(options), n)
+function KDRandom.choices<V>(options: { V }, n: number): { V }
+    return KDRandom.ichoices(table.clone(options), n)
 end
 
-function KDRandom:color(saturation, value)
-    return Color3.fromHSV(
-        self.rng:NextNumber(0, 1),
-        saturation or self.rng:NextNumber(0, 1),
-        value or self.rng:NextNumber(0, 1)
-    )
+function KDRandom.color(saturation: number?, value: number?): Color3
+    return Color3.fromHSV(KDRandom.number(0, 1), saturation or KDRandom.number(0, 1), value or KDRandom.number(0, 1))
 end
 
-function KDRandom:enum(e)
-    return self:linearChoice(e:GetEnumItems())
+function KDRandom.enum(e: Enum): EnumItem
+    return KDRandom.linearChoice(e:GetEnumItems())
 end
 
-function KDRandom:ishuffle(t)
+function KDRandom.ishuffle(t: { [any]: any })
     local N = #t
     for i = N, 2, -1 do
-        local r = self.rng:NextInteger(1, i)
+        local r = KDRandom.integer(1, i)
         t[i], t[r] = t[r], t[i]
     end
 end
 
-function KDRandom:shuffle(t)
+function KDRandom.shuffle<K, V>(t: { [K]: V }): { [K]: V }
     t = table.clone(t)
-    self:ishuffle(t)
+    KDRandom.ishuffle(t)
     return t
 end
 
-function KDRandom:weightedChoice(options)
+function KDRandom.weightedChoice<K>(options: { [K]: number }): K
     local totalWeight = 0
     for option, weight in options do
         totalWeight += weight
     end
-    local winner = self.rng:NextNumber(0, totalWeight)
+    local winner = KDRandom.number(0, totalWeight)
 
     totalWeight = 0
     for option, weight in options do
@@ -82,14 +85,16 @@ function KDRandom:weightedChoice(options)
             return option
         end
     end
+
+    error("Called weightedChoice with empty table!")
 end
 
-function KDRandom:uuid(strlen: number, avoidCollisions: { [string]: any }?, hat: ({ string } | string)?): string
+function KDRandom.uuid(strlen: number, avoidCollisions: { [string]: any }?, hat: ({ string } | string)?): string
     if hat == nil then
         hat = UUID_HAT
     else
         if type(hat) == "string" then
-            hat = Utils:characters(hat)
+            hat = Utils.characters(hat)
         end
 
         assert(next(hat), "cannot use empty hat for uuid generation")
@@ -98,14 +103,14 @@ function KDRandom:uuid(strlen: number, avoidCollisions: { [string]: any }?, hat:
     if avoidCollisions == nil then
         local output = table.create(strlen)
         for i = 1, strlen do
-            table.insert(output, self:linearChoice(hat))
+            table.insert(output, KDRandom.linearChoice(hat :: { string }))
         end
         return table.concat(output)
     else
         local output
         while true do
             for try = 1, 5 do
-                output = self:uuid(strlen, nil, hat)
+                output = KDRandom.uuid(strlen, nil, hat)
                 if avoidCollisions[output] == nil then
                     return output
                 end
@@ -117,51 +122,35 @@ function KDRandom:uuid(strlen: number, avoidCollisions: { [string]: any }?, hat:
     end
 end
 
-function KDRandom:withRNG(rng, f, ...)
-    local oldRNG = self.rng
-    self.rng = rng
+function KDRandom.withRNG(rng, f, ...)
+    local oldRNG = KDRandom.rng
+    KDRandom.rng = rng
 
-    return Utils:ensure(function()
-        self.rng = oldRNG
+    return Utils.ensure(function()
+        KDRandom.rng = oldRNG
     end, f, ...)
 end
 
-function KDRandom:withSeed(seed, f, ...)
-    return self:withRNG(Random.new(seed), f, ...)
+function KDRandom.withSeed(seed, f, ...)
+    return KDRandom.withRNG(Random.new(seed), f, ...)
 end
 
-function KDRandom:vector(minMagnitude, maxMagnitude)
-    local v = Vector3.new(self.rng:NextNumber(-1, 1), self.rng:NextNumber(-1, 1), self.rng:NextNumber(-1, 1))
+function KDRandom.vector(minMagnitude, maxMagnitude)
+    local v = Vector3.new(KDRandom.number(-1, 1), KDRandom.number(-1, 1), KDRandom.number(-1, 1))
 
-    return v.Unit * self.rng:NextNumber(minMagnitude, maxMagnitude or minMagnitude)
+    return v.Unit * KDRandom.number(minMagnitude, maxMagnitude or minMagnitude)
 end
 
-function KDRandom:angle()
+function KDRandom.angle()
     return CFrame.Angles(
-        self.rng:NextNumber(-math.pi, math.pi),
-        self.rng:NextNumber(-math.pi, math.pi),
-        self.rng:NextNumber(-math.pi, math.pi)
+        KDRandom.number(-math.pi, math.pi),
+        KDRandom.number(-math.pi, math.pi),
+        KDRandom.number(-math.pi, math.pi)
     )
 end
 
-function KDRandom:integer(a: NumberRange | number?, b: number?): number
-    if typeof(a) == "NumberRange" then
-        a, b = a.Min, a.Max
-    end
-
-    return self.rng:NextInteger(a or 0, b or 1)
-end
-
-function KDRandom:number(a: NumberRange | number?, b: number?): number
-    if typeof(a) == "NumberRange" then
-        a, b = a.Min, a.Max
-    end
-
-    return self.rng:NextNumber(a or 0, b or 1)
-end
-
-function KDRandom:sign(): number
-    if self:number() < 0.5 then
+function KDRandom.sign(): number
+    if KDRandom.number() < 0.5 then
         return -1
     else
         return 1
@@ -171,14 +160,14 @@ end
 --[[
     Returns true or false with the given odds (between 0 and 1).
 --]]
-function KDRandom:test(chance: number): boolean
-    return self.rng:NextNumber(0, 1) < chance
+function KDRandom.test(chance: number): boolean
+    return KDRandom.number(0, 1) < chance
 end
 KDRandom.chance = KDRandom.test
 
-function KDRandom:normal()
+function KDRandom.normal()
     -- inspired by https://github.com/Bytebit-Org/lua-statistics/blob/3bd0c0bdad2c5bbe46efd1895206287aef903d6d/src/statistics.lua#L193-L201
-    return math.sqrt(-2 * math.log(self.rng:NextNumber(0.0001, 1))) * math.cos(TWO_PI * self.rng:NextNumber())
+    return math.sqrt(-2 * math.log(KDRandom.number(0.0001, 1))) * math.cos(TWO_PI * KDRandom.number())
 end
 
 --[[
@@ -187,8 +176,8 @@ end
     Similarly, 82.4 will have a 60% chance of rounding down and 40% of rounding up.
     Negative numbers work as expected, -1.99 has a 99% chance of rounding to -2.
 --]]
-function KDRandom:round(n: number): number
-    if self:test(n % 1) then
+function KDRandom.round(n: number): number
+    if KDRandom.test(n % 1) then
         return math.ceil(n)
     else
         return math.floor(n)
