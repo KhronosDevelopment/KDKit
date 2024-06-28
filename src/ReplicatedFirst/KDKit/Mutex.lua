@@ -1,3 +1,5 @@
+--!strict
+
 --[[
     Pretty standard mutex lock implementation, with a timeout parameter.
 
@@ -33,16 +35,34 @@
     > D
 --]]
 
-local Class = require(script.Parent:WaitForChild("Class"))
 local Utils = require(script.Parent:WaitForChild("Utils"))
 
-local Mutex = Class.new("KDKit.Mutex")
+type LockFunction<RL...> = (<RU...>(() -> RU...) -> RU...) -> RL...
 
-function Mutex:__init(timeout)
-    self.timeout = timeout or 60
-    self.locked = false
-    self.destroyed = false
-    self.owner = 0
+type MutexImpl = {
+    __index: MutexImpl,
+    new: (timeout: number?) -> Mutex,
+    newOwner: (Mutex) -> number,
+    wait: (Mutex) -> number,
+    lock: <RL...>(Mutex, LockFunction<RL...>) -> RL...,
+    destroy: (Mutex) -> (),
+}
+export type Mutex = typeof(setmetatable(
+    {} :: { timeout: number, locked: boolean, destroyed: boolean, owner: number },
+    {} :: MutexImpl
+))
+
+local Mutex: MutexImpl = {} :: MutexImpl
+Mutex.__index = Mutex
+
+function Mutex.new(timeout)
+    local self = setmetatable({
+        timeout = timeout or 60,
+        locked = false,
+        destroyed = false,
+        owner = 0,
+    }, Mutex) :: Mutex
+    return self
 end
 
 function Mutex:newOwner()
@@ -91,23 +111,26 @@ function Mutex:wait()
     return os.clock() - start
 end
 
-function Mutex:lock(fnToExecuteWithLock)
+type UnlockedFn = <RU...>() -> RU...
+type Unlock = <RU...>(UnlockedFn) -> RU...
+type LockedFn = <RL...>(Unlock) -> RL...
+type Lock = <RL...>(Mutex, LockedFn) -> RL...
+
+function Mutex:lock<RL...>(fnToExecuteWithLock)
     self:wait()
     local me = self:newOwner()
 
-    local function unlock(fnToExecuteWithoutLock)
+    local function unlock<RU...>(fnToExecuteWithoutLock: () -> RU...): RU...
         if me ~= self.owner or not self.locked then
             error("This unlocker is not available because the mutex has been released and/or re-acquired.")
         end
 
         self.locked = false
 
-        Utils:ensure(function()
-            me = self:newOwner()
-        end, function()
+        local function runWithoutYielding(): RU...
             local returnValue, returnTraceback
             local function wrapped()
-                Utils:try(fnToExecuteWithoutLock)
+                Utils.try(fnToExecuteWithoutLock)
                     :proceed(function(...)
                         returnValue = { ... }
                     end)
@@ -120,7 +143,7 @@ function Mutex:lock(fnToExecuteWithLock)
             coroutine.resume(co)
 
             if returnValue then
-                return table.unpack(returnValue)
+                return table.unpack(returnValue :: any)
             elseif returnTraceback then
                 error(returnTraceback)
             elseif not self.locked and self.owner == me then
@@ -132,29 +155,26 @@ function Mutex:lock(fnToExecuteWithLock)
             end
 
             if returnValue then
-                return table.unpack(returnValue)
+                return table.unpack(returnValue :: any)
             elseif returnTraceback then
                 error(returnTraceback)
             end
-        end)
+
+            assert(false)
+        end
+
+        return Utils.ensure(function()
+            me = self:newOwner()
+        end, runWithoutYielding)
     end
 
-    return Utils:ensure(function()
+    return Utils.ensure(function()
         self.locked = false
     end, fnToExecuteWithLock, unlock)
 end
 
 function Mutex:destroy()
     self.destroyed = true
-end
-
-function Mutex:wrap(func)
-    return function(...)
-        local args = { ... }
-        return self:lock(function()
-            return func(table.unpack(args))
-        end)
-    end
 end
 
 return Mutex
