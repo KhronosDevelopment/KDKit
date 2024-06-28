@@ -1,11 +1,5 @@
 --!strict
 
-local RunService = game:GetService("RunService")
-
-if RunService:IsServer() then
-    return { "Cannot use the mouse on the server!" }
-end
-
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 
