@@ -1,3 +1,5 @@
+--!strict
+
 local Hash = {}
 
 local sha256 = require(script:WaitForChild("sha256"))
