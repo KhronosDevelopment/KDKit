@@ -1,42 +1,44 @@
-local Class = require(script.Parent.Parent.Parent:WaitForChild("Class"))
-local Transition = Class.new("KDKit.GUI.App.Transition")
+--!strict
 
-function Transition:__init(
-    app: "KDKit.GUI.App",
-    source: string,
-    from: "KDKit.GUI.App.Page"?,
-    to: "KDKit.GUI.App.Page"?,
-    isForwards: boolean,
-    data: any,
-    parent: "KDKit.GUI.App.Transition"?
-)
-    self.app = app
-    self.source = source
-    self.from = from
-    self.to = to
-    self.direction = if isForwards then "forward" else "backward"
-    self.forward = self.direction == "forward"
-    self.forwards = self.forward
-    self.backward = self.direction == "backward"
-    self.backwards = self.backward
-    self.data = data
-    self.parent = parent
+local T = require(script.Parent:WaitForChild("types"))
 
-    self.initial = self.source == "INITIAL_SETUP"
-    self.builtin = not not (self.app and table.find(self.app.__class.BUILTIN_SOURCES, self.source))
+type TransitionImpl = T.TransitionImpl
+export type Transition = T.Transition
 
-    self.constructedAt = os.clock()
+local Transition: TransitionImpl = {} :: TransitionImpl
+Transition.__index = Transition
+
+function Transition.new(app, source, from, to, isForwards, data, parent)
+    local self = setmetatable({
+        app = app,
+        source = source,
+        from = from,
+        to = to,
+        direction = if isForwards then "forward" else "backward",
+        data = data,
+        parent = parent,
+        constructedAt = os.clock(),
+        -- derivative properties:
+        forward = not not isForwards,
+        forwards = not not isForwards,
+        backward = not isForwards,
+        backwards = not isForwards,
+        initial = source == "INITIAL_SETUP",
+        builtin = not not table.find(T.BUILTIN_SOURCES, source),
+    }, Transition) :: Transition
+
+    return self
 end
 
-function Transition:isFrom(pageReference: string | "KDKit.GUI.App.Page"): boolean
+function Transition:isFrom(pageReference)
     return (pageReference == self.from) or not not (self.from and self.from.name == pageReference)
 end
 
-function Transition:isTo(pageReference: string | "KDKit.GUI.App.Page"): boolean
+function Transition:isTo(pageReference)
     return (pageReference == self.to) or not not (self.to and self.to.name == pageReference)
 end
 
-function Transition:summary(): { [string]: any }
+function Transition:summary()
     return {
         app = self.app and self.app.instance:GetFullName(),
         source = self.source,

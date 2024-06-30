@@ -14,6 +14,8 @@ local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 local Humanize = require(script.Parent.Parent:WaitForChild("Humanize"))
 local Remote = require(script.Parent.Parent:WaitForChild("Remote"))
 
+export type Button = {} -- TODO
+
 --[[
     Class
 --]]

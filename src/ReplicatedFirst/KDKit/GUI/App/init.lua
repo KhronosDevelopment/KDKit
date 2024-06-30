@@ -1,27 +1,51 @@
---[[
-    KDKit.GUI.App is a very opinionated framework which forces you to structure your GUI as a sequence of pages.
-    I will write more documentation for KDKit.GUI.App when I feel like it.
---]]
+--!strict
 
-local Class = require(script.Parent.Parent:WaitForChild("Class"))
+local UserInputService = game:GetService("UserInputService")
+
 local Preload = require(script.Parent.Parent:WaitForChild("Preload"))
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
-local Humanize = require(script.Parent.Parent:WaitForChild("Humanize"))
-local Remote = require(script.Parent.Parent:WaitForChild("Remote"))
 local Mutex = require(script.Parent.Parent:WaitForChild("Mutex"))
 
-local App = Class.new("KDKit.GUI.App")
-App.static.Page = require(script:WaitForChild("Page"))
-App.static.Transition = require(script:WaitForChild("Transition"))
-App.static.folder = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-App.static.nextDisplayOrder = 0
-function App.static:useNextDisplayOrder()
-    App.static.nextDisplayOrder += 1
-    return App.static.nextDisplayOrder - 1
+local T = require(script:WaitForChild("types"))
+local Page = require(script:WaitForChild("Page"))
+local Transition = require(script:WaitForChild("Transition"))
+
+type AppImpl = T.AppImpl
+export type App = T.App
+export type Page = T.Page
+export type Transition = T.Transition
+
+local App: AppImpl = {
+    Page = Page,
+    Transition = Transition,
+    folder = game.Players.LocalPlayer:WaitForChild("PlayerGui"),
+    nextDisplayOrder = 0,
+    appsLoadingPages = {},
+} :: AppImpl
+App.__index = App
+
+function App.loadPage(module)
+    for app in App.appsLoadingPages do
+        if not module:IsDescendantOf(app.module) then
+            continue
+        end
+
+        if not app.pages[module.Name] then
+            continue
+        end
+
+        return app :: App, app.pages[module.Name] :: Page
+    end
+
+    error(("No app found for script '%s'."):format(module:GetFullName()))
 end
 
-App.static.GET_DEBUG_UIS_STATE = function()
-    local UserInputService = game:GetService("UserInputService")
+function App.useNextDisplayOrder()
+    App.nextDisplayOrder += 1
+    return App.nextDisplayOrder - 1
+end
+
+function App.getDebugState()
     return {
         AccelerometerEnabled = UserInputService.AccelerometerEnabled,
         KeyboardEnabled = UserInputService.KeyboardEnabled,
@@ -30,93 +54,29 @@ App.static.GET_DEBUG_UIS_STATE = function()
     }
 end
 
-App.static.BUILTIN_SOURCES = { "INITIAL_SETUP", "APP_CLOSE", "APP_OPEN", "GO_HOME", "NEXT_PAGE_FAILED_TO_OPEN" }
-
-function App:__init(module: ModuleScript)
-    self.module = module
-    self.mutex = Mutex.new(15)
+function App.new(module)
+    local self = setmetatable({
+        module = module,
+        mutex = Mutex.new(15),
+        opened = false,
+        closedWithData = nil,
+        pages = {},
+        history = {},
+    }, App) :: App
 
     self.instance = Instance.new("ScreenGui", App.folder)
     self.instance.Name = self.module:GetFullName()
     self.instance.Enabled = false
     self.instance.IgnoreGuiInset = true
     self.instance.ResetOnSpawn = false
-    self.instance.DisplayOrder = App:useNextDisplayOrder()
+    self.instance.DisplayOrder = App.useNextDisplayOrder()
     self.instance.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    self.opened = false
-    self.closedWithData = nil
-
-    self.pages = {}
-    self.history = {}
-
-    Preload:ensureDescendants(module)
-
-    self.proxy = require(self.module)
-    self.common = table.clone(self.proxy)
-    table.clear(self.proxy)
-    setmetatable(self.proxy, {
-        __index = self,
-        __newindex = self,
-    })
-
-    if type(self.common.transitionSources) ~= "table" then
-        error("You must define a `transitionSources` table within your top level app.")
-    else
-        for _, name in App.BUILTIN_SOURCES do
-            if self.common.transitionSources[name] then
-                error(
-                    ("You cannot define a transition source named `%s` since it will be created automatically."):format(
-                        Utils:repr(name)
-                    )
-                )
-            end
-            self.common.transitionSources[name] = name
-        end
-
-        for key, value in self.common.transitionSources do
-            if typeof(key) ~= "string" or key:len() < 1 then
-                error(("Invalid transition source `%s`. Only non-empty strings are allowed."):format(Utils:repr(key)))
-            elseif key ~= value then
-                error(
-                    ("Invalid transition source `%s`. Expected to find value `%s` but instead found `%s`."):format(
-                        Utils:repr(key),
-                        Utils:repr(key),
-                        Utils:repr(value)
-                    )
-                )
-            elseif Humanize:casing(key, "upperSnake") ~= key then
-                error(
-                    ("Invalid transition source `%s`. Expected to find value `%s` but instead found `%s`."):format(
-                        Utils:repr(key),
-                        Utils:repr(Humanize:casing(key, "upperSnake")),
-                        Utils:repr(key)
-                    )
-                )
-            end
-        end
-
-        function self.common.transitionSources.validate(transitionSources, name)
-            return rawget(transitionSources, name) or error(("Invalid transition source `%s`"):format(Utils:repr(name)))
-        end
-
-        setmetatable(self.common.transitionSources, {
-            __index = function(transitionSources, name)
-                return transitionSources:validate(name) -- will error 100% of the time if __index is being called
-            end,
-            __newindex = function(_transitionSources, name)
-                error(
-                    ("You must define all transition sources statically in your app file. You cannot define them dynamically, like you tried to do with `%s`"):format(
-                        Utils:repr(name)
-                    )
-                )
-            end,
-        })
-    end
+    Preload.ensureDescendants(module)
 
     for _, pageInstance in
-        Utils:sort(self.module:GetChildren(), function(pageInstance)
-            return if pageInstance.Name == "home" then 0 else 1
+        Utils.sort(self.module:GetChildren(), function(pageInstance): { number | string }
+            return { if pageInstance.Name == "home" then 0 else 1, pageInstance.Name }
         end)
     do
         if not pageInstance:IsA("ModuleScript") then
@@ -124,17 +84,7 @@ function App:__init(module: ModuleScript)
             continue
         end
 
-        local page = App.Page.new(self, pageInstance)
-
-        if page.name ~= Humanize:casing(page.name, "camel") and page.name ~= Humanize:casing(page.name, "snake") then
-            error(
-                ("Pages must be named using camelCase or snake_case, but found a page named `%s`. Please rename the page to `%s` or `%s`"):format(
-                    page.name,
-                    Humanize:casing(page.name, "camel"),
-                    Humanize:casing(page.name, "snake")
-                )
-            )
-        end
+        local page = Page.new(self, pageInstance)
 
         if self.pages[page.name] then
             error(("You cannot have two pages with the same name `%s`"):format(page.name))
@@ -147,36 +97,34 @@ function App:__init(module: ModuleScript)
         error("You must have a page called `home`.")
     end
 
-    for _, page in self.pages do
-        if require(page.module) ~= page then
-            error(
-                ("Your module `%s` was expected to call `app:getPage(%s)` and return that page. Instead, the module returned `%s`."):format(
-                    page.module:GetFullName(),
-                    Utils:repr(page.name),
-                    Utils:repr(require(page.module))
+    App.appsLoadingPages[self] = true
+
+    Utils.ensure(function()
+        App.appsLoadingPages[self] = nil
+    end, function()
+        for _, page in self.pages do
+            local required = require(page.module) :: any
+
+            if required ~= page then
+                error(
+                    ("Your module `%s` was expected to call `KDKit.GUI.App.loadPage(%s)` and return that page. Instead, the module returned `%s`."):format(
+                        page.module:GetFullName(),
+                        Utils.repr(page.name),
+                        Utils.repr(required)
+                    )
                 )
-            )
-        end
+            end
 
-        page:rawOpen(App.Transition.new(self, self.common.transitionSources.INITIAL_SETUP, nil, page, true))
-        page:rawClose(App.Transition.new(self, self.common.transitionSources.INITIAL_SETUP, page, nil, false))
-    end
-
-    self.last16Transitions = table.create(16)
-    self.rawDoPageTransition = Remote:wrapWithClientErrorLogging(
-        self.rawDoPageTransition,
-        "App.rawDoPageTransition",
-        function()
-            return Utils:merge(App.GET_DEBUG_UIS_STATE(), {
-                history = Utils:map(function(page)
-                    return page.name
-                end, self.history),
-                last16Transitions = self.last16Transitions,
-            })
+            -- this is required, for some reason
+            -- https://discord.com/channels/385151591524597761/906369439262461992/1257086656545030164
+            local x = page :: Page
+            x:rawOpen(Transition.new(self, "INITIAL_SETUP", nil, x, true))
+            x:rawClose(Transition.new(self, "INITIAL_SETUP", x, nil, false))
         end
-    )
+    end)
+
+    return self
 end
-App.__init = Remote:wrapWithClientErrorLogging(App.__init, "App.__init", App.GET_DEBUG_UIS_STATE)
 
 function App:getPage(page)
     if type(page) == "string" then
