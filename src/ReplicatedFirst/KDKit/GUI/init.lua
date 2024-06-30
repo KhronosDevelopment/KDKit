@@ -1,7 +1,4 @@
-if not game:GetService("RunService"):IsClient() then
-    -- Only clients have GUIs.
-    return nil
-end
+--!strict
 
 return {
     App = require(script:WaitForChild("App")),

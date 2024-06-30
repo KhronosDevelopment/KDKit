@@ -1,19 +1,21 @@
+--!strict
+
 local TweenService = game:GetService("TweenService")
 local Animate = {
-    counts = setmetatable(table.create(128), { __mode = "kv" }),
+    counts = setmetatable({} :: { [Instance]: number }, { __mode = "kv" }),
 }
 
-function Animate:count(instance: Instance)
-    local count = (self.counts[instance] or 0) + 1
-    self.counts[instance] = count
+function Animate.count(instance: Instance): number
+    local count = (Animate.counts[instance] or 0) + 1
+    Animate.counts[instance] = count
     return count
 end
 
-function Animate:checkCount(instance)
-    return self.counts[instance]
+function Animate.checkCount(instance: Instance): number
+    return Animate.counts[instance]
 end
 
-function Animate:positionBasedOnAttributes(
+function Animate.positionBasedOnAttributes(
     instance: Instance,
     positionAttributeName: string,
     delayAttributeNames: ({ string } | string)?,
@@ -21,11 +23,13 @@ function Animate:positionBasedOnAttributes(
     seconds: number?,
     style: Enum.EasingStyle?,
     direction: Enum.EasingDirection?
-)
+): number
     delayAttributeNames = delayAttributeNames or { "animationDelay" }
     if typeof(delayAttributeNames) == "string" then
         delayAttributeNames = { delayAttributeNames }
     end
+    assert(typeof(delayAttributeNames) == "table")
+
     if includeDescendants == nil then
         includeDescendants = true
     end
@@ -41,14 +45,14 @@ function Animate:positionBasedOnAttributes(
     animationDelay = animationDelay or 0
 
     if position then
-        local me = self:count(instance)
+        local me = Animate.count(instance)
 
         task.defer(function()
             if animationDelay > 0 then
                 task.wait(animationDelay)
             end
 
-            if me == self:checkCount(instance) then
+            if me == Animate.checkCount(instance) then
                 TweenService:Create(instance, TweenInfo.new(seconds, style, direction, 0, false, 0), {
                     Position = position,
                 }):Play()
@@ -61,7 +65,7 @@ function Animate:positionBasedOnAttributes(
         for _, descendant in instance:GetDescendants() do
             allAnimationsWillCompleteIn = math.max(
                 allAnimationsWillCompleteIn,
-                self:positionBasedOnAttributes(
+                Animate.positionBasedOnAttributes(
                     descendant,
                     positionAttributeName,
                     delayAttributeNames,
@@ -77,14 +81,14 @@ function Animate:positionBasedOnAttributes(
     return allAnimationsWillCompleteIn
 end
 
-function Animate:onscreen(
+function Animate.onscreen(
     instance: Instance,
     includeDescendants: boolean?,
     seconds: number?,
     skipDelay: boolean?,
     style: Enum.EasingStyle?
-)
-    return self:positionBasedOnAttributes(
+): number
+    return Animate.positionBasedOnAttributes(
         instance,
         "onscreenPosition",
         if skipDelay then {} else { "onscreenAnimationDelay", "animationDelay" },
@@ -95,14 +99,14 @@ function Animate:onscreen(
     )
 end
 
-function Animate:offscreen(
+function Animate.offscreen(
     instance: Instance,
     includeDescendants: boolean?,
     seconds: number?,
     skipDelay: boolean?,
     style: Enum.EasingStyle?
-)
-    return self:positionBasedOnAttributes(
+): number
+    return Animate.positionBasedOnAttributes(
         instance,
         "offscreenPosition",
         if skipDelay then {} else { "offscreenAnimationDelay", "animationDelay" },
