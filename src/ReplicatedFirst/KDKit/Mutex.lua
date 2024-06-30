@@ -37,14 +37,12 @@
 
 local Utils = require(script.Parent:WaitForChild("Utils"))
 
-type LockFunction<RL...> = (<RU...>(() -> RU...) -> RU...) -> RL...
-
 type MutexImpl = {
     __index: MutexImpl,
     new: (timeout: number?) -> Mutex,
     newOwner: (Mutex) -> number,
     wait: (Mutex) -> number,
-    lock: <RL...>(Mutex, LockFunction<RL...>) -> RL...,
+    lock: <RL...>(Mutex, (<RU...>(() -> RU...) -> RU...) -> RL...) -> RL...,
     destroy: (Mutex) -> (),
 }
 export type Mutex = typeof(setmetatable(
@@ -110,11 +108,6 @@ function Mutex:wait()
 
     return os.clock() - start
 end
-
-type UnlockedFn = <RU...>() -> RU...
-type Unlock = <RU...>(UnlockedFn) -> RU...
-type LockedFn = <RL...>(Unlock) -> RL...
-type Lock = <RL...>(Mutex, LockedFn) -> RL...
 
 function Mutex:lock<RL...>(fnToExecuteWithLock)
     self:wait()
