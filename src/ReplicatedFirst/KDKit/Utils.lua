@@ -378,10 +378,12 @@ end
     Utils.mapf(function(v, k) return k + 1, v ^ 2 end, { 1, 2, 3 }) -> { [2] = 1, [3] = 4, [4] = 9 }
     ```
 --]]
-function Utils.mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1) -> (K2, V2), tab: { [K1]: V1 }): { [K2]: V2 }
+function Utils.mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1, index: number) -> (K2, V2), tab: { [K1]: V1 }): { [K2]: V2 }
     local output = {}
+    local index = 1
     for k1, v1 in tab do
-        local k2, v2 = transform(v1, k1)
+        local k2, v2 = transform(v1, k1, index)
+        index += 1
         if k2 ~= nil then
             output[k2] = v2
         end
