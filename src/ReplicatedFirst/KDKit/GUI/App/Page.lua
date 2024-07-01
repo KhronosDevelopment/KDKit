@@ -25,7 +25,7 @@ function Page.new(app, module)
         opened = false,
         -- set this to true if you do not want the page to be added to the history stack
         -- with the exception of when the page is currently open, when it will be on the top of the stack
-        -- that is, ephemeral pages will never be opened via a call to App:goBack()
+        -- that is, ephemeral pages will never be opened via a call to App():goBack()
         ephemeral = false,
         -- these are not used internally, but in asynchronous code it is sometimes useful
         -- to be able to track whether or not the current coroutine is still attached to the

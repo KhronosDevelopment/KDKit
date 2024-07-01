@@ -4,7 +4,7 @@
 
     Server:
     ```lua
-    local rv = ReplicatedValue:get("leaderboards")
+    local rv = ReplicatedValue.get("leaderboards")
 
     while task.wait(1) do
         rv:set("level", fetchHighestLevelPlayers())
@@ -14,7 +14,7 @@
 
     Client:
     ```lua
-    local rv = ReplicatedValue:get("leaderboards")
+    local rv = ReplicatedValue.get("leaderboards")
 
     rv:listen("level", updateLevelLeaderboardsGui)
     rv:listen("money", updateMoneyLeaderboardsGui)
@@ -33,7 +33,7 @@
 
     You can also set the `Permission`s for these values, so that only certain players can access them.
     ```lua
-    local rv = ReplicatedValue:get("leaderboards", {}, game.Players.gaberocksall)
+    local rv = ReplicatedValue.get("leaderboards", {}, game.Players.gaberocksall)
     -- Now, only `gaberocksall` can access the "leaderboards" key. Other players will never receive updates for it.
     ```
 
@@ -230,7 +230,7 @@ function ReplicatedValue:hasPermission(player)
         return self.permission(player)
     end
 
-    warn(("Unknown permission object: `%s`. Disallowing access."):format(Utils:repr(self.permission)))
+    warn(("Unknown permission object: `%s`. Disallowing access."):format(Utils.repr(self.permission)))
     return false
 end
 
@@ -251,7 +251,7 @@ function ReplicatedValue:receiveNewValueAt(value, path, mustSucceed)
                 local msg = ("Illegal update made to ReplicatedValue `%s`. Was notified of a change which set `%s` to `%s`, but one of its ancestors is not a table (instead it was of type '%s')."):format(
                     self.key,
                     table.concat(path, "."),
-                    Utils:repr(value),
+                    Utils.repr(value),
                     type(adjust)
                 )
 

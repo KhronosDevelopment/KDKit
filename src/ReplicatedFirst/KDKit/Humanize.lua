@@ -216,18 +216,18 @@ local Humanize = {
 }
 
 --[[
-    This function is mostly used internally by Humanize:casing(...) which converts between cases,
+    This function is mostly used internally by Humanize.casing(...) which converts between cases,
     but I might as well expose this functionality :shrug:
     Probably best explained through example:
     ```lua
-    Humanize:detectCasingAndExtractWords("detectCasingAndExtractWords") -> { "detect", "Casing", "And", "Extract", "Words" }
-    Humanize:detectCasingAndExtractWords("thisStringIsInCamelCase") -> { "this", "String", "Is", "In", "Camel", "Case" }
-    Humanize:detectCasingAndExtractWords("kebab-case") -> { "kebab", "case" }
-    Humanize:detectCasingAndExtractWords("UPPER_SNAKE_CASE") -> { "UPPER", "SNAKE", "CASE" }
-    Humanize:detectCasingAndExtractWords("separated by spaces") -> { "separated", "by", "spaces" }
-    Humanize:detectCasingAndExtractWords("PascalCaseWithANAcronym") -> { "Pascal", "Case", "With", "ANAcronym" }
-    Humanize:detectCasingAndExtractWords("123String456With789Numbers000") -> { "123", "String", "456", "With", "789", "Numbers", "000" }
-    Humanize:detectCasingAndExtractWords("complex_-_Strings are \t REASONABLY_SUPPORTED, \n yes---really") -> { "complex", "Strings", "are", "REASONABLY", "SUPPORTED", "yes", "really" }
+    Humanize.detectCasingAndExtractWords("detectCasingAndExtractWords") -> { "detect", "Casing", "And", "Extract", "Words" }
+    Humanize.detectCasingAndExtractWords("thisStringIsInCamelCase") -> { "this", "String", "Is", "In", "Camel", "Case" }
+    Humanize.detectCasingAndExtractWords("kebab-case") -> { "kebab", "case" }
+    Humanize.detectCasingAndExtractWords("UPPER_SNAKE_CASE") -> { "UPPER", "SNAKE", "CASE" }
+    Humanize.detectCasingAndExtractWords("separated by spaces") -> { "separated", "by", "spaces" }
+    Humanize.detectCasingAndExtractWords("PascalCaseWithANAcronym") -> { "Pascal", "Case", "With", "ANAcronym" }
+    Humanize.detectCasingAndExtractWords("123String456With789Numbers000") -> { "123", "String", "456", "With", "789", "Numbers", "000" }
+    Humanize.detectCasingAndExtractWords("complex_-_Strings are \t REASONABLY_SUPPORTED, \n yes---really") -> { "complex", "Strings", "are", "REASONABLY", "SUPPORTED", "yes", "really" }
     ```
 --]]
 function Humanize.detectCasingAndExtractWords(text: string): { string }
@@ -297,10 +297,10 @@ end
         * dottedAcronym: h.w.
         * upperDottedAcronym: H.W.
     ```lua
-    Humanize:casing("hello world", "pascal") -> "HelloWorld"
-    Humanize:casing("HelloWorld", "none") -> "hello world"
-    Humanize:casing("HelloWorld", "camel") -> "helloWorld"
-    Humanize:casing("complex_-_Strings are \t REASONABLY_SUPPORTED!", "upperKebab") -> "COMPLEX-STRINGS-ARE-REASONABLY-SUPPORTED"
+    Humanize.casing("hello world", "pascal") -> "HelloWorld"
+    Humanize.casing("HelloWorld", "none") -> "hello world"
+    Humanize.casing("HelloWorld", "camel") -> "helloWorld"
+    Humanize.casing("complex_-_Strings are \t REASONABLY_SUPPORTED!", "upperKebab") -> "COMPLEX-STRINGS-ARE-REASONABLY-SUPPORTED"
     ```
 --]]
 function Humanize.casing(text: string, mode: string)
@@ -324,10 +324,10 @@ end
 --[[
     Returns a comma separated list.
     ```lua
-    Humanize:list({"a", "b", "c"}) -> "a, b, and c"
-    Humanize:list({"x"}) -> "x"
-    Humanize:list({"a", "b", "c", "d", "e"}, 3, "thing") -> "a, b, c, and 2 other things"
-    Humanize:list({"a", "b", "c"}, 2, "item") -> "a, b, and 1 other item"
+    Humanize.list({"a", "b", "c"}) -> "a, b, and c"
+    Humanize.list({"x"}) -> "x"
+    Humanize.list({"a", "b", "c", "d", "e"}, 3, "thing") -> "a, b, c, and 2 other things"
+    Humanize.list({"a", "b", "c"}, 2, "item") -> "a, b, and 1 other item"
     ```
 --]]
 function Humanize.list(array: { string }, maxItems: number?, name: string?)
@@ -345,7 +345,7 @@ function Humanize.list(array: { string }, maxItems: number?, name: string?)
         for i = 1, show do
             local v = array[i]
             if type(v) ~= "string" then
-                items[i] = Utils:repr(v)
+                items[i] = Utils.repr(v)
             else
                 items[i] = v
             end
@@ -381,7 +381,7 @@ end
     If a format is not specified, then an iso8601-like format will be used. Specifically, `YYYY-MM-DD HH:MM:SS PP`.
     By default a timezone will be appended if rendered on the server, and no timezone if rendered on the client.
     ```lua
-    Humanize:timestamp(0, nil, true) -> "1970-01-01 12:00:00 AM GMT"
+    Humanize.timestamp(0, nil, true) -> "1970-01-01 12:00:00 AM GMT"
     ```
 --]]
 function Humanize.timestamp(unixTimestamp: number, format: string?, addTimezone: boolean?): string
@@ -407,7 +407,7 @@ end
 --[[
     This function is a proxy to `Humanize.timestamp` but with the format `%Y-%m-%d`.
     ```lua
-    Humanize:date(0) -> "1970-01-01"
+    Humanize.date(0) -> "1970-01-01"
     ```
 --]]
 function Humanize.date(unixTimestamp: number, addTimezone: boolean?): string
@@ -417,21 +417,21 @@ end
 --[[
     Returns a string containing a single unit which represents a delta in time.
     ```lua
-    Humanize:timeDelta(10) -> "10 seconds"
-    Humanize:timeDelta(65) -> "1 minute"
-    Humanize:timeDelta(90) -> "1 minute"
-    Humanize:timeDelta(120) -> "2 minutes"
-    Humanize:timeDelta(3600) -> "1 hour"
-    Humanize:timeDelta(86400) -> "1 day"
-    Humanize:timeDelta(86400 * 7) -> "1 week"
-    Humanize:timeDelta(86400 * 365) -> "1 year"
+    Humanize.timeDelta(10) -> "10 seconds"
+    Humanize.timeDelta(65) -> "1 minute"
+    Humanize.timeDelta(90) -> "1 minute"
+    Humanize.timeDelta(120) -> "2 minutes"
+    Humanize.timeDelta(3600) -> "1 hour"
+    Humanize.timeDelta(86400) -> "1 day"
+    Humanize.timeDelta(86400 * 7) -> "1 week"
+    Humanize.timeDelta(86400 * 365) -> "1 year"
 
-    Humanize:timeDelta(10, true) -> "10s"
-    Humanize:timeDelta(300, true) -> "5m"
-    Humanize:timeDelta(86400 * 365, true) -> "1y"
+    Humanize.timeDelta(10, true) -> "10s"
+    Humanize.timeDelta(300, true) -> "5m"
+    Humanize.timeDelta(86400 * 365, true) -> "1y"
 
-    Humanize:timeDelta(-10, true) -> "-10s"
-    Humanize:timeDelta(-86400 * 7 * 3) -> "-3 weeks"
+    Humanize.timeDelta(-10, true) -> "-10s"
+    Humanize.timeDelta(-86400 * 7 * 3) -> "-3 weeks"
     ```
 --]]
 function Humanize.timeDelta(seconds: number, short: boolean?): string
@@ -460,15 +460,15 @@ end
     Reasonably handles most irregular nouns, like "bus" -> "busses".
 
     ```lua
-    Humanize:plural("item") -> "items"
-    Humanize:plural("knife") -> "knives"
-    Humanize:plural("Option") -> "Options"
-    Humanize:plural("LIST") -> "LISTS"
-    Humanize:plural("example", 5) -> "examples"
-    Humanize:plural("example", 1) -> "example"
-    Humanize:plural("example", 0) -> "examples"
-    Humanize:plural("STUFF", 5) -> "STUFFS"
-    Humanize:plural("fish", 5) -> "fish"
+    Humanize.plural("item") -> "items"
+    Humanize.plural("knife") -> "knives"
+    Humanize.plural("Option") -> "Options"
+    Humanize.plural("LIST") -> "LISTS"
+    Humanize.plural("example", 5) -> "examples"
+    Humanize.plural("example", 1) -> "example"
+    Humanize.plural("example", 0) -> "examples"
+    Humanize.plural("STUFF", 5) -> "STUFFS"
+    Humanize.plural("fish", 5) -> "fish"
     ```
 --]]
 function Humanize.plural(word: string, count: number?): string
@@ -511,15 +511,15 @@ end
     Anything less than one in one hundred will be formatted as "<1%".
     Otherwise, the percent is formatted using two significant figures. (maxing out at 100%)
     ```lua
-    Humanize:percent(-0.5) -> "0%"
-    Humanize:percent(1 / 1_000_000) -> "0%"
-    Humanize:percent(0.1 / 100) -> "<1%"
-    Humanize:percent(5 / 100) -> "5%"
-    Humanize:percent(5.3 / 100) -> "5.3%"
-    Humanize:percent(73.8 / 100) -> "74%"
-    Humanize:percent(99.9999 / 100) -> "99%"
-    Humanize:percent(100 / 100) -> "100%"
-    Humanize:percent(500 / 100) -> "100%"
+    Humanize.percent(-0.5) -> "0%"
+    Humanize.percent(1 / 1_000_000) -> "0%"
+    Humanize.percent(0.1 / 100) -> "<1%"
+    Humanize.percent(5 / 100) -> "5%"
+    Humanize.percent(5.3 / 100) -> "5.3%"
+    Humanize.percent(73.8 / 100) -> "74%"
+    Humanize.percent(99.9999 / 100) -> "99%"
+    Humanize.percent(100 / 100) -> "100%"
+    Humanize.percent(500 / 100) -> "100%"
     ```
 --]]
 function Humanize.percent(odds: number): string
@@ -546,11 +546,11 @@ end
         - addCommas (false)          : add commas between thousands groups? (e.g. 1000000 vs 1,000,000)
         - removeTrailingZeros (true) : should redundant zeros after the radix get removed? (e.g. 123.456000 vs 123.456)
     ```lua
-    Humanize:number(1) -> "1"
-    Humanize:number(123.456) -> "123.456"
-    Humanize:number(2 / 3, { decimalPlaces = 3 }) -> "0.667"
-    Humanize:number(math.pi * 1000000, { addCommas = true, decimalPlaces = 4 }) -> "3,141,592.6536"
-    Humanize:number(1, { decimalPlaces = 4, removeTrailingZeros = false }) -> "1.0000"
+    Humanize.number(1) -> "1"
+    Humanize.number(123.456) -> "123.456"
+    Humanize.number(2 / 3, { decimalPlaces = 3 }) -> "0.667"
+    Humanize.number(math.pi * 1000000, { addCommas = true, decimalPlaces = 4 }) -> "3,141,592.6536"
+    Humanize.number(1, { decimalPlaces = 4, removeTrailingZeros = false }) -> "1.0000"
     ```
 --]]
 type NumberFmtOptions = { decimalPlaces: number?, addCommas: boolean?, removeTrailingZeros: boolean? }
@@ -594,7 +594,7 @@ function Humanize.number(number: number, options: NumberFmtOptions): string
 end
 
 --[[
-    Simply a shortcut for Humanize:number(x, { addCommas = true, decimalPlaces = 0 })
+    Simply a shortcut for Humanize.number(x, { addCommas = true, decimalPlaces = 0 })
 --]]
 function Humanize.integer(number: number): string
     return Humanize.number(number, { addCommas = true, decimalPlaces = 0 })
@@ -604,13 +604,13 @@ end
     Formats a number which represents money. Always rounds towards 0.
     You may specify whether or not you want to include cents (default: yes) and optionally a unit (default: none).
     ```lua
-    "$" .. Humanize:money(1) -> "$1.00"
-    "$" .. Humanize:money(15.8277) -> "$15.82"
-    Humanize:money(25.87, true) -> "25"
-    Humanize:money(13, true) -> "13"
-    Humanize:money(5, true, "dollar") -> "5 dollars"
-    Humanize:money(3, true, "gem") -> "5 gems"
-    Humanize:money(85.98, false, "pound") -> "85.98 pounds"
+    "$" .. Humanize.money(1) -> "$1.00"
+    "$" .. Humanize.money(15.8277) -> "$15.82"
+    Humanize.money(25.87, true) -> "25"
+    Humanize.money(13, true) -> "13"
+    Humanize.money(5, true, "dollar") -> "5 dollars"
+    Humanize.money(3, true, "gem") -> "5 gems"
+    Humanize.money(85.98, false, "pound") -> "85.98 pounds"
     ```
 --]]
 function Humanize.money(number: number, noCents: boolean?, unit: string?): string
@@ -640,8 +640,8 @@ end
 --[[
     Converts a string to hexadecimal representation.
     ```lua
-    Humanize:hex("hello") -> "68656C6C6F"
-    Humanize:hex("\0\n\t\v\0") -> "000A090B00"
+    Humanize.hex("hello") -> "68656C6C6F"
+    Humanize.hex("\0\n\t\v\0") -> "000A090B00"
     ```
 --]]
 function Humanize.hex(string: string): string
@@ -653,8 +653,8 @@ end
 --[[
     Logical opposite of `KDKit.Humanize.hex`. Converts a string from hexadecimal representation.
     ```lua
-    Humanize:unhex("68656C6C6F") -> "hello"
-    Humanize:hex("000A090B00") -> "\0\n\t\v\0"
+    Humanize.unhex("68656C6C6F") -> "hello"
+    Humanize.hex("000A090B00") -> "\0\n\t\v\0"
     ```
 --]]
 function Humanize.unhex(hex: string): string
@@ -666,9 +666,9 @@ end
 --[[
     Converts a given Color3 as a hexadecimal color code string.
     ```lua
-    Humanize:colorToHex(Color3.fromRGB(0, 0, 0)) -> "000000"
-    Humanize:colorToHex(Color3.fromRGB(59, 124, 217)) -> "3B7CD9"
-    Humanize:colorToHex(Color3.fromRGB(255, 255, 255)) -> "FFFFFF"
+    Humanize.colorToHex(Color3.fromRGB(0, 0, 0)) -> "000000"
+    Humanize.colorToHex(Color3.fromRGB(59, 124, 217)) -> "3B7CD9"
+    Humanize.colorToHex(Color3.fromRGB(255, 255, 255)) -> "FFFFFF"
     ```
 --]]
 function Humanize.colorToHex(color: Color3): string
@@ -682,12 +682,12 @@ end
 --[[
     Logical opposite of colorToHex. Returns a Color3 given the hexadecimal color code string.
     ```lua
-    Humanize:colorToHex("000000") -> Color3.fromRGB(0, 0, 0)
-    Humanize:colorToHex("3B7CD9") -> Color3.fromRGB(59, 124, 217)
-    Humanize:colorToHex("FFFFFF") -> Color3.fromRGB(255, 255, 255))
+    Humanize.colorToHex("000000") -> Color3.fromRGB(0, 0, 0)
+    Humanize.colorToHex("3B7CD9") -> Color3.fromRGB(59, 124, 217)
+    Humanize.colorToHex("FFFFFF") -> Color3.fromRGB(255, 255, 255))
     ```
 --]]
-function Humanize:hexToColor(hex: string): Color3
+function Humanize.hexToColor(hex: string): Color3
     if hex:len() ~= 6 then
         error(("Invalid hex code: %s"):format(Utils.repr(hex)))
     end
