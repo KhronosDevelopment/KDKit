@@ -37,14 +37,6 @@ coroutine.wrap(function()
     S.sound = script.ChildAdded:Wait()
 end)()
 
-local DELETED_METATABLE = {
-    __index = function(_self, key)
-        error(("This Button has been deleted. You cannot access the key `%s`."):format(Utils:repr(key)))
-    end,
-    __newindex = function(_self, key, _value)
-        error(("This Button has been deleted. You cannot access the key `%s`."):format(Utils:repr(key)))
-    end,
-}
 local STYLE_STATE_PRIORITIES = {
     "disabled",
     "loading",
