@@ -5,8 +5,6 @@ local Button = require(script.Parent.Parent:WaitForChild("Button"))
 
 export type AppImpl = {
     __index: AppImpl,
-    Page: PageImpl,
-    Transition: TransitionImpl,
     folder: PlayerGui,
     nextDisplayOrder: number,
     appsLoadingPages: { [App]: boolean },
@@ -20,6 +18,15 @@ export type AppImpl = {
         TouchEnabled: boolean,
     },
     new: (ModuleScript) -> App,
+    getPage: (App, string | Page) -> Page?,
+    getCurrentPage: (App) -> Page,
+    goHome: (App, string, any) -> (),
+    goTo: (App, Page | string, string, any) -> (),
+    goBack: (App, string, any) -> (),
+    rawDoPageTransition: (App, Transition) -> (),
+    open: (App) -> (),
+    close: (App) -> (),
+    waitForClose: (App) -> number,
 }
 export type App = typeof(setmetatable(
     {} :: {

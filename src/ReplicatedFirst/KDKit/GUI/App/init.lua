@@ -16,8 +16,6 @@ export type Page = T.Page
 export type Transition = T.Transition
 
 local App: AppImpl = {
-    Page = Page,
-    Transition = Transition,
     folder = game.Players.LocalPlayer:WaitForChild("PlayerGui"),
     nextDisplayOrder = 0,
     appsLoadingPages = {},
@@ -129,9 +127,9 @@ end
 function App:getPage(page)
     if type(page) == "string" then
         return self.pages[page]
-    elseif type(page) == "table" and page.__class == App.Page then
-        return page
     end
+
+    return page
 end
 
 function App:getCurrentPage()
@@ -140,47 +138,42 @@ end
 
 function App:goHome(transitionSource, data)
     self.mutex:wait()
-    self.common.transitionSources:validate(transitionSource)
 
     while next(self.history) do
-        self:goBack(self.common.transitionSources.GO_HOME, { transitionSource = transitionSource, data = data })
+        self:goBack("GO_HOME", { transitionSource = transitionSource, data = data })
     end
 end
 
 function App:goTo(pageReference, transitionSource, data)
     self.mutex:wait()
-    self.common.transitionSources:validate(transitionSource)
 
     local nextPage = self:getPage(pageReference)
     if not nextPage then
-        error(("Cannot goTo unknown page `%s`"):format(Utils:repr(pageReference)))
+        error(("Cannot goTo unknown page `%s`"):format(Utils.repr(pageReference)))
     end
 
     if nextPage == self.pages.home then
-        return self:rawGoHome(transitionSource, data)
+        return self:goHome(transitionSource, data)
     end
 
-    return self:rawDoPageTransition(
-        App.Transition.new(self, transitionSource, self:getCurrentPage(), nextPage, true, data)
-    )
+    return self:rawDoPageTransition(Transition.new(self, transitionSource, self:getCurrentPage(), nextPage, true, data))
 end
 
 function App:goBack(transitionSource, data)
     self.mutex:wait()
-    self.common.transitionSources:validate(transitionSource)
 
     if not next(self.history) then
         warn(
             ("Called `app:goBack(%s, %s)` when there was nothing to go back to, already on the home page with no history. Doing nothing."):format(
-                Utils:repr(transitionSource),
-                Utils:repr(data)
+                Utils.repr(transitionSource),
+                Utils.repr(data)
             )
         )
         return
     end
 
     return self:rawDoPageTransition(
-        App.Transition.new(
+        Transition.new(
             self,
             transitionSource,
             self:getCurrentPage(),
@@ -192,33 +185,20 @@ function App:goBack(transitionSource, data)
 end
 
 function App:rawDoPageTransition(transition)
-    table.insert(self.last16Transitions, transition:summary())
-    while #self.last16Transitions > 16 do
-        table.remove(self.last16Transitions, 1)
-    end
-
     if not self.opened then
         error("Cannot do a page transition while the app is closed.")
     end
 
-    return self.mutex:lock(function(unlock)
-        if transition.from == transition.to and not transition.to._silenceSelfTraversalWarning then
-            warn(
-                ("Tried to transition from a page to itself (`%s` -> `%s`) with transitionSource = `%s` and data = `%s`, which might be a bug in your code. The page will be reloaded. To hide this warning, set `%s._silenceSelfTraversalWarning = true`."):format(
-                    Utils:repr(transition.from.name),
-                    Utils:repr(transition.to.name),
-                    Utils:repr(transition.source),
-                    Utils:repr(transition.data),
-                    Utils:repr(transition.from.name)
-                )
-            )
-        end
+    if not transition.from or not transition.to then
+        error("Cannot rawDoPageTransition with missing `from` or `to`!")
+    end
 
+    return self.mutex:lock(function(unlock)
         transition.from:rawClose(transition)
-        return Utils:ensure(function(failedToOpenNextPage, openNextPageTraceback)
+        return Utils.ensure(function(failedToOpenNextPage, openNextPageTraceback)
             if failedToOpenNextPage then
                 -- attempt to re-open the previous page
-                Utils:ensure(
+                Utils.ensure(
                     function(failedToReopenPreviousPage)
                         if failedToReopenPreviousPage then
                             -- hail mary, if this fails then app is fucked & the player will need to rejoin the game
@@ -230,9 +210,9 @@ function App:rawDoPageTransition(transition)
                     end,
                     transition.from.rawOpen,
                     transition.from,
-                    App.Transition.new(
+                    Transition.new(
                         self,
-                        self.common.transitionSources.NEXT_PAGE_FAILED_TO_OPEN,
+                        "NEXT_PAGE_FAILED_TO_OPEN",
                         transition.to,
                         transition.from,
                         false,
@@ -259,9 +239,7 @@ function App:open()
     self.opened = true
     self.instance.Enabled = true
 
-    self.pages.home:rawOpen(
-        App.Transition.new(self, self.common.transitionSources.APP_OPEN, self.pages.home, nil, true)
-    )
+    self.pages.home:rawOpen(Transition.new(self, "APP_OPEN", self.pages.home, nil, true))
 end
 
 function App:close()
@@ -269,17 +247,12 @@ function App:close()
         error("You cannot close an app that is already closed. Consider opening it and re-closing it.")
     end
 
-    self:goHome(self.common.transitionSources.APP_CLOSE)
-    task.delay(
-        self.pages.home:rawClose(
-            App.Transition.new(self, self.common.transitionSources.APP_CLOSE, self.pages.home, nil, false)
-        ),
-        function()
-            if not self.opened then
-                self.instance.Enabled = false
-            end
+    self:goHome("APP_CLOSE")
+    task.delay(self.pages.home:rawClose(Transition.new(self, "APP_CLOSE", self.pages.home, nil, false)), function()
+        if not self.opened then
+            self.instance.Enabled = false
         end
-    )
+    end)
 
     self.opened = false
 end

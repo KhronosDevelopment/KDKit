@@ -1016,6 +1016,16 @@ function Utils.getattr<K, V, T>(x: { [K]: V } | any, attr: K, default: T?): V | 
 end
 
 --[[
+    Similar to Python's builtin `setattr`
+--]]
+function Utils.setattr<K, V, T>(x: { [K]: V } | any, attr: K, value: V): boolean
+    local s = pcall(function()
+        (x :: { [K]: V })[attr] = value
+    end)
+    return s
+end
+
+--[[
     Pretty simple. Welds two parts together using a WeldConstraint.
     Note that you will need to set the parent of the returned WeldConstraint in order to make it effective.
 --]]
@@ -1371,12 +1381,16 @@ end
         Utils.lua:905 function aggregate
         Utils.lua:915 function aggregateErrors
     stacktrace:
-    [C] function error
+    [C] error
     Utils.lua:939 function aggregateErrors
     Utils.lua:950
     ```
 --]]
-function Utils.aggregateErrors<T, A1, A2>(func: (aggregate: ((...A1) -> A2, ...A1) -> (boolean, A2 | string)) -> T): T
+function Utils.aggregateErrors<FRet..., AArg..., ARet...>(
+    func: (
+        aggregate: ((AArg...) -> ARet..., AArg...) -> (boolean, any) -- actually returns (boolean, AArg... | string)
+    ) -> FRet...
+): FRet...
     local errors = {}
 
     local function aggregate(f, ...)
