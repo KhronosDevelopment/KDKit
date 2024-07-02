@@ -1,0 +1,10 @@
+[package]
+name = "khronosdevelopment/kdkit"
+description = "A collection of utilities."
+version = "0.1.0"
+license = "MIT"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+include = ["LICENSE", "KDKit", "default.project.json"]
+
+[dependencies]
