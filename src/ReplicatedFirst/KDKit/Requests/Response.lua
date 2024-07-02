@@ -8,7 +8,7 @@ local Request = require(script.Parent:WaitForChild("Request"))
 
 type ResponseImpl = {
     __index: ResponseImpl,
-    new: (Request.Request, number, string?, { [string]: string }?, string?) -> Response,
+    new: (Request.Request, Request.HttpResponseData) -> Response,
     json: (Response) -> any,
     raiseForStatus: (Response) -> (),
 }
@@ -27,15 +27,15 @@ export type Response = typeof(setmetatable(
 
 local Response: ResponseImpl = {} :: ResponseImpl
 
-function Response.new(request: Request.Request, statusCode, statusMessage, headers, body)
+function Response.new(request, data)
     local self = setmetatable({
         request = request,
-        succeeded = 200 <= statusCode and statusCode < 300,
-        statusCode = statusCode,
-        statusMessage = statusMessage or "",
-        status = Utils.strip(("%d %s"):format(statusCode, statusMessage or "")),
-        headers = headers or {},
-        body = body or "",
+        succeeded = data.Success,
+        statusCode = data.StatusCode,
+        statusMessage = data.StatusMessage or "",
+        status = Utils.strip(("%d %s"):format(data.StatusCode, data.StatusMessage or "")),
+        headers = data.Headers or {},
+        body = data.Body or "",
     }, Response) :: Response
 
     return self

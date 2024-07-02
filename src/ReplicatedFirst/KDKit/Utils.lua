@@ -1316,6 +1316,27 @@ function Utils.sum<K, V>(tab: { [K]: V }, key: Evaluator<K, V, number>): number
 end
 
 --[[
+    Pretty self explanatory, I think.
+    ```lua
+    Utils.median({ 1, 2, 3 }) -> 2
+    Utils.median({ 1, 2, 3, 4 }) -> 2.5
+    ```
+--]]
+function Utils.median<V>(tab: { number }): number
+    local t = table.clone(tab)
+    table.sort(t)
+
+    local n = #t
+    if n == 0 then
+        error("Cannot find the median of an empty set.")
+    elseif n % 2 == 0 then
+        return (t[n / 2] + t[n / 2 + 1]) / 2
+    else
+        return t[math.ceil(n / 2)]
+    end
+end
+
+--[[
     Swaps the keys and values of the provided table.
     If there are duplicate values, the last occurrence will be kept.
     ```lua
