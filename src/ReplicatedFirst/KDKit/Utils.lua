@@ -88,30 +88,6 @@ type TryRaised<Ret...> = _Try<Ret...> & {
     result: (self: TryRaised<Ret...>) -> Ret...,
 }
 
--- type TryResult<Ret...> = {
---     success: boolean,
---     _raise_called: boolean,
---     traceback: string?, -- note that this only includes frames from AFTER :try()
---     results: { any }?, -- actually packed { Ret... }
---     catch: (self: TryResult<Ret...>, (err: string) -> nil) -> TryResult<Ret...>,
---     proceed: (self: TryResult<Ret...>, (Ret...) -> nil) -> TryResult<Ret...>,
---     after: (self: TryResult<Ret...>, (err: string?) -> nil) -> TryResult<Ret...>,
---     raise: (self: TryResult<Ret...>) -> TryResult<Ret...>,
---     result: (self: TryResult<Ret...>) -> any, -- actually returns: ...ReturnValue | (boolean, ...ReturnValue) | (boolean, string)
--- }
-
--- type RaisedTryResult<Ret...> = {
---     success: boolean,
---     _raise_called: boolean,
---     traceback: string?, -- note that this only includes frames from AFTER :try()
---     results: { any }?, -- actually packed { Ret... }
---     catch: (self: TryResult<Ret...>, (err: string) -> nil) -> TryResult<Ret...>,
---     proceed: (self: TryResult<Ret...>, (Ret...) -> nil) -> TryResult<Ret...>,
---     after: (self: TryResult<Ret...>, (err: string?) -> nil) -> TryResult<Ret...>,
---     raise: (self: TryResult<Ret...>) -> TryResult<Ret...>,
---     result: (self: TryResult<Ret...>) -> any, -- actually returns: ...ReturnValue | (boolean, ...ReturnValue) | (boolean, string)
--- }
-
 function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNotRaised<Ret...>
     local function nonReEntrantWrapper(...: Arg...): Ret...
         return func(...)
@@ -1313,6 +1289,17 @@ function Utils.sum<K, V>(tab: { [K]: V }, key: Evaluator<K, V, number>): number
         total += e(v, k)
     end
     return total
+end
+
+--[[
+    Pretty self explanatory, I think.
+    ```lua
+    Utils.mean({ 7, 9, 2 }) -> 7
+    Utils.mean({ 3, 8 }) -> 5.5
+    ```
+--]]
+function Utils.mean<V>(tab: { number }): number
+    return Utils.sum(tab) / #tab
 end
 
 --[[
