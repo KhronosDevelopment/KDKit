@@ -47,6 +47,7 @@ export type Request = typeof(setmetatable(
 ))
 
 local Request: RequestImpl = {} :: RequestImpl
+Request.__index = Request
 
 function Request.new(url, method, options)
     local self = setmetatable({
