@@ -122,7 +122,7 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
     return {
         success = success,
         results = if success then results :: { any } else nil,
-        traceback = if success then results :: string else nil,
+        traceback = if success then nil else results :: string,
         _raise_called = false :: false,
         catch = function(ctx: _AnyTry<Ret...>, cb: (err: string) -> nil): _AnyTry<Ret...>
             if not ctx.success then
