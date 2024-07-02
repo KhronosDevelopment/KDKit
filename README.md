@@ -62,37 +62,7 @@ local KDKit = require(game:GetService("ReplicatedStorage"):WaitForChild("KDKit")
 
 print(KDKit.Utils.sum({ 1, 2, 3 }))
 ```
-
-
-\* This repository does not use [Wally](https://wally.run/) due to [incompatibilities](https://discord.com/channels/385151591524597761/872225914149302333/1257773007577809027).
-
-> [!NOTE]
-> Useful information that users should know, even when skimming content.
-
-> [!TIP]
-> Helpful advice for doing things better or more easily.
-
-> [!IMPORTANT]
-> Key information users need to know to achieve their goal.
-
-> [!WARNING]
-> Urgent info that needs immediate user attention to avoid problems.
-
-> [!CAUTION]
-> Advises about risks or negative outcomes of certain actions.
 </details>
 
 > [!NOTE]
-> Useful information that users should know, even when skimming content.
-
-> [!TIP]
-> Helpful advice for doing things better or more easily.
-
-> [!IMPORTANT]
-> Key information users need to know to achieve their goal.
-
-> [!WARNING]
-> Urgent info that needs immediate user attention to avoid problems.
-
-> [!CAUTION]
-> Advises about risks or negative outcomes of certain actions.
+> This repository does not use [Wally](https://wally.run/) due to [incompatibilities](https://discord.com/channels/385151591524597761/872225914149302333/1257773007577809027).
