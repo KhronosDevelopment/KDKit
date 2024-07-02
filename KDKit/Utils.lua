@@ -1005,7 +1005,7 @@ end
     Pretty simple. Welds two parts together using a WeldConstraint.
     Note that you will need to set the parent of the returned WeldConstraint in order to make it effective.
 --]]
-function Utils.weld(a: BasePart, b: BasePart, reuse: WeldConstraint): WeldConstraint
+function Utils.weld(a: BasePart, b: BasePart, reuse: WeldConstraint?): WeldConstraint
     local weld = reuse or Instance.new("WeldConstraint")
 
     weld.Part0 = a
