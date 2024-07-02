@@ -39,24 +39,21 @@ My pride and joy. A wonderfully simple interface to creating beautiful interacti
 
 Code within the `home` page:
 ```lua
-local KDKit = require(game:GetService("ReplicateFirst"):WaitForChild("KDKit"))
-local app = require(script.Parent)
-local page = app:getPage("home")
+local KDKit = game:GetService("ReplicateFirst"):WaitForChild("KDKit")
+local GUI = require(KDKit.GUI)
+local app, page = GUI.App.loadPage(script)
 
-page.buttons.close = GUI.Button.new(page.instance.closeButton, function()
-    print("you clicked the close button, so I am going back to the previous page")
-    -- every ui transition must have a `source` (to help debug in production)
-    -- This transitions's source is "CLOSE", but you can use any that you like, i.e. "BUTTON_PRESS"
-    app:goBack("CLOSE") 
-end)
-:hitbox("circle") -- because the button is a circle
-:bind("X") -- oh yes, this does exactly what you think it does
+page.buttons.close = GUI.Button
+    .new(page.instance.closeButton, function()
+        print("you clicked the close button, so I am going back to the previous page")
+        -- every ui transition must have a `source` (to help debug in production)
+        -- This transitions's source is "CLOSE", but you can use any that you like, i.e. "BUTTON_PRESS"
+        app:goBack("CLOSE")
+    end)
+    :hitbox("circle") -- adjusts the hovering animation & the clickable area
+    :bind("X") -- oh yes, this does exactly what you think it does
 
 return page
 ```
 
-Video:
-
 https://user-images.githubusercontent.com/108852550/210302445-633769a3-2929-4c6c-8f70-e2e240901ae2.mp4
-
-Isn't that amazing? 3 lines of button code for all that (removing the comments and print)? Yeah. I'm not kidding, this is the only code required to make this work. See the module level [README](./Button/README.md) for more details.

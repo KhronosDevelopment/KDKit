@@ -23,20 +23,6 @@ local Button: ButtonImpl = {
     onHoveredButtonChangedCallbacks = {},
 } :: ButtonImpl
 
--- using coroutine instead of task.defer because I want this to execute immediately.
--- Ideally, an alternative sound will be found before this module returns.
-S.sound = script:WaitForChild("example")
-coroutine.wrap(function()
-    for _, child in script:GetChildren() do
-        if child.Name ~= "example" then
-            S.sound = child
-            return
-        end
-    end
-
-    S.sound = script.ChildAdded:Wait()
-end)()
-
 local STYLE_STATE_PRIORITIES = {
     "disabled",
     "loading",
@@ -64,6 +50,10 @@ local USER_INPUT_TYPES = {
     [Enum.UserInputType.Touch] = true,
 }
 local ATTRIBUTE_PREFIX = "kdbtn"
+
+-- Feel free to change. Simply:
+-- `require(KDKit.GUI.Button.State).sound = newSound`
+S.sound = script:WaitForChild("defaultSound")
 
 function Button.applyToAll(root, funcName, ...)
     local rootInstance = if typeof(root) == "Instance" then root else root.instance
