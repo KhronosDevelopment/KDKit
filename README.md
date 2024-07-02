@@ -1,6 +1,57 @@
 # KDKit
 A collection of tools that Khronos Development uses in every game.
 
+## Usage
+
+First, [install](#installation) KDKit. Then, you can require all the tools:
+```lua
+local KDKit = require(game:GetService("ReplicatedStorage").KDKit)
+
+KDKit.Utils
+    .try(function()
+        local response = KDKit.Requests.get("https://catfact.ninja/fact")
+        return response:json()["fact"]
+    end)
+    :catch(function(traceback)
+        print("Failed to fetch a cat fact, got an error:", traceback)
+    end)
+    :proceed(function(fact)
+        print("Did you know:", fact)
+    end)
+```
+
+Or, you can require individual tools:
+```lua
+local KDKit = game:GetService("ReplicatedStorage").KDKit
+local Humanize = require(KDKit.Humanize)
+
+for _, word in {"item", "knife", "Option", "LIST"} do
+    print(('The plural of "%s" is "%s"'):format(word, Humanize.plural(word)))
+end
+```
+
+## Features
+
+KDKit is comprised of mostly-separable unique modules. Each module is documented within that module, but a brief summary of each module is provided here:
+
+| Module | Description |
+| --- | --- |
+| [KDKit.Assembly](KDKit/Assembly.lua) | Manages the network owner of a physics object (aka an assembly). |
+| [KDKit.Cooldown](KDKit/Cooldown.lua) | Keeps track of delays and when those delays have elapsed. |
+| [KDKit.GUI](KDKit/GUI/README.md) | A complete GUI framework focused on automatically handling animations. |
+| [KDKit.Hash](KDKit/Hash/init.lua) | Implements hashing functions. |
+| [KDKit.Humanize](KDKit/Humanize.lua) | Several utilities for working with the English language and numbers. |
+| [KDKit.JobId](KDKit/JobId.lua) | Creates an (actually) universally unique ID. |
+| [KDKit.Maid](KDKit/Maid.lua) | Keeps tracks of "tasks" that need to eventually be cleaned up. It's a ripoff [Nevermore/Maid](https://quenty.github.io/NevermoreEngine/api/Maid/). |
+| [KDKit.Mouse](KDKit/Mouse.lua) | Simplifies tasks involving the mouse, especially managing the icon. |
+| [KDKit.Mutex](KDKit/Mutex.lua) | A [mutex lock](https://en.wikipedia.org/wiki/Lock_(computer_science)) implementation. |
+| [KDKit.Preload](KDKit/Preload.lua) | Various utilities to help "wait for xyz". |
+| [KDKit.Random](KDKit/Random.lua) | Wrapper around global `Random` with additional functionality. |
+| [KDKit.ReplicatedValue](KDKit/ReplicatedValue.lua) | Allows arbitrary data to replicated between the server and subscribing clients. |
+| [KDKit.Requests](KDKit/Requests.lua) | Simplifies the process of making HTTP requests. API inspired by Python's [`requests`](https://github.com/psf/requests). |
+| [KDKit.Time](KDKit/Time.lua) | Synchronized UTC time, since `os.time()` is woefully unreliable.  |
+| [KDKit.Utils](KDKit/Utils.lua) | Expansive collection of many utility functions, such as: `min`, `max`, `sum`, `median`, `any` etc. |
+
 ## Installation
 
 ### Manual
