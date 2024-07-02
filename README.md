@@ -32,7 +32,7 @@ end
 
 ## Features
 
-KDKit is comprised of mostly-separable unique modules. Each module is documented within that module, but a brief summary of each module is provided here:
+KDKit is comprised of mostly-separable unique modules. Each module contains its own documentation (some better than others). A brief summary of each module is provided here:
 
 | Module | Description |
 | --- | --- |
@@ -62,6 +62,7 @@ KDKit is comprised of mostly-separable unique modules. Each module is documented
 If you know what you want, and don't care about versioning, you can simply copy and paste whatever you want into the game.
 
 This is what a full KDKit installation looks like in-game:
+
 <img height="400px" src=".github/readme-static/kdkit-ingame.png" />
 
 Many of the features do not rely on each other, so you may choose to only add one or a few modules.
