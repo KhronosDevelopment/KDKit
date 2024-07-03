@@ -8,14 +8,15 @@ type UrlImpl = {
     encode: (string) -> string,
     decode: (string) -> string,
     extractUrlParams: (string) -> (string, { [string]: string }),
-    new: (string, { [string]: string }?) -> Url,
-    render: (Url) -> string,
-    withExtraParams: (Url, { [string]: string }) -> Url,
+    new: (string, { [string]: string | Secret }?) -> Url,
+    segregateParams: (Url) -> ({ [string]: string }, { [string]: Secret }),
+    render: (Url, boolean?) -> string | Secret,
+    withExtraParams: (Url, { [string]: string | Secret }) -> Url,
 }
 export type Url = typeof(setmetatable(
     {} :: {
         path: string,
-        params: { [string]: string },
+        params: { [string]: string | Secret },
     },
     {} :: UrlImpl
 ))
@@ -77,22 +78,62 @@ function Url.new(url, extraParams)
         params = params,
     }, Url) :: Url
 
+    local _, secrets = self:segregateParams()
+    if Utils.count(secrets) > 1 then
+        error("A Url can only contain one secret! (Roblox Limitation)")
+    end
+
     return self
 end
 
-function Url:render()
-    if next(self.params) then
-        return self.path
-            .. "?"
-            .. table.concat(
-                Utils.mapf(function(v, k, index)
-                    return index, Url.encode(k) .. "=" .. Url.encode(v)
-                end, self.params) :: { string },
-                "&"
-            )
+function Url:segregateParams()
+    local secrets: { [string]: Secret } = {}
+    local params: { [string]: string } = {}
+
+    for name, value in self.params do
+        if typeof(value) == "Secret" then
+            secrets[name] = value
+        else
+            params[name] = value
+        end
     end
 
-    return self.path
+    return params, secrets
+end
+
+function Url:render(withoutSecrets)
+    local params, secrets = self:segregateParams()
+
+    if withoutSecrets or not next(secrets) then
+        if next(params) then
+            return self.path
+                .. "?"
+                .. table.concat(
+                    Utils.mapf(function(v, k, index)
+                        return index, Url.encode(k) .. "=" .. Url.encode(v)
+                    end, params) :: { string },
+                    "&"
+                )
+        end
+
+        return self.path
+    end
+
+    if Utils.count(secrets) > 1 then
+        error("A Url can only contain one secret! (Roblox Limitation)")
+    end
+
+    local key, secret = next(secrets)
+    assert(key and secret)
+
+    local publicUrl = self:render(true)
+    assert(typeof(publicUrl) == "string")
+
+    if next(params) then
+        return secret:AddPrefix(publicUrl .. "&" .. Url.encode(key) .. "=")
+    else
+        return secret:AddPrefix(publicUrl .. "?" .. Url.encode(key) .. "=")
+    end
 end
 
 function Url:withExtraParams(params)

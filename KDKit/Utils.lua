@@ -631,6 +631,18 @@ function Utils.isLinearArray(x: { any }): boolean
 end
 
 --[[
+    `Utils.count(x)` is basically `#x` except it works with dictionaries.
+--]]
+function Utils.count(x: { [any]: any }): number
+    local n = 0
+    for _ in x do
+        n += 1
+    end
+
+    return n
+end
+
+--[[
     Returns a copy of the provided table whose nesting depth does not exceed the provided parameter.
     If the parameter is not a table, then it is returned without adjustment
     unless the depth parameter is < 0, then `"<exceeded maximum depth>"` is returned.
