@@ -191,15 +191,29 @@ end
 --[[
 
 --]]
-function Utils.retry<Ret...>(totalAttempts: number, f: () -> Ret..., waitAfterFailure: number?, expBackoffRate: number?): Ret...
-    local backoff = waitAfterFailure or 0
+function Utils.retry<Ret...>(
+    totalAttempts: number,
+    f: () -> Ret...,
+    waitAfterFailure: number?,
+    maxWait: number?,
+    expBackoffRate: number?
+): Ret...
+    waitAfterFailure = waitAfterFailure or 0
+    assert(waitAfterFailure)
 
+    expBackoffRate = expBackoffRate or 2
+    assert(expBackoffRate)
+
+    maxWait = (expBackoffRate ^ 6 * waitAfterFailure) or 60
+    assert(maxWait)
+
+    local backoff = waitAfterFailure
     for attempt = 1, (totalAttempts - 1) do
         local r = Utils.try(f)
 
         if not r.success then
             task.wait(backoff)
-            backoff *= expBackoffRate or 2
+            backoff = math.min(backoff * expBackoffRate, maxWait)
         else
             return r:raise():result()
         end
