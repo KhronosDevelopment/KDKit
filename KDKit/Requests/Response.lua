@@ -4,26 +4,10 @@ local HttpService = game:GetService("HttpService")
 
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 
-local Request = require(script.Parent:WaitForChild("Request"))
+local T = require(script.Parent:WaitForChild("types"))
 
-type ResponseImpl = {
-    __index: ResponseImpl,
-    new: (Request.Request, Request.HttpResponseData) -> Response,
-    json: (Response) -> any,
-    raiseForStatus: (Response) -> (),
-}
-export type Response = typeof(setmetatable(
-    {} :: {
-        request: Request.Request,
-        succeeded: boolean,
-        statusCode: number,
-        statusMessage: string,
-        status: string,
-        headers: { [string]: string },
-        body: string,
-    },
-    {} :: ResponseImpl
-))
+type Response = T.Response
+type ResponseImpl = T.ResponseImpl
 
 local Response: ResponseImpl = {} :: ResponseImpl
 

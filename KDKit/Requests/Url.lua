@@ -2,24 +2,10 @@
 
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 
-type UrlImpl = {
-    __index: UrlImpl,
-    STANDARD_LEGAL_URL_CHARACTERS: { [string]: boolean },
-    encode: (string) -> string,
-    decode: (string) -> string,
-    extractUrlParams: (string) -> (string, { [string]: string }),
-    new: (string, { [string]: string | Secret }?) -> Url,
-    segregateParams: (Url) -> ({ [string]: string }, { [string]: Secret }),
-    render: (Url, boolean?) -> string | Secret,
-    withExtraParams: (Url, { [string]: string | Secret }) -> Url,
-}
-export type Url = typeof(setmetatable(
-    {} :: {
-        path: string,
-        params: { [string]: string | Secret },
-    },
-    {} :: UrlImpl
-))
+local T = require(script.Parent:WaitForChild("types"))
+
+type Url = T.Url
+type UrlImpl = T.UrlImpl
 
 local Url: UrlImpl = {} :: UrlImpl
 Url.__index = Url

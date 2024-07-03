@@ -4,47 +4,14 @@ local HttpService = game:GetService("HttpService")
 
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 
+local T = require(script.Parent:WaitForChild("types"))
 local Url = require(script.Parent:WaitForChild("Url"))
+local Response = require(script.Parent:WaitForChild("Response"))
 
-export type Options = {
-    headers: { [string]: string | Secret }?,
-    params: { [string]: string | Secret }?,
-    body: string?,
-    json: any,
-    compress: boolean?,
-    timeout: number?,
-}
-
-type HttpRequestOptions = {
-    Url: string | Secret,
-    Method: string?,
-    Headers: { [string]: string | Secret }?,
-    Body: string?,
-    Compress: Enum.HttpCompression?,
-}
-
-export type HttpResponseData = {
-    Success: boolean,
-    StatusCode: number,
-    StatusMessage: string,
-    Headers: { [string]: string },
-    Body: string,
-}
-
-type RequestImpl = {
-    __index: RequestImpl,
-    new: (string | Url.Url, string?, Options?) -> Request,
-    render: (Request) -> HttpRequestOptions,
-    perform: (Request) -> HttpResponseData,
-}
-export type Request = typeof(setmetatable(
-    {} :: {
-        url: Url.Url,
-        method: string,
-        options: Options?,
-    },
-    {} :: RequestImpl
-))
+type Request = T.Request
+type RequestImpl = T.RequestImpl
+type HttpRequestOptions = T.HttpRequestOptions
+type HttpResponseData = T.HttpResponseData
 
 local Request: RequestImpl = {} :: RequestImpl
 Request.__index = Request
@@ -105,7 +72,7 @@ function Request:perform()
         return HttpService:RequestAsync(self:render())
     end
 
-    local result
+    local result: HttpResponseData?
     coroutine.wrap(function()
         result = HttpService:RequestAsync(self:render())
     end)()
@@ -119,7 +86,8 @@ function Request:perform()
         task.wait()
     end
 
-    return result
+    assert(result)
+    return Response.new(self, result)
 end
 
 return Request

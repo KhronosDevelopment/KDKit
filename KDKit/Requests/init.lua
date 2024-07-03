@@ -1,12 +1,14 @@
 --!strict
 
+local T = require(script:WaitForChild("types"))
 local Url = require(script:WaitForChild("Url"))
 local Request = require(script:WaitForChild("Request"))
 local Response = require(script:WaitForChild("Response"))
 
-export type Url = Url.Url
-export type Request = Request.Request
-export type Response = Response.Response
+export type Url = T.Url
+export type Request = T.Request
+export type Options = T.Options
+export type Response = T.Response
 
 local Requests = {
     Url = Url,
@@ -14,10 +16,9 @@ local Requests = {
     Response = Response,
 }
 
-local function makeRequester(method: string): (url: string | Url, options: Request.Options?) -> Response
+local function makeRequester(method: string): (url: string | Url, options: Options?) -> Response
     return function(url, options)
-        local request = Request.new(url, method, options)
-        return Response.new(request, request:perform())
+        return Request.new(url, method, options):perform()
     end
 end
 
