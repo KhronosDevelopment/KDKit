@@ -7,14 +7,16 @@ local Crypto = require(script.Parent.Parent:WaitForChild("Cryptography"))
 export type JsonValue = boolean | number | string
 export type JsonValueL = JsonValue | { JsonValue }
 
+type EventProperties = {
+    ["$insert_id"]: string, -- a randomly generated UUID representing *this* event
+    time: number, -- unix time the event occurred
+    distinct_id: string, -- user id, or empty string if not associated
+    [string]: JsonValueL, -- any other properties for the event
+}
+
 export type Event = {
     event: string,
-    properties: {
-        ["$insert_id"]: string, -- a randomly generated UUID representing *this* event
-        time: number, -- unix time the event occurred
-        distinct_id: string, -- user id, or empty string if not associated
-        [string]: JsonValueL, -- any other properties for the event
-    },
+    properties: EventProperties,
 }
 
 export type ProfileUpdate = {
@@ -59,7 +61,19 @@ end
 function HttpClient:import(events)
     return Requests.post("https://api.mixpanel.com/import", {
         headers = { Authorization = self.authHeader },
-        json = events,
+        json = Utils.map(function(e: Event)
+            return {
+                event = e.event,
+                properties = Utils.map(function<T>(v: T): T
+                    if typeof(v) == "string" then
+                        -- mixpanel automatically truncates to 255 chars, so don't bother uploading more
+                        return v:sub(1, 255)
+                    else
+                        return v
+                    end
+                end, e.properties),
+            }
+        end, events),
     })
 end
 
