@@ -18,12 +18,12 @@ function Mouse.setIcon(context: string?, cursor: string?)
     cursor = Mouse.cursors[cursor] or cursor
 
     assert(context)
-    assert(cursor)
 
     if Mouse.cursorByContext[context] == cursor then
         return
     end
-    Mouse.cursorByContext[context] = cursor
+
+    Mouse.cursorByContext[context] = cursor :: any -- cast required because `cursor` may be `nil`
 
     -- move this context to the back, since it most recently changed
     -- or delete it if the cursor was cleared

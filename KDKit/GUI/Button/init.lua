@@ -22,6 +22,7 @@ local Button: ButtonImpl = {
     list = {},
     onHoveredButtonChangedCallbacks = {},
 } :: ButtonImpl
+Button.__index = Button
 
 local STYLE_STATE_PRIORITIES = {
     "disabled",
