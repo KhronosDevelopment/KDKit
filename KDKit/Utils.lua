@@ -68,22 +68,26 @@ end
 
 type _AnyTry<Ret...> = TryNotRaised<Ret...> | TryRaised<Ret...>
 
-type _Try<Ret...> = {
+type TryNotRaised<Ret...> = {
     success: boolean,
     traceback: string?, -- note that this only includes frames from AFTER :try()
     results: { any }?, -- actually packed { Ret... }
-    catch: (self: _AnyTry<Ret...>, (err: string) -> nil) -> _AnyTry<Ret...>,
-    proceed: (self: _AnyTry<Ret...>, (Ret...) -> nil) -> _AnyTry<Ret...>,
-    after: (self: _AnyTry<Ret...>, (err: string?) -> nil) -> _AnyTry<Ret...>,
-    raise: (self: _AnyTry<Ret...>) -> TryRaised<Ret...>,
-}
-
-type TryNotRaised<Ret...> = _Try<Ret...> & {
+    catch: (self: TryNotRaised<Ret...>, (err: string) -> nil) -> TryNotRaised<Ret...>,
+    proceed: (self: TryNotRaised<Ret...>, (Ret...) -> nil) -> TryNotRaised<Ret...>,
+    after: (self: TryNotRaised<Ret...>, (err: string?) -> nil) -> TryNotRaised<Ret...>,
+    raise: (self: TryNotRaised<Ret...>) -> TryRaised<Ret...>,
     _raise_called: false,
     result: (self: TryNotRaised<Ret...>) -> (boolean, string | any), -- the 'any' is actually 'Ret...',
 }
 
-type TryRaised<Ret...> = _Try<Ret...> & {
+type TryRaised<Ret...> = {
+    success: boolean,
+    traceback: string?, -- note that this only includes frames from AFTER :try()
+    results: { any }?, -- actually packed { Ret... }
+    catch: (self: TryRaised<Ret...>, (err: string) -> nil) -> TryRaised<Ret...>,
+    proceed: (self: TryRaised<Ret...>, (Ret...) -> nil) -> TryRaised<Ret...>,
+    after: (self: TryRaised<Ret...>, (err: string?) -> nil) -> TryRaised<Ret...>,
+    raise: (self: TryRaised<Ret...>) -> TryRaised<Ret...>,
     _raise_called: true,
     result: (self: TryRaised<Ret...>) -> Ret...,
 }
@@ -124,7 +128,7 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
         results = if success then results :: { any } else nil,
         traceback = if success then nil else results :: string,
         _raise_called = false :: false,
-        catch = function(ctx: _AnyTry<Ret...>, cb: (err: string) -> nil): _AnyTry<Ret...>
+        catch = function(ctx, cb)
             if not ctx.success then
                 assert(ctx.traceback)
 
@@ -141,7 +145,7 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
 
             return ctx
         end,
-        proceed = function(ctx: _AnyTry<Ret...>, cb: (Ret...) -> nil): _AnyTry<Ret...>
+        proceed = function(ctx, cb)
             if ctx.success then
                 assert(ctx.results)
 
@@ -150,11 +154,11 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
 
             return ctx
         end,
-        after = function(ctx: _AnyTry<Ret...>, cb: (err: string?) -> nil): _AnyTry<Ret...>
+        after = function(ctx, cb)
             cb(ctx.traceback)
             return ctx
         end,
-        raise = function(ctx: _AnyTry<Ret...>): TryRaised<Ret...>
+        raise = function(ctx)
             if not ctx.success then
                 assert(ctx.traceback)
 
@@ -165,12 +169,12 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
                 )
             end
 
-            local typeAdjustedCtx = ctx :: TryRaised<Ret...>
+            local typeAdjustedCtx = (ctx :: any) :: TryRaised<Ret...>
             typeAdjustedCtx._raise_called = true
 
             return typeAdjustedCtx
         end,
-        result = function(ctx: _AnyTry<Ret...>): any
+        result = function(ctx)
             if ctx._raise_called then
                 assert(ctx.results)
                 return table.unpack(ctx.results)

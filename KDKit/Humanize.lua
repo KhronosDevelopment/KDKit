@@ -2,7 +2,6 @@
 
 local RunService = game:GetService("RunService")
 local Utils = require(script.Parent:WaitForChild("Utils"))
-local Time = require(script.Parent:WaitForChild("Time"))
 
 --[[
     Humans are unpredictable and like to read data in comfortable formats. This module contains utilities to navigate
@@ -392,7 +391,7 @@ function Humanize.timestamp(unixTimestamp: number, format: string?, addTimezone:
         addTimezone = true
     end
 
-    local str = os.date(format or "%Y-%m-%d %I:%M:%S %p", unixTimestamp or Time())
+    local str = os.date(format or "%Y-%m-%d %I:%M:%S %p", unixTimestamp)
 
     if addTimezone then
         str ..= " " .. Humanize.casing(
