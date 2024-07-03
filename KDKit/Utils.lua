@@ -1008,6 +1008,22 @@ function Utils.getattr<K, V, T>(x: { [K]: V } | any, attr: K, default: T?): V | 
 end
 
 --[[
+    Repeatedly calls `getattr()` until reaching the value, or breaking.
+    Similar to Ruby's `dig`.
+--]]
+function Utils.dig(x: any, ...: any): any
+    for _, k in { ... } do
+        if x == nil then
+            return x
+        end
+
+        x = Utils.getattr(x, k)
+    end
+
+    return x
+end
+
+--[[
     Similar to Python's builtin `setattr`
 --]]
 function Utils.setattr<K, V, T>(x: { [K]: V } | any, attr: K, value: V): boolean
