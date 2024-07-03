@@ -7,8 +7,8 @@ local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 local Url = require(script.Parent:WaitForChild("Url"))
 
 export type Options = {
-    headers: { [string]: string }?,
-    params: { [string]: string }?,
+    headers: { [string]: string | Secret }?,
+    params: { [string]: string | Secret }?,
     body: string?,
     json: any,
     compress: boolean?,
@@ -16,9 +16,9 @@ export type Options = {
 }
 
 type HttpRequestOptions = {
-    Url: string,
+    Url: string | Secret,
     Method: string?,
-    Headers: { [string]: string }?,
+    Headers: { [string]: string | Secret }?,
     Body: string?,
     Compress: Enum.HttpCompression?,
 }
