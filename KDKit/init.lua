@@ -5,7 +5,7 @@ return {
     Assembly = require(script:WaitForChild("Assembly")),
     Cooldown = require(script:WaitForChild("Cooldown")),
     Cryptography = require(script:WaitForChild("Cryptography")),
-    GUI = require(script:WaitForChild("GUI")),
+    GUI = if RunService:IsClient() then require(script:WaitForChild("GUI")) else nil,
     Humanize = require(script:WaitForChild("Humanize")),
     JobId = require(script:WaitForChild("JobId")),
     Maid = require(script:WaitForChild("Maid")),
