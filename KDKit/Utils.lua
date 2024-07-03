@@ -189,6 +189,26 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
 end
 
 --[[
+
+--]]
+function Utils.retry<Ret...>(totalAttempts: number, f: () -> Ret..., waitAfterFailure: number?, expBackoffRate: number?): Ret...
+    local backoff = waitAfterFailure or 0
+
+    for attempt = 1, (totalAttempts - 1) do
+        local r = Utils.try(f)
+
+        if not r.success then
+            task.wait(backoff)
+            backoff *= expBackoffRate or 2
+        else
+            return r:raise():result()
+        end
+    end
+
+    return f()
+end
+
+--[[
     Ensures that the first function runs after the second one does, regardless of if the second function errors.
     ```lua
     Utils.ensure(function(failed, traceback)
