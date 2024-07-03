@@ -38,8 +38,8 @@ KDKit is comprised of mostly-separable unique modules. Each module contains its 
 | --- | --- |
 | [KDKit.Assembly](KDKit/Assembly.lua) | Manages the network owner of a physics object (aka an assembly). |
 | [KDKit.Cooldown](KDKit/Cooldown.lua) | Keeps track of delays and when those delays have elapsed. |
+| [KDKit.Cryptography](KDKit/Cryptography/init.lua) | Implements hashing and encoding functions. |
 | [KDKit.GUI](KDKit/GUI/README.md) | A complete GUI framework focused on automatically handling animations. |
-| [KDKit.Hash](KDKit/Hash/init.lua) | Implements hashing functions. |
 | [KDKit.Humanize](KDKit/Humanize.lua) | Several utilities for working with the English language and numbers. |
 | [KDKit.JobId](KDKit/JobId.lua) | Creates an (actually) universally unique ID. |
 | [KDKit.Maid](KDKit/Maid.lua) | Keeps tracks of "tasks" that need to eventually be cleaned up. It's a ripoff [Nevermore/Maid](https://quenty.github.io/NevermoreEngine/api/Maid/). |

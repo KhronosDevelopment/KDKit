@@ -1,5 +1,9 @@
+--!strict
+--!native
+--!optimize 2
+
 -- COPIED FROM THIS PAGE: http://lua-users.org/wiki/SecureHashAlgorithm
--- then refactored to only support sha256 & removed some useless optimizations (since Luau now implements such optimizations automatically)
+-- then refactored and optimized and added typing
 
 -- Initialize table of round constants
 -- (first 32 bits of the fractional parts of the cube roots of the first
@@ -72,7 +76,7 @@ local k = {
 }
 
 -- transform a string of bytes in a string of hexadecimal digits
-local function str2hexa(s)
+local function str2hexa(s: string): string
     return s:gsub(".", function(c)
         return ("%02x"):format(c:byte())
     end)
@@ -80,7 +84,7 @@ end
 
 -- transform number 'l' in a big-endian sequence of 'n' bytes
 -- (coded as a string)
-local function num2s(l, n)
+local function num2s(l: number, n: number): string
     local s = ""
     for i = 1, n do
         local rem = l % 256
@@ -92,7 +96,7 @@ end
 
 -- transform the big-endian sequence of four bytes starting at
 -- index 'i' in 's' into a number
-local function s232num(s, i)
+local function s232num(s: string, i: number): number
     local n = 0
     for i = i, i + 3 do
         n = n * 256 + s:byte(i)
@@ -105,15 +109,14 @@ end
 -- resulting message length (in bits) is congruent to 448 (mod 512)
 -- append length of message (before pre-processing), in bits, as 64-bit
 -- big-endian integer
-local function preproc(msg, len)
+local function preproc(msg: string, len: number): string
     local extra = -(len + 1 + 8) % 64
-    len = num2s(8 * len, 8) -- original len in bits, coded
-    msg = msg .. "\128" .. ("\0"):rep(extra) .. len
+    msg = msg .. "\128" .. ("\0"):rep(extra) .. num2s(8 * len, 8)
     assert(#msg % 64 == 0)
     return msg
 end
 
-local function initH256(H)
+local function initH256(H: { number }): { number }
     -- (first 32 bits of the fractional parts of the square roots of the
     -- first 8 primes 2..19):
     H[1] = 0x6a09e667
@@ -127,7 +130,7 @@ local function initH256(H)
     return H
 end
 
-local function digestblock(msg, i, H)
+local function digestblock(msg: string, i: number, H: { number })
     -- break chunk into sixteen 32-bit big-endian words w[1..16]
     local w = {}
     for j = 1, 16 do
@@ -176,7 +179,7 @@ local function digestblock(msg, i, H)
     H[8] = bit32.band(H[8] + h)
 end
 
-local function finalresult256(H)
+local function finalresult256(H: { number }): string
     -- Produce the final hash value (big-endian):
     return str2hexa(
         num2s(H[1], 4)
@@ -190,9 +193,9 @@ local function finalresult256(H)
     )
 end
 
-local HH = {} -- to reuse
+local HH: { number } = {} -- to reuse
 
-return function(msg)
+return function(msg: string): string
     msg = preproc(msg, #msg)
     local H = initH256(HH)
 
