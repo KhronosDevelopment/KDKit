@@ -65,6 +65,7 @@ export type Client = typeof(setmetatable(
             event: Batch<HttpClient.Event>,
             profile: Batch<HttpClient.ProfileUpdate>,
         },
+        inProgressBatchFires: number,
     },
     {} :: ClientImpl
 ))
@@ -88,6 +89,7 @@ function Client.new(projectToken, options)
     local self = setmetatable({
         http = HttpClient.new(projectToken),
         options = options or {},
+        inProgressBatchFires = 0,
     }, Client) :: Client
 
     self.timeProvider = self.options.timeProvider or require(script.Parent.Parent:WaitForChild("Time")).now
@@ -101,6 +103,19 @@ function Client.new(projectToken, options)
                 items = {},
             }
     end, { "event", "profile" })
+
+    game:BindToClose(function()
+        self.options.batching = { default = { maxSize = 0 } }
+        for endpoint, batch in self.batches :: { [string]: Batch<any> } do
+            if next(batch.items) then
+                self:fireBatch(endpoint)
+            end
+        end
+
+        while self.inProgressBatchFires > 0 do
+            task.wait(0.1)
+        end
+    end)
 
     return self
 end
@@ -180,30 +195,22 @@ function Client:fireBatch(endpoint)
         end
     end
 
+    self.inProgressBatchFires += 1
     task.defer(function()
         local retryInitialDelay: number = Utils.dig(self.options, "retryBatches", "initialDelay")
             or RETRY_BATCHES_DEFAULT.initialDelay
         local retryMaxDelay: number = Utils.dig(self.options, "retryBatches", "maxDelay")
             or RETRY_BATCHES_DEFAULT.maxDelay
-        local retryMaxRetries: number = Utils.dig(self.options, "retryBatches", "maxTries")
+        local retryMaxAttempts: number = Utils.dig(self.options, "retryBatches", "maxTries")
             or RETRY_BATCHES_DEFAULT.maxTries
 
-        local backoff = retryInitialDelay
-
-        for retriesLeft = retryMaxRetries, 0, -1 do
-            local success = Utils.try(fire)
-                :proceed(function()
-                    print("Successfully sent", #items, "items to", endpoint)
-                end)
-                :catch(warn)
-                :result()
-
-            if success then
-                return
-            end
-
-            backoff = math.min(backoff * 2, retryMaxDelay)
+        if retryMaxAttempts <= 0 then
+            error("Must allow at least one batch try.")
         end
+
+        Utils.ensure(function()
+            self.inProgressBatchFires -= 1
+        end, Utils.retry, retryMaxAttempts, fire, retryInitialDelay, retryMaxDelay)
     end)
 end
 
@@ -219,6 +226,7 @@ function Client:queueEvent(name, properties)
         properties["$insert_id"] = KDRandom.uuid(16)
     end
 
+    print(("[KDKit.Mixpanel] Event '%s' added to batch with properties"):format(name), properties)
     self:batch("event", { event = name, properties = properties })
 
     return properties["$insert_id"]
@@ -234,6 +242,7 @@ function Client:queueProfileUpdate(distinctId, params)
     end, params)
     o["$distinct_id"] = distinctId
 
+    print(("[KDKit.Mixpanel] Profile update for '%d' added to batch with params"):format(distinctId), params)
     self:batch("profile", o)
 end
 
