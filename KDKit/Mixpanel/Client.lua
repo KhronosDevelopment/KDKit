@@ -50,7 +50,7 @@ type ClientImpl = {
     batchingParam: (Client, string, string) -> number,
     batchingParams: (Client, string) -> { maxSize: number, maxDuration: number, delay: number },
     batch: (Client, string, any) -> (),
-    fireBatch: (Client, string) -> (),
+    fireBatch: (Client, string, ((boolean, string?) -> ())?) -> (),
     queueEvent: (Client, string, Properties?) -> JsonValueL,
     queueEventP: (Client, string, Player, Properties?) -> JsonValueL,
     queueProfileUpdate: (Client, number, ProfileUpdate) -> (),
@@ -108,7 +108,11 @@ function Client.new(projectToken, options)
         self.options.batching = { default = { maxSize = 0 } }
         for endpoint, batch in self.batches :: { [string]: Batch<any> } do
             if next(batch.items) then
-                self:fireBatch(endpoint)
+                self:fireBatch(endpoint, function(failed)
+                    if not failed then
+                        print(("[Mixpanel] Successfully fired %s batch at game close."):format(endpoint))
+                    end
+                end)
             end
         end
 
@@ -179,7 +183,7 @@ function Client:batch(endpoint, item)
     end
 end
 
-function Client:fireBatch(endpoint)
+function Client:fireBatch(endpoint, cb)
     local batch = self.batches[endpoint] :: Batch<any>
     local items = table.clone(batch.items)
 
@@ -208,8 +212,11 @@ function Client:fireBatch(endpoint)
             error("Must allow at least one batch try.")
         end
 
-        Utils.ensure(function()
+        Utils.ensure(function(failed, traceback)
             self.inProgressBatchFires -= 1
+            if cb then
+                cb(failed, traceback)
+            end
         end, Utils.retry, retryMaxAttempts, fire, retryInitialDelay, retryMaxDelay)
     end)
 end
