@@ -97,11 +97,19 @@ if game:GetService("RunService"):IsServer() then
         local url = assert(table.remove(URLS, 1))
         table.insert(URLS, url)
 
+        local timeout = 1
+
+        local startAt = os.clock()
         local s, r = Utils.try(Utils.retry, 3, function()
-            Time.recordRemote(getUrlTime(url, 1))
+            Time.recordRemote(getUrlTime(url, timeout))
         end):result()
+        local duration = os.clock() - startAt
 
         if not s then
+            if duration > timeout and workspace.DistributedGameTime < 15 then
+                return -- just ignore timeouts, http is notoriously slow at game start
+            end
+
             error(("[KDKit.Time] Failed to parse timestamp from %s\n%s"):format(url, r))
         end
     end
