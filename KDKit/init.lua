@@ -6,7 +6,6 @@ local KDKit = {
     Cooldown = require(script:WaitForChild("Cooldown")),
     Cryptography = require(script:WaitForChild("Cryptography")),
     Humanize = require(script:WaitForChild("Humanize")),
-    JobId = require(script:WaitForChild("JobId")),
     Maid = require(script:WaitForChild("Maid")),
     Mixpanel = require(script:WaitForChild("Mixpanel")),
     Mutex = require(script:WaitForChild("Mutex")),

@@ -41,7 +41,6 @@ KDKit is comprised of mostly-separable unique modules. Each module contains its 
 | [KDKit.Cryptography](KDKit/Cryptography/init.lua) | Implements hashing and encoding functions. |
 | [KDKit.GUI](KDKit/GUI/README.md) | A complete GUI framework focused on automatically handling animations. |
 | [KDKit.Humanize](KDKit/Humanize.lua) | Several utilities for working with the English language and numbers. |
-| [KDKit.JobId](KDKit/JobId.lua) | Creates an (actually) universally unique ID. |
 | [KDKit.Maid](KDKit/Maid.lua) | Keeps tracks of "tasks" that need to eventually be cleaned up. It's a ripoff [Nevermore/Maid](https://quenty.github.io/NevermoreEngine/api/Maid/). |
 | [KDKit.Mouse](KDKit/Mouse.lua) | Simplifies tasks involving the mouse, especially managing the icon. |
 | [KDKit.Mutex](KDKit/Mutex.lua) | A [mutex lock](https://en.wikipedia.org/wiki/Lock_(computer_science)) implementation. |
