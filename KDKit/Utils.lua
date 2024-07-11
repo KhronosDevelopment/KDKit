@@ -354,6 +354,36 @@ function Utils.characters(s: string): { string }
 end
 
 --[[
+    Simple deep-copy, with support for recursive tables.
+--]]
+function Utils.deepCopy<T>(original: T, cloneInstances: boolean?, _copyLookup: { [T]: T }?): T
+    if typeof(original) == "table" then
+        _copyLookup = _copyLookup or {}
+        assert(_copyLookup)
+
+        if _copyLookup[original] then
+            return _copyLookup[original]
+        end
+
+        local copy = setmetatable(
+            {},
+            Utils.deepCopy(getmetatable(original), cloneInstances, _copyLookup) :: { [any]: any } -- cast required because luau thinks `original` is a `never`
+        )
+        _copyLookup[original] = (copy :: any) :: T -- cast required because luau doesn't realize that `T` is a table
+
+        for k, v in original do
+            copy[Utils.deepCopy(k, cloneInstances, _copyLookup)] = Utils.deepCopy(v, cloneInstances, _copyLookup)
+        end
+
+        return (copy :: any) :: T -- cast required because luau doesn't realize that `T` is a table
+    elseif cloneInstances and typeof(original) == "Instance" then
+        return original:Clone()
+    end
+
+    return original
+end
+
+--[[
     Calls the provided `transform` function on each value in the table.
     Modifies the table [i]n place, does not make a copy.
 
