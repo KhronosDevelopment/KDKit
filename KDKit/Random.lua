@@ -25,30 +25,78 @@ function KDRandom.number(a: NumberRange | number?, b: number?): number
     return KDRandom.rng:NextNumber((a or 0) :: number, b or 1)
 end
 
+function KDRandom.iLinearChoice<V>(options: { V }): V
+    local n = #options
+    assert(n > 0, "Cannot choose from 0 elements.")
+
+    return table.remove(options, KDRandom.integer(1, n)) :: V
+end
+
 function KDRandom.linearChoice<V>(options: { V }): V
-    return options[KDRandom.integer(1, #options)]
+    local n = #options
+    assert(n > 0, "Cannot choose from 0 elements.")
+
+    return options[KDRandom.integer(1, n)]
+end
+
+function KDRandom.iLinearChoices<V>(options: { V }, k: number): { V }
+    local n = #options
+    assert(k <= n, "Cannot choose more elements than exist.")
+
+    local choices = {}
+    for r = n, n - k + 1, -1 do
+        table.insert(choices, table.remove(options, KDRandom.number(1, r)) :: V)
+    end
+
+    return choices
+end
+
+function KDRandom.linearChoices<V>(options: { V }, k: number): { V }
+    return KDRandom.iLinearChoices(table.clone(options), k)
 end
 
 function KDRandom.keyChoice<K, V>(options: { [K]: V }): K
     return KDRandom.linearChoice(Utils.keys(options))
 end
 
+function KDRandom.keyChoices<K, V>(options: { [K]: V }, k: number): { K }
+    return KDRandom.iLinearChoices(Utils.keys(options), k)
+end
+
+function KDRandom.iChoice<K, V>(options: { [K]: V }): V
+    local key = KDRandom.keyChoice(options)
+    local value = options[key]
+    options[key] = nil
+    return value
+end
+
 function KDRandom.choice<K, V>(options: { [K]: V }): V
     return options[KDRandom.keyChoice(options)]
 end
 
-function KDRandom.ichoices<V>(options: { V }, n: number): { V }
-    local choices = {}
+function KDRandom.choices<K, V>(options: { [K]: V }, k: number): { [K]: V }
+    local keys = Utils.keys(options)
+    local n = #keys
 
-    for i = #options, #options - n + 1, -1 do
-        table.insert(choices, table.remove(options, KDRandom.integer(1, i)) :: V)
+    assert(k <= n, "Cannot choose more items than exist.")
+
+    local choices = {}
+    for r = n, n - k + 1, -1 do
+        local key = table.remove(keys, KDRandom.integer(1, r)) :: K
+        choices[key] = options[key]
     end
 
     return choices
 end
 
-function KDRandom.choices<V>(options: { V }, n: number): { V }
-    return KDRandom.ichoices(table.clone(options), n)
+function KDRandom.iChoices<K, V>(options: { [K]: V }, k: number): { [K]: V }
+    local choices = KDRandom.choices(options, k)
+
+    for k in choices do
+        options[k] = nil
+    end
+
+    return choices
 end
 
 function KDRandom.color(saturation: number?, value: number?): Color3
