@@ -94,7 +94,7 @@ if game:GetService("RunService"):IsServer() then
     function Time.fetch()
         local results = {} :: { RemoteTime }
         local processing = #urls
-        local timeout = 3
+        local timeout = if workspace.DistributedGameTime < 15 then 10 else 3
         for _, url in urls do
             task.defer(function(u)
                 Utils.try(getUrlTime, u, timeout)
