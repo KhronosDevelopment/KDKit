@@ -8,24 +8,34 @@ type RemoteTime = {
 }
 
 local TIME_ADJUSTMENT_RATE: number
-local DELAY_BETWEEN_REMOTE_UPDATES: number
 local MAX_REMOTE_HISTORY: number
+local MIN_REMOTE_HISTORY: number
 
 local Time = {
     remotes = {},
 } :: {
     remotes: { RemoteTime },
     now: () -> number,
-    fetch: () -> { RemoteTime },
+    recordRemote: (RemoteTime) -> (),
     sync: () -> (),
+    waitForSync: () -> number,
     waitForRemote: () -> RemoteTime,
     estimateCurrentRemoteTime: () -> number,
 }
 
 if game:GetService("RunService"):IsServer() then
+    local URLS = {
+        "https://www.google.com/",
+        "https://status.cloud.google.com/",
+        "https://www.cloudflare.com/",
+        "https://www.reddit.com/",
+        "https://www.iana.org/",
+        "https://www.facebook.com/",
+    }
+
     TIME_ADJUSTMENT_RATE = 1 / 5 -- a 1 second delta is corrected in 5 seconds
-    DELAY_BETWEEN_REMOTE_UPDATES = 30
-    MAX_REMOTE_HISTORY = 4 * 10
+    MAX_REMOTE_HISTORY = 4 * #URLS
+    MIN_REMOTE_HISTORY = math.floor(#URLS / 2)
 
     local remote = Instance.new("RemoteFunction", game:GetService("ReplicatedStorage"))
     remote.Name = "_KDKit.Time"
@@ -35,14 +45,6 @@ if game:GetService("RunService"):IsServer() then
     end
 
     local Requests = require(script.Parent:WaitForChild("Requests"))
-
-    MAX_REMOTE_HISTORY = 4 * 6
-    local urls = {
-        "https://www.google.com/",
-        "https://www.cloudflare.com/",
-        "https://www.cdc.gov/",
-        "https://www.time.gov/",
-    }
 
     local function parseDateHeader(h: string): number
         local months = {
@@ -62,7 +64,7 @@ if game:GetService("RunService"):IsServer() then
 
         local day, month, year, hour, min, sec = h:match("(%d+)%s+(%a+)%s+(%d+)%s+(%d+)%s*:%s*(%d+)%s*:%s*(%d+)")
         if not day then
-            error(("Cannot parse invalid date header! Expected RFC 5322 but got: `%s`"):format(h))
+            error(("[KDKit.Time] Cannot parse invalid date header! Expected RFC 5322 but got: `%s`"):format(h))
         end
 
         local dt = DateTime.fromUniversalTime(
@@ -82,7 +84,7 @@ if game:GetService("RunService"):IsServer() then
         local response = Requests.head(url, { timeout = timeout })
         local requestDuration = os.clock() - sentAtClock
 
-        local remoteTime = parseDateHeader(response.headers["date"] or error("Missing `date` header!"))
+        local remoteTime = parseDateHeader(response.headers["date"] or error("[KDKit.Time] Missing `date` header!"))
         local remoteTimeGeneratedAtClock = sentAtClock + requestDuration / 2
 
         return {
@@ -91,52 +93,44 @@ if game:GetService("RunService"):IsServer() then
         }
     end
 
-    function Time.fetch()
-        local results = {} :: { RemoteTime }
-        local processing = #urls
-        local timeout = if workspace.DistributedGameTime < 15 then 10 else 3
-        for _, url in urls do
-            task.defer(function(u)
-                Utils.try(getUrlTime, u, timeout)
-                    :proceed(function(r)
-                        table.insert(results, r)
-                    end)
-                    :catch(function(err)
-                        task.defer(error, err)
-                    end)
+    function Time.sync()
+        local url = assert(table.remove(URLS, 1))
+        table.insert(URLS, url)
 
-                processing -= 1
-            end, url)
+        local s, r = Utils.try(Utils.retry, 3, function()
+            Time.recordRemote(getUrlTime(url, 1))
+        end):result()
+
+        if not s then
+            error(("[KDKit.Time] Failed to parse timestamp from %s\n%s"):format(url, r))
         end
+    end
 
-        while processing > 0 do
-            task.wait()
-        end
-
-        return results
+    for i = 1, #URLS do
+        task.defer(Time.sync)
     end
 else
     TIME_ADJUSTMENT_RATE = 1 / 2 -- a 1 second delta is corrected in 2 seconds
-    DELAY_BETWEEN_REMOTE_UPDATES = 10
     MAX_REMOTE_HISTORY = 4
+    MIN_REMOTE_HISTORY = 1
 
     -- note: if you require Time on the client, you must also require it on the server!
     local remote = game:GetService("ReplicatedStorage"):WaitForChild("_KDKit.Time") :: RemoteFunction
 
-    function Time.fetch()
+    function Time.sync()
         local sentAt = os.clock()
         local result = remote:InvokeServer()
         local duration = os.clock() - sentAt
 
-        return { {
+        Time.recordRemote({
             unix = result,
             clock = sentAt + duration / 2,
-        } }
+        })
     end
 end
 
-function Time.sync()
-    Utils.iextend(Time.remotes, Time.fetch())
+function Time.recordRemote(remote)
+    table.insert(Time.remotes, remote)
 
     local delete = #Time.remotes - MAX_REMOTE_HISTORY
     for i = 1, delete do
@@ -144,10 +138,23 @@ function Time.sync()
     end
 end
 
-function Time.estimateCurrentRemoteTime()
-    while not next(Time.remotes) do
+function Time.waitForSync()
+    local startedWaitingAt = os.clock()
+    local warnAfter = 5
+    while #Time.remotes < MIN_REMOTE_HISTORY do
         task.wait()
+
+        if (os.clock() - startedWaitingAt) > warnAfter then
+            warn(("[KDKit.Time] waitForSync is taking longer than expected (%d seconds)"):format(warnAfter))
+            warnAfter *= 3
+        end
     end
+
+    return os.clock() - startedWaitingAt
+end
+
+function Time.estimateCurrentRemoteTime()
+    Time.waitForSync()
 
     local now = os.clock()
     local currentTimes = Utils.map(function(r: RemoteTime)
@@ -179,17 +186,14 @@ function Time.now()
 end
 
 task.defer(function()
-    local backoff = DELAY_BETWEEN_REMOTE_UPDATES / 4
     while true do
         Utils.try(Time.sync)
             :catch(function(t)
                 task.defer(error, t)
-                task.wait(backoff)
-                backoff *= 2
+                task.wait(1)
             end)
             :proceed(function()
-                task.wait(DELAY_BETWEEN_REMOTE_UPDATES)
-                backoff = DELAY_BETWEEN_REMOTE_UPDATES / 4
+                task.wait(5)
             end)
     end
 end)
