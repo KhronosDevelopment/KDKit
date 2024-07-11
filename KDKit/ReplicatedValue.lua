@@ -77,20 +77,20 @@ type ReplicatedValueImpl = {
     get: (key: string, initialValue: any?, initialPermission: Permission?) -> ReplicatedValue,
     free: (key: string) -> (),
     changeAtLocationAffectsPath: (Path, Path) -> boolean,
-    addPendingSubscriber: (Player, string) -> (),
+    addPendingSubscriber: (Player, string) -> (), -- server only
     new: (string, any, Permission?, boolean?) -> ReplicatedValue,
-    pullPendingSubscribers: (ReplicatedValue) -> (),
-    hasPermission: (ReplicatedValue, player: Player) -> boolean,
+    pullPendingSubscribers: (ReplicatedValue) -> (), -- server only
+    hasPermission: (ReplicatedValue, player: Player) -> boolean, -- server only
     receiveNewValueAt: (ReplicatedValue, any, Path, boolean?) -> boolean,
-    notifySubscribersOfChangeAt: (ReplicatedValue, Path) -> (),
-    publishPendingSubscriberNotifications: (ReplicatedValue) -> (),
+    notifySubscribersOfChangeAt: (ReplicatedValue, Path) -> (), -- server only
+    publishPendingSubscriberNotifications: (ReplicatedValue) -> (), -- server only
     notifyListenersOfChangeAt: (ReplicatedValue, Path) -> (),
     evaluate: (ReplicatedValue, PathLike?, any?) -> any,
-    set: (ReplicatedValue, PathLike, any?) -> boolean,
-    isSubscribed: (ReplicatedValue, Player) -> boolean,
-    subscribe: (ReplicatedValue, Player) -> (),
-    unsubscribe: (ReplicatedValue, Player) -> (),
-    publishUpdateToSubscriber: (ReplicatedValue, Player, Path, any) -> (),
+    set: (ReplicatedValue, PathLike, any?) -> boolean, -- server only
+    isSubscribed: (ReplicatedValue, Player) -> boolean, -- server only
+    subscribe: (ReplicatedValue, Player) -> (), -- server only
+    unsubscribe: (ReplicatedValue, Player) -> (), -- server only
+    publishUpdateToSubscriber: (ReplicatedValue, Player, Path, any) -> (), -- server only
     listen: (ReplicatedValue, PathLike, (any) -> (), any?) -> { Disconnect: () -> () },
     clean: (ReplicatedValue) -> (),
 }
@@ -166,11 +166,13 @@ function ReplicatedValue.changeAtLocationAffectsPath(changed, path)
     return true
 end
 
-function ReplicatedValue.addPendingSubscriber(player, key)
-    if ReplicatedValue.pendingSubscribers[key] then
-        ReplicatedValue.pendingSubscribers[key][player] = true
-    else
-        ReplicatedValue.pendingSubscribers[key] = { [player] = true }
+if IS_SERVER then
+    function ReplicatedValue.addPendingSubscriber(player, key)
+        if ReplicatedValue.pendingSubscribers[key] then
+            ReplicatedValue.pendingSubscribers[key][player] = true
+        else
+            ReplicatedValue.pendingSubscribers[key] = { [player] = true }
+        end
     end
 end
 
@@ -188,6 +190,7 @@ game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
     end
 end)
 
+-- WARNING: stores the value without making a copy, DO NOT MODIFY IT!
 function ReplicatedValue.new(key, value, permission, internallyHandlingLifecycle)
     if not internallyHandlingLifecycle then
         error("Please use ReplicatedValue.get(...) instead of ReplicatedValue.new(...)")
@@ -202,38 +205,14 @@ function ReplicatedValue.new(key, value, permission, internallyHandlingLifecycle
         queuedSubscriberNotifications = {},
     }, ReplicatedValue) :: ReplicatedValue
 
-    self:pullPendingSubscribers()
+    if IS_SERVER then
+        self:pullPendingSubscribers()
+    end
 
     return self
 end
 
-function ReplicatedValue:pullPendingSubscribers()
-    local pendingSubscribers = ReplicatedValue.pendingSubscribers[self.key]
-    if not pendingSubscribers then
-        return
-    end
-
-    for subscriber, _ in pendingSubscribers do
-        self:subscribe(subscriber)
-    end
-    ReplicatedValue.pendingSubscribers[self.key] = nil
-end
-
-function ReplicatedValue:hasPermission(player)
-    if not self.permission then
-        return true
-    elseif typeof(self.permission) == "Instance" then
-        return self.permission == player
-    elseif type(self.permission) == "table" then
-        return not not table.find(self.permission, player)
-    elseif type(self.permission) == "function" then
-        return self.permission(player)
-    end
-
-    warn(("Unknown permission object: `%s`. Disallowing access."):format(Utils.repr(self.permission)))
-    return false
-end
-
+-- WARNING: stores the value without making a copy, DO NOT MODIFY IT!
 function ReplicatedValue:receiveNewValueAt(value, path, mustSucceed)
     local pathLength = #path
 
@@ -275,40 +254,13 @@ function ReplicatedValue:receiveNewValueAt(value, path, mustSucceed)
         end
     end
 
-    self:notifySubscribersOfChangeAt(path)
+    if IS_SERVER then
+        self:notifySubscribersOfChangeAt(path)
+    end
+
     self:notifyListenersOfChangeAt(path)
 
     return true
-end
-
-function ReplicatedValue:notifySubscribersOfChangeAt(path)
-    if not self.pendingSubscriberNotification then
-        self.pendingSubscriberNotification = path
-    else
-        local common = {}
-        for i, pathPart in self.pendingSubscriberNotification do
-            if path[i] == pathPart then
-                table.insert(common, pathPart)
-            else
-                break
-            end
-        end
-
-        self.pendingSubscriberNotification = common
-    end
-end
-
-function ReplicatedValue:publishPendingSubscriberNotifications()
-    local path = self.pendingSubscriberNotification
-    if not path then
-        return
-    end
-    self.pendingSubscriberNotification = nil
-
-    local value = self:evaluate(path)
-    for _, subscriber in self.subscribers do
-        self:publishUpdateToSubscriber(subscriber, path, value)
-    end
 end
 
 function ReplicatedValue:notifyListenersOfChangeAt(path)
@@ -319,6 +271,7 @@ function ReplicatedValue:notifyListenersOfChangeAt(path)
     end
 end
 
+-- WARNING: returns internal data without copying, DO NOT MODIFY!
 function ReplicatedValue:evaluate(path, default)
     if not path then
         path = {}
@@ -342,38 +295,7 @@ function ReplicatedValue:evaluate(path, default)
     return value
 end
 
-function ReplicatedValue:set(path, value) -- warning: `value` may be modified in-place!
-    if type(path) == "string" then
-        path = Utils.split(path, ".")
-    end
-
-    return self:receiveNewValueAt(value, path :: Path, true)
-end
-
-function ReplicatedValue:isSubscribed(player)
-    return not not table.find(self.subscribers, player)
-end
-
-function ReplicatedValue:subscribe(player)
-    if self:isSubscribed(player) or not self:hasPermission(player) then
-        return
-    end
-
-    table.insert(self.subscribers, player)
-    self:publishUpdateToSubscriber(player, {}, self.currentValue)
-end
-
-function ReplicatedValue:unsubscribe(player)
-    local i = table.find(self.subscribers, player)
-    if i then
-        table.remove(self.subscribers, i)
-    end
-end
-
-function ReplicatedValue:publishUpdateToSubscriber(subscriber, path, value)
-    ReplicatedValue.remotes.update:FireClient(subscriber, self.key, path, value)
-end
-
+-- WARNING: returns internal data without copying, DO NOT MODIFY!
 function ReplicatedValue:listen(path, callback, default)
     if type(path) == "string" then
         path = Utils.split(path, ".")
@@ -398,6 +320,97 @@ function ReplicatedValue:clean()
 end
 
 if IS_SERVER then
+    function ReplicatedValue:pullPendingSubscribers()
+        local pendingSubscribers = ReplicatedValue.pendingSubscribers[self.key]
+        if not pendingSubscribers then
+            return
+        end
+
+        for subscriber, _ in pendingSubscribers do
+            self:subscribe(subscriber)
+        end
+        ReplicatedValue.pendingSubscribers[self.key] = nil
+    end
+
+    function ReplicatedValue:hasPermission(player)
+        if not self.permission then
+            return true
+        elseif typeof(self.permission) == "Instance" then
+            return self.permission == player
+        elseif type(self.permission) == "table" then
+            return not not table.find(self.permission, player)
+        elseif type(self.permission) == "function" then
+            return self.permission(player)
+        end
+
+        warn(("Unknown permission object: `%s`. Disallowing access."):format(Utils.repr(self.permission)))
+        return false
+    end
+
+    function ReplicatedValue:isSubscribed(player)
+        return not not table.find(self.subscribers, player)
+    end
+
+    function ReplicatedValue:subscribe(player)
+        if self:isSubscribed(player) or not self:hasPermission(player) then
+            return
+        end
+
+        table.insert(self.subscribers, player)
+        self:publishUpdateToSubscriber(player, {}, self.currentValue)
+    end
+
+    function ReplicatedValue:unsubscribe(player)
+        local i = table.find(self.subscribers, player)
+        if i then
+            table.remove(self.subscribers, i)
+        end
+    end
+
+    function ReplicatedValue:notifySubscribersOfChangeAt(path)
+        if not self.pendingSubscriberNotification then
+            self.pendingSubscriberNotification = path
+        else
+            local common = {}
+            for i, pathPart in self.pendingSubscriberNotification do
+                if path[i] == pathPart then
+                    table.insert(common, pathPart)
+                else
+                    break
+                end
+            end
+
+            self.pendingSubscriberNotification = common
+        end
+    end
+
+    function ReplicatedValue:publishPendingSubscriberNotifications()
+        local path = self.pendingSubscriberNotification
+        if not path then
+            return
+        end
+        self.pendingSubscriberNotification = nil
+
+        local value = self:evaluate(path)
+        for _, subscriber in self.subscribers do
+            self:publishUpdateToSubscriber(subscriber, path, value)
+        end
+    end
+
+    function ReplicatedValue:publishUpdateToSubscriber(subscriber, path, value)
+        ReplicatedValue.remotes.update:FireClient(subscriber, self.key, path, value)
+    end
+
+    -- WARNING: stores the value without making a copy, DO NOT MODIFY IT!
+    function ReplicatedValue:set(path, value)
+        if typeof(path) == "string" then
+            path = Utils.split(path, ".")
+        end
+        assert(typeof(path) == "table")
+
+        return self:receiveNewValueAt(value, path, true)
+    end
+
     ReplicatedValue.remotes.subscribe.OnServerEvent:Connect(function(player: Player, dirtyKey: any)
         if typeof(dirtyKey) ~= "string" then
             return
