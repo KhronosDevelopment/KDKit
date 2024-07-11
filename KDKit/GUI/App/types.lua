@@ -50,7 +50,7 @@ export type PageImpl = {
     rawClose: (Page, Transition) -> number,
     afterOpened: (Page, Transition) -> (),
     beforeClosed: (Page, Transition) -> (),
-    cycle: <Arg...>(Page, number, (Arg...) -> any, Arg...) -> (),
+    cycle: <Arg...>(Page, number, (Arg...) -> (), Arg...) -> { Disconnect: () -> () },
 }
 export type Page = typeof(setmetatable(
     {} :: {

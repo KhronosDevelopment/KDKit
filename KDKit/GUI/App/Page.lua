@@ -75,8 +75,9 @@ function Page:rawClose(transition)
 end
 
 function Page:cycle<Arg...>(seconds, func, ...)
+    local stopped = false
     task.defer(function(...)
-        while task.wait(seconds) do
+        while task.wait(seconds) and not stopped do
             if self.opened then
                 Utils.try(func, ...):catch(function(err)
                     task.defer(error, err)
@@ -84,6 +85,12 @@ function Page:cycle<Arg...>(seconds, func, ...)
             end
         end
     end, ...)
+
+    return {
+        Disconnect = function()
+            stopped = true
+        end,
+    }
 end
 
 function Page:afterOpened(transition)
