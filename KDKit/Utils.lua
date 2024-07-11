@@ -1460,14 +1460,14 @@ end
     Utils.lua:950
     ```
 --]]
-function Utils.aggregateErrors<FRet..., AArg..., ARet...>(
+function Utils.aggregateErrors<FRet...>(
     func: (
-        aggregate: ((AArg...) -> ARet..., AArg...) -> (boolean, any) -- actually returns (boolean, AArg... | string)
+        aggregate: <AArg..., ARet...>((AArg...) -> ARet..., AArg...) -> (boolean, any) -- actually returns (boolean, AArg... | string)
     ) -> FRet...
 ): FRet...
     local errors = {}
 
-    local function aggregate(f, ...)
+    local function aggregate<AArg..., ARet...>(f: (AArg...) -> ARet..., ...: AArg...): (boolean, any)
         local tried = Utils.try(f, ...)
 
         if tried.success then
