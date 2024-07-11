@@ -342,7 +342,7 @@ function ReplicatedValue:evaluate(path, default)
     return value
 end
 
-function ReplicatedValue:set(path, value)
+function ReplicatedValue:set(path, value) -- warning: `value` may be modified in-place!
     if type(path) == "string" then
         path = Utils.split(path, ".")
     end
