@@ -321,7 +321,7 @@ end
 
 function ReplicatedValue:evaluate(path, default)
     if not path then
-        return self.currentValue
+        path = {}
     elseif type(path) == "string" then
         path = Utils.split(path, ".")
     end
