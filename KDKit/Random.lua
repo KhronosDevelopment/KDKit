@@ -88,7 +88,7 @@ function KDRandom.weightedChoice<K>(options: { [K]: number }): K
         end
     end
 
-    error("Called weightedChoice with empty table!")
+    error("[KDKit.Random] Called weightedChoice with empty table!")
 end
 
 function KDRandom.uuid(strlen: number, avoidCollisions: { [string]: any }?, hat: ({ string } | string)?): string

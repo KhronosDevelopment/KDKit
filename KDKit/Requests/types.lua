@@ -26,11 +26,12 @@ export type Options = {
     json: any,
     compress: boolean?,
     timeout: number?,
+    log: boolean?,
 }
 
 export type HttpRequestOptions = {
     Url: string | Secret,
-    Method: string?,
+    Method: string,
     Headers: { [string]: string | Secret }?,
     Body: string?,
     Compress: Enum.HttpCompression?,
@@ -46,6 +47,7 @@ export type HttpResponseData = {
 
 export type RequestImpl = {
     __index: RequestImpl,
+    sentRequests: number,
     new: (string | Url, string?, Options?) -> Request,
     render: (Request) -> HttpRequestOptions,
     perform: (Request) -> Response,

@@ -50,7 +50,7 @@ end
 function Keybind.new(button, keyReference)
     local key = Keybind.parseKeyCode(keyReference)
     if not key then
-        error(("Failed to parse `%s` into a KeyCode."):format(Utils.repr(keyReference)))
+        error(("[KDKit.GUI.Button.Keybind] Failed to parse `%s` into a KeyCode."):format(Utils.repr(keyReference)))
     end
 
     local self = setmetatable({

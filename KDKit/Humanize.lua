@@ -306,7 +306,7 @@ function Humanize.casing(text: string, mode: string)
     local casing = Humanize.CASING[mode]
     if not casing then
         error(
-            ("Invalid casing mode `%s`. Valid options are %s."):format(
+            ("[KDKit.Humanize] Invalid casing mode `%s`. Valid options are %s."):format(
                 Utils.repr(mode),
                 Humanize.list(Utils.map(function(option)
                     return Utils.repr(option)
@@ -331,7 +331,7 @@ end
 --]]
 function Humanize.list(array: { string }, maxItems: number?, name: string?)
     if not Utils.isLinearArray(array) then
-        error("You may only pass linear arrays to `KDKit.Humanize.list`.")
+        error("[KDKit.Humanize] You may only pass linear arrays to `list`.")
     end
     local n = #array
 
@@ -688,13 +688,13 @@ end
 --]]
 function Humanize.hexToColor(hex: string): Color3
     if hex:len() ~= 6 then
-        error(("Invalid hex code: %s"):format(Utils.repr(hex)))
+        error(("[KDKit.Humanize] Invalid hex code: %s"):format(Utils.repr(hex)))
     end
 
     local r, g, b = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
 
     if not r or not g or not b then
-        error(("Invalid hex code: %s"):format(Utils.repr(hex)))
+        error(("[KDKit.Humanize] Invalid hex code: %s"):format(Utils.repr(hex)))
     end
 
     return Color3.fromRGB(r, g, b)

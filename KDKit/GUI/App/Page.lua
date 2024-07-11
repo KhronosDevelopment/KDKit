@@ -36,7 +36,7 @@ function Page.new(app, module)
 
     if not self.instance then
         error(
-            ("You must have a gui object named `instance` under each page. Did not find one under `%s`."):format(
+            ("[KDKit.GUI.Page] You must have a gui object named `instance` under each page. Did not find one under `%s`."):format(
                 module:GetFullName()
             )
         )

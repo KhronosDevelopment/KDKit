@@ -32,7 +32,7 @@ end
 function Response:raiseForStatus()
     if not self.succeeded then
         error(
-            ("HTTP %s request to %s returned a non-2xx status: %s"):format(
+            ("[KDKit.Requests] HTTP %s request to %s returned a non-2xx status: %s"):format(
                 self.request.method,
                 self.request.url.path,
                 self.status

@@ -35,7 +35,7 @@ function App.loadPage(module)
         return app :: App, app.pages[module.Name] :: Page
     end
 
-    error(("No app found for script '%s'."):format(module:GetFullName()))
+    error(("[KDKit.GUI.App] No app found for script '%s'."):format(module:GetFullName()))
 end
 
 function App.useNextDisplayOrder()
@@ -85,14 +85,14 @@ function App.new(folder)
         local page = Page.new(self, pageInstance)
 
         if self.pages[page.name] then
-            error(("You cannot have two pages with the same name `%s`"):format(page.name))
+            error(("[KDKit.GUI.App] You cannot have two pages with the same name `%s`"):format(page.name))
         end
 
         self.pages[page.name] = page
     end
 
     if not self.pages.home then
-        error("You must have a page called `home`.")
+        error("[KDKit.GUI.App] You must have a page called `home`.")
     end
 
     App.appsLoadingPages[self] = true
@@ -105,7 +105,7 @@ function App.new(folder)
 
             if required ~= page then
                 error(
-                    ("Your module `%s` was expected to call `KDKit.GUI.App.loadPage(%s)` and return that page. Instead, the module returned `%s`."):format(
+                    ("[KDKit.GUI.App] Your module `%s` was expected to call `KDKit.GUI.App.loadPage(%s)` and return that page. Instead, the module returned `%s`."):format(
                         page.module:GetFullName(),
                         Utils.repr(page.name),
                         Utils.repr(required)
@@ -149,7 +149,7 @@ function App:goTo(pageReference, transitionSource, data)
 
     local nextPage = self:getPage(pageReference)
     if not nextPage then
-        error(("Cannot goTo unknown page `%s`"):format(Utils.repr(pageReference)))
+        error(("[KDKit.GUI.App] Cannot goTo unknown page `%s`"):format(Utils.repr(pageReference)))
     end
 
     if nextPage == self.pages.home then
@@ -164,7 +164,7 @@ function App:goBack(transitionSource, data)
 
     if not next(self.history) then
         warn(
-            ("Called `app:goBack(%s, %s)` when there was nothing to go back to, already on the home page with no history. Doing nothing."):format(
+            ("[KDKit.GUI.App] Called `app:goBack(%s, %s)` when there was nothing to go back to, already on the home page with no history. Doing nothing."):format(
                 Utils.repr(transitionSource),
                 Utils.repr(data)
             )
@@ -186,11 +186,11 @@ end
 
 function App:rawDoPageTransition(transition)
     if not self.opened then
-        error("Cannot do a page transition while the app is closed.")
+        error("[KDKit.GUI.App] Cannot do a page transition while the app is closed.")
     end
 
     if not transition.from or not transition.to then
-        error("Cannot rawDoPageTransition with missing `from` or `to`!")
+        error("[KDKit.GUI.App] Cannot rawDoPageTransition with missing `from` or `to`!")
     end
 
     return self.mutex:lock(function(unlock)
@@ -234,7 +234,7 @@ end
 
 function App:open()
     if self.opened then
-        error("You cannot open an app that is already open. Consider closing it and re-opening it.")
+        error("[KDKit.GUI.App] You cannot open an app that is already open. Consider closing it and re-opening it.")
     end
     self.opened = true
     self.instance.Enabled = true
@@ -244,7 +244,7 @@ end
 
 function App:close()
     if not self.opened then
-        error("You cannot close an app that is already closed. Consider opening it and re-closing it.")
+        error("[KDKit.GUI.App] You cannot close an app that is already closed. Consider opening it and re-closing it.")
     end
 
     self:goHome("APP_CLOSE")

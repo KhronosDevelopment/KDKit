@@ -136,7 +136,7 @@ function Button:loadStyles()
 
         if not self.styles[state] then
             warn(
-                ("Found an attribute named `%s` on the button `%s` which looks like it might be a style option, but `%s` is not a valid button state. Valid states are: %s."):format(
+                ("[KDKit.GUI.Button] Found an attribute named `%s` on the button `%s` which looks like it might be a style option, but `%s` is not a valid button state. Valid states are: %s."):format(
                     name,
                     self.instance:GetFullName(),
                     state,
@@ -149,7 +149,7 @@ function Button:loadStyles()
         local originalValue = Utils.getattr(self.instance, property)
         if typeof(originalValue) ~= typeof(value) then
             error(
-                ("KDKit.GUI.Button tried to parse the attribute `%s` on %s, but got an unexpected attribute value of type `%s` which differs from the current property type `%s`"):format(
+                ("[KDKit.GUI.Button] Tried to parse the attribute `%s` on %s, but got an unexpected attribute value of type `%s` which differs from the current property type `%s`"):format(
                     Utils.repr(name),
                     self.instance:GetFullName(),
                     typeof(originalValue),
@@ -409,7 +409,7 @@ end
 function Button:makeSound()
     if typeof(S.sound) ~= "Instance" or not S.sound:IsA("Sound") then
         warn(
-            ("Button.sound is misconfigured. Expected to find a `Sound` instance, but instead found `%s`"):format(
+            ("[KDKit.GUI.Button] Button.state.sound is misconfigured. Expected to find a `Sound` instance, but instead found `%s`"):format(
                 Utils.repr(S.sound)
             )
         )

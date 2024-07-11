@@ -66,7 +66,7 @@ function Url.new(url, extraParams)
 
     local _, secrets = self:segregateParams()
     if Utils.count(secrets) > 1 then
-        error("A Url can only contain one secret! (Roblox Limitation)")
+        error("[KDKit.Requests] A Url can only contain one secret! (Roblox Limitation)")
     end
 
     return self
@@ -106,7 +106,7 @@ function Url:render(withoutSecrets)
     end
 
     if Utils.count(secrets) > 1 then
-        error("A Url can only contain one secret! (Roblox Limitation)")
+        error("[KDKit.Requests] A Url can only contain one secret! (Roblox Limitation)")
     end
 
     local key, secret = next(secrets)

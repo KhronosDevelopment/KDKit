@@ -65,7 +65,7 @@ end
 
 function Mutex:newOwner()
     if self.locked then
-        error(("Another owner (%d) already owns this lock."):format(self.owner))
+        error(("[KDKit.Mutex] Another owner (%d) already owns this lock."):format(self.owner))
     end
 
     self.locked = true
@@ -76,7 +76,7 @@ end
 
 function Mutex:wait()
     if self.destroyed then
-        error("The mutex has been destroyed.")
+        error("[KDKit.Mutex] The mutex has been destroyed.")
     end
 
     local start = os.clock()
@@ -84,11 +84,11 @@ function Mutex:wait()
     while self.locked and os.clock() - start < self.timeout do
         task.wait()
         if self.destroyed then
-            error("The mutex has been destroyed.")
+            error("[KDKit.Mutex] The mutex has been destroyed.")
         end
         if not warned and os.clock() - start > self.timeout / 2 then
             warn(
-                ("A mutex lock has been waiting to be released for %.1f seconds. Potential deadlock detected. An error will be thrown if not resolved by %.1f seconds. If this is an okay delay, raise your mutex's timeout threshold.\n%s"):format(
+                ("[KDKit.Mutex] A lock has been waiting to be released for %.1f seconds. Potential deadlock detected. An error will be thrown if not resolved by %.1f seconds. If this is an okay delay, raise your mutex's timeout threshold.\n%s"):format(
                     os.clock() - start,
                     self.timeout,
                     debug.traceback()
@@ -100,7 +100,7 @@ function Mutex:wait()
 
     if self.locked then
         error(
-            ("Mutex timed out after %.1f seconds. Probable deadlock, otherwise, raise your mutex's timeout threshold."):format(
+            ("[KDKit.Mutex] Timed out after %.1f seconds. Probable deadlock, otherwise, raise your mutex's timeout threshold."):format(
                 self.timeout
             )
         )
@@ -115,7 +115,9 @@ function Mutex:lock<RL...>(fnToExecuteWithLock)
 
     local function unlock<RU...>(fnToExecuteWithoutLock: () -> RU...): RU...
         if me ~= self.owner or not self.locked then
-            error("This unlocker is not available because the mutex has been released and/or re-acquired.")
+            error(
+                "[KDKit.Mutex] This unlocker is not available because the mutex has been released and/or re-acquired."
+            )
         end
 
         self.locked = false
@@ -140,7 +142,7 @@ function Mutex:lock<RL...>(fnToExecuteWithLock)
             elseif returnTraceback then
                 error(returnTraceback)
             elseif not self.locked and self.owner == me then
-                error("You may not unlock a function which yields before acquiring the mutex lock.")
+                error("[KDKit.Mutex] You may not unlock a function which yields before acquiring the mutex lock.")
             end
 
             while coroutine.status(co) ~= "dead" do

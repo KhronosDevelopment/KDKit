@@ -13,7 +13,9 @@ type RequestImpl = T.RequestImpl
 type HttpRequestOptions = T.HttpRequestOptions
 type HttpResponseData = T.HttpResponseData
 
-local Request: RequestImpl = {} :: RequestImpl
+local Request: RequestImpl = {
+    sentRequests = 0,
+} :: RequestImpl
 Request.__index = Request
 
 function Request.new(url, method, options)
@@ -68,26 +70,60 @@ function Request:render()
 end
 
 function Request:perform()
-    if not self.options or not self.options.timeout then
-        return HttpService:RequestAsync(self:render())
+    local log = not self.options or self.options.log ~= false
+    local render = self:render()
+
+    Request.sentRequests += 1
+    local id = Request.sentRequests
+
+    if log then
+        print(
+            ("[KDKit.Requests - %d] Firing %s request to %s - "):format(
+                id,
+                render.Method or "HTTP",
+                tostring(render.Url)
+            ),
+            render
+        )
     end
 
-    local result: HttpResponseData?
-    coroutine.wrap(function()
-        result = HttpService:RequestAsync(self:render())
-    end)()
+    local sentAt = os.clock()
+    local success, result = Utils.try(function()
+        if not self.options or not self.options.timeout then
+            return HttpService:RequestAsync(render)
+        else
+            local result
+            coroutine.wrap(function()
+                result = HttpService:RequestAsync(render)
+            end)()
 
-    local startedAt = os.clock()
-    while not result do
-        if os.clock() - startedAt > self.options.timeout then
-            error(("Request timed out after %.2f second(s)."):format(self.options.timeout))
+            local startedAt = os.clock()
+            while not result do
+                if os.clock() - startedAt > self.options.timeout then
+                    error(("[KDKit.Requests - %d] Timed out after %.2f second(s)."):format(id, self.options.timeout))
+                end
+
+                task.wait()
+            end
+
+            return result
         end
+    end):result()
+    local responseAt = os.clock()
 
-        task.wait()
+    if not success then
+        assert(typeof(result) == "string")
+
+        error(("[KDKit.Requests - %d] Threw an error:\n%s"):format(id, result))
+    elseif log then
+        local duration = responseAt - sentAt
+        print(
+            ("[KDKit.Requests - %d] Status code %d after %.4g ms - "):format(id, result.StatusCode, duration * 1000),
+            result
+        )
     end
 
-    assert(result)
-    return Response.new(self, result)
+    return Response.new(self, result :: T.HttpResponseData)
 end
 
 return Request

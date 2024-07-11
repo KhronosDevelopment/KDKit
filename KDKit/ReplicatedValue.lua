@@ -193,7 +193,7 @@ end)
 -- WARNING: stores the value without making a copy, DO NOT MODIFY IT!
 function ReplicatedValue.new(key, value, permission, internallyHandlingLifecycle)
     if not internallyHandlingLifecycle then
-        error("Please use ReplicatedValue.get(...) instead of ReplicatedValue.new(...)")
+        error("[KDKit.ReplicatedValue] Please use .get(...) instead of .new(...)")
     end
 
     local self = setmetatable({
@@ -227,7 +227,7 @@ function ReplicatedValue:receiveNewValueAt(value, path, mustSucceed)
 
         for pathDepth, pathPart in path do
             if type(adjust) ~= "table" then
-                local msg = ("Illegal update made to ReplicatedValue `%s`. Was notified of a change which set `%s` to `%s`, but one of its ancestors is not a table (instead it was of type '%s')."):format(
+                local msg = ("[KDKit.ReplicatedValue] Illegal update made to ReplicatedValue `%s`. Was notified of a change which set `%s` to `%s`, but one of its ancestors is not a table (instead it was of type '%s')."):format(
                     self.key,
                     table.concat(path, "."),
                     Utils.repr(value),
@@ -343,7 +343,11 @@ if IS_SERVER then
             return self.permission(player)
         end
 
-        warn(("Unknown permission object: `%s`. Disallowing access."):format(Utils.repr(self.permission)))
+        warn(
+            ("[KDKit.ReplicatedValue] Unknown permission object: `%s`. Disallowing access."):format(
+                Utils.repr(self.permission)
+            )
+        )
         return false
     end
 

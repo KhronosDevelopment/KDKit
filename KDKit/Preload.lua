@@ -47,7 +47,7 @@ function Preload.ensureChildren(instance: Instance, n: number?): Instance
     local ref = ("KDKit.Preload.ensureChildren(%s)"):format(instance:GetFullName())
 
     if not n then
-        warn(("Attempted to %s without an `n` attribute. Skipping preload."):format(ref))
+        warn(("[KDKit.Preload] Attempted to %s without an `n` attribute. Skipping preload."):format(ref))
         return instance
     end
     assert(n)
@@ -55,7 +55,7 @@ function Preload.ensureChildren(instance: Instance, n: number?): Instance
     while #instance:GetChildren() ~= n do
         if not Preload.waitForEvent(instance.ChildAdded, WARNING_INTERVAL) then
             warn(
-                ("%s is waiting for %d children, but it looks like there are actually %d children."):format(
+                ("[KDKit.Preload] %s is waiting for %d children, but it looks like there are actually %d children."):format(
                     ref,
                     n,
                     #instance:GetChildren()
@@ -73,14 +73,14 @@ function Preload.ensureDescendants(instance: Instance, N: number?): Instance
     local ref = ("KDKit.Preload.ensureChildren(%s)"):format(instance:GetFullName())
 
     if not N then
-        warn(("Attempted to %s without an `N` attribute. Skipping preload."):format(ref))
+        warn(("[KDKit.Preload] Attempted to %s without an `N` attribute. Skipping preload."):format(ref))
         return instance
     end
 
     while #instance:GetDescendants() ~= N do
         if not Preload.waitForEvent(instance.DescendantAdded, WARNING_INTERVAL) then
             warn(
-                ("%s is waiting for %d descendants, but it looks like there are actually %d descendants."):format(
+                ("[KDKit.Preload] %s is waiting for %d descendants, but it looks like there are actually %d descendants."):format(
                     ref,
                     N,
                     #instance:GetDescendants()

@@ -78,7 +78,7 @@ function Maid:give<T, A...>(task, ...)
         return task
     end
 
-    error(("Invalid task `%s`"):format(Utils.repr(task)))
+    error(("[KDKit.Maid] Invalid task `%s`"):format(Utils.repr(task)))
 end
 
 function Maid:remove(task)
@@ -114,7 +114,7 @@ function Maid:clean(task, skipDebugProfile)
             debug.profileend()
         end
 
-        local msg = ("This Maid never received or already cleaned the task `%s`. Doing nothing."):format(
+        local msg = ("[KDKit.Maid] Never received or already cleaned the task `%s`. Doing nothing."):format(
             Utils.repr(task)
         )
         if RunService:IsStudio() then
@@ -150,13 +150,13 @@ function Maid:clean(task, skipDebugProfile)
             elseif Utils.callable(task) then
                 task()
             else
-                error("Failed to resolve task cleaning method.")
+                error("[KDKit.Maid] Failed to resolve task cleaning method.")
             end
         end)()
     end):result()
 
     if not s then
-        warn(("Maid failed to clean task `%s` due to callback error:\n%s"):format(Utils.repr(task), r))
+        warn(("[KDKit.Maid] Failed to clean task `%s` due to callback error:\n%s"):format(Utils.repr(task), r))
     end
 
     if not skipDebugProfile then

@@ -110,7 +110,7 @@ function Client.new(projectToken, options)
             if next(batch.items) then
                 self:fireBatch(endpoint, function(failed)
                     if not failed then
-                        print(("[Mixpanel] Successfully fired %s batch at game close."):format(endpoint))
+                        print(("[KDKit.Mixpanel] Successfully fired '%s' batch at game close."):format(endpoint))
                     end
                 end)
             end
@@ -132,7 +132,7 @@ function Client:batchingParam(endpoint, param)
     return Utils.dig(self.options.batching, endpoint, param)
         or Utils.dig(self.options.batching, "default", param)
         or BATCHING_DEFAULT[param]
-        or error(("Invalid batching param '%s'"):format(param))
+        or error(("[KDKit.Mixpanel] Invalid batching param '%s'"):format(param))
 end
 
 function Client:batchingParams(endpoint)
@@ -209,7 +209,7 @@ function Client:fireBatch(endpoint, cb)
             or RETRY_BATCHES_DEFAULT.maxTries
 
         if retryMaxAttempts <= 0 then
-            error("Must allow at least one batch try.")
+            error("[KDKit.Mixpanel] Must allow at least one batch try.")
         end
 
         Utils.ensure(function(failed, traceback)
