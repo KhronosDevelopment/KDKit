@@ -1546,7 +1546,23 @@ end
     end) -> {2, 4}
     ```
 --]]
-function Utils.select<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>): { [K]: V }
+function Utils.select<V>(tab: { V }, shouldSelect: Evaluator<number, V, boolean>): { V }
+    local e = Utils.evaluator(shouldSelect) :: (V, number) -> boolean
+    local selected = {} :: { V }
+
+    for k, v in tab do
+        if e(v, k) then
+            table.insert(selected, v)
+        end
+    end
+
+    return selected
+end
+
+--[[
+    Like `select`, but works for non-array-like tables.
+--]]
+function Utils.selectMap<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>): { [K]: V }
     local e = Utils.evaluator(shouldSelect) :: (V, K) -> boolean
     local selected = {} :: { [K]: V }
 
@@ -1562,7 +1578,23 @@ end
 --[[
     Logical opposite of Utils.select
 --]]
-function Utils.reject<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>): { [K]: V }
+function Utils.reject<V>(tab: { V }, shouldReject: Evaluator<number, V, boolean>): { V }
+    local e = Utils.evaluator(shouldReject) :: (V, number) -> boolean
+    local selected = {} :: { V }
+
+    for k, v in tab do
+        if not e(v, k) then
+            table.insert(selected, v)
+        end
+    end
+
+    return selected
+end
+
+--[[
+    Logical opposite of Utils.selectMap
+--]]
+function Utils.rejectMap<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>): { [K]: V }
     local e = Utils.evaluator(shouldReject) :: (V, K) -> boolean
     local selected = {} :: { [K]: V }
 
