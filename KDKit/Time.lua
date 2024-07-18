@@ -193,15 +193,17 @@ function Time.now()
     return lastReturnValue
 end
 
+local startedSyncingAt = os.clock()
 task.defer(function()
     while true do
+        local syncHistoryDuration = os.clock() - startedSyncingAt
         Utils.try(Time.sync)
             :catch(function(t)
                 task.defer(error, t)
-                task.wait(1)
+                task.wait(if syncHistoryDuration < 30 then 1 else 5)
             end)
             :proceed(function()
-                task.wait(5)
+                task.wait(if syncHistoryDuration < 30 then 5 else 15)
             end)
     end
 end)
