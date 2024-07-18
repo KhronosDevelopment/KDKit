@@ -32,7 +32,7 @@ type Options = {
     timeProvider: (() -> number)?,
 }
 
-type Properties = { [string]: JsonValueL }
+type Properties = { [string]: JsonValueL? } -- "?" to allow you to do `{ value = value }` where value might be nil
 export type ProfileUpdate = {
     set: Properties?,
     set_once: Properties?,
@@ -236,7 +236,7 @@ function Client:queueEvent(name, properties)
     print(("[KDKit.Mixpanel] Event '%s' added to batch with properties"):format(name), properties)
     self:batch("event", { event = name, properties = properties })
 
-    return properties["$insert_id"]
+    return assert(properties["$insert_id"])
 end
 
 function Client:queueEventP(name, player, properties)
