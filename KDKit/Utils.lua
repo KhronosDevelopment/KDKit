@@ -1546,8 +1546,8 @@ end
     end) -> {2, 4}
     ```
 --]]
-function Utils.select<V>(tab: { V }, shouldSelect: Evaluator<number, V, boolean>): { V }
-    local e = Utils.evaluator(shouldSelect) :: (V, number) -> boolean
+function Utils.select<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>): { V }
+    local e = Utils.evaluator(shouldSelect) :: (V, K) -> boolean
     local selected = {} :: { V }
 
     for k, v in tab do
@@ -1578,8 +1578,8 @@ end
 --[[
     Logical opposite of Utils.select
 --]]
-function Utils.reject<V>(tab: { V }, shouldReject: Evaluator<number, V, boolean>): { V }
-    local e = Utils.evaluator(shouldReject) :: (V, number) -> boolean
+function Utils.reject<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>): { V }
+    local e = Utils.evaluator(shouldReject) :: (V, K) -> boolean
     local selected = {} :: { V }
 
     for k, v in tab do
