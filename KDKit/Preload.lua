@@ -50,9 +50,8 @@ function Preload.ensureChildren(instance: Instance, n: number?): Instance
         warn(("[KDKit.Preload] Attempted to %s without a numeric `n` attribute. Skipping preload."):format(ref))
         return instance
     end
-    assert(n)
 
-    while #instance:GetChildren() ~= n do
+    while #instance:GetChildren() ~= number do
         if not Preload.waitForEvent(instance.ChildAdded, WARNING_INTERVAL) then
             warn(
                 ("[KDKit.Preload] %s is waiting for %d children, but it looks like there are actually %d children."):format(
@@ -77,7 +76,7 @@ function Preload.ensureDescendants(instance: Instance, N: number?): Instance
         return instance
     end
 
-    while #instance:GetDescendants() ~= N do
+    while #instance:GetDescendants() ~= number do
         if not Preload.waitForEvent(instance.DescendantAdded, WARNING_INTERVAL) then
             warn(
                 ("[KDKit.Preload] %s is waiting for %d descendants, but it looks like there are actually %d descendants."):format(
