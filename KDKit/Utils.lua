@@ -384,6 +384,7 @@ function Utils.deepCopy<T>(original: T, cloneInstances: boolean?, _copyLookup: {
 end
 
 --[[
+    [!] UPDATES THE TABLE IN-PLACE
     Calls the provided `transform` function on each value in the table.
     Modifies the table [i]n place, does not make a copy.
 
@@ -393,12 +394,14 @@ end
     print(x) -> { 1, 4, 9 }
     ```
 --]]
-function Utils.imap<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V })
+function Utils.imap<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
     local typeAdjustedTab = (tab :: any) :: { [K]: T }
 
     for key, value in tab do
         typeAdjustedTab[key] = transform(value, key)
     end
+
+    return typeAdjustedTab
 end
 
 --[[
@@ -410,9 +413,7 @@ end
     ```
 --]]
 function Utils.map<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
-    local copy = table.clone(tab)
-    Utils.imap(transform, copy)
-    return (copy :: any) :: { [K]: T }
+    return Utils.imap(transform, table.clone(tab))
 end
 
 --[[
@@ -800,11 +801,13 @@ function Utils.safeJSONEncode(data: any): string
 end
 
 --[[
+    [!] UPDATES THE TABLE IN-PLACE
+
     Sort a table (in-place) using a function to extract a comparable value.
     Similar to passing a `key` to Python's builtin `list.sort` function.
     You may also return a table to include tiebreakers.
 --]]
-function Utils.isort<K, V>(tab: { V }, key: (value: V) -> any)
+function Utils.isort<K, V>(tab: { V }, key: (value: V) -> any): { V }
     local rankings = {}
 
     table.sort(tab, function(a, b)
@@ -813,15 +816,15 @@ function Utils.isort<K, V>(tab: { V }, key: (value: V) -> any)
 
         return Utils.compare(rankings[a], rankings[b]) == -1
     end)
+
+    return tab
 end
 
 --[[
     Similar to Utils.isort, but makes a copy first.
 --]]
 function Utils.sort<K, V>(tab: { V }, key: (value: V) -> any): { V }
-    tab = table.clone(tab)
-    Utils.isort(tab, key)
-    return tab
+    return Utils.isort(table.clone(tab), key)
 end
 
 --[[
@@ -948,6 +951,8 @@ function Utils.guiObjectIsOnTopOfAnother(a: GuiObject, b: GuiObject): boolean?
 end
 
 --[[
+    [!] UPDATES THE TABLE IN-PLACE
+
     Merges the second table into the first one.
     ```lua
     local x = { a = 1, b = 2, c = 3 }
@@ -959,10 +964,14 @@ end
     y -> { a = 2, b = 3, d = 4 } -- (unchanged)
     ```
 --]]
-function Utils.imerge(dst: { [any]: any }, src: { [any]: any })
+function Utils.imerge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
+    local typeAdjustedDst = dst :: { [K1 | K2]: V1 | V2 }
+
     for key, value in src do
-        dst[key] = value
+        typeAdjustedDst[key] = value
     end
+
+    return typeAdjustedDst
 end
 
 --[[
@@ -972,12 +981,12 @@ end
     ```
 --]]
 function Utils.merge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
-    dst = table.clone(dst)
-    Utils.imerge(dst, src)
-    return dst :: { [K1 | K2]: V1 | V2 }
+    return Utils.imerge(table.clone(dst), src)
 end
 
 --[[
+    [!] UPDATES THE TABLE IN-PLACE
+
     Inserts all elements from the right list into the left list.
     Similar to Python's builtin `list.extend`
     ```lua
@@ -990,8 +999,12 @@ end
     y -> { 'c', 'd' } -- (unchanged)
     ```
 --]]
-function Utils.iextend(left: { any }, right: { any })
-    table.move(right, 1, #right, #left + 1, left)
+function Utils.iextend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
+    local typeAdjustedLeft = left :: { V1 | V2 }
+    local typeAdjustedRight = right :: { V1 | V2 }
+
+    table.move(typeAdjustedRight, 1, #typeAdjustedRight, #typeAdjustedLeft + 1, typeAdjustedLeft)
+    return typeAdjustedLeft
 end
 
 --[[
@@ -1001,9 +1014,7 @@ end
     ```
 --]]
 function Utils.extend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
-    local output = table.clone(left) :: { V1 | V2 }
-    Utils.iextend(output, right)
-    return output
+    return Utils.iextend(table.clone(left), right)
 end
 
 --[[
@@ -1129,19 +1140,18 @@ function Utils.plucker<K, T>(...: K): (value: Pluckable<K, T>, key: K) -> T
 end
 
 --[[
+    [!] UPDATES THE TABLE IN-PLACE
     Basically equivalent to Utils.imap(Utils.plucker(attribute), tab)
 --]]
-function Utils.ipluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V })
-    Utils.imap(Utils.evaluator(plucker), tab)
+function Utils.ipluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V }): { [K]: T }
+    return Utils.imap(Utils.evaluator(plucker), tab)
 end
 
 --[[
     Same as Utils.ipluck, but makes a copy first.
 --]]
 function Utils.pluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V }): { [K]: T }
-    local t2 = table.clone(tab)
-    Utils.ipluck(plucker, t2)
-    return (t2 :: any) :: { [K]: T }
+    return Utils.ipluck(plucker, table.clone(tab))
 end
 
 --[[
