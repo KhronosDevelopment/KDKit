@@ -43,11 +43,11 @@ end
 -- Waits for an instance to have a certain number of children, which can be specified as the second
 -- argument but is by default pulled from the `n` attribute on the instance.
 function Preload.ensureChildren(instance: Instance, n: number?): Instance
-    n = n or instance:GetAttribute("n")
+    local number = n or instance:GetAttribute("n")
     local ref = ("KDKit.Preload.ensureChildren(%s)"):format(instance:GetFullName())
 
-    if not n then
-        warn(("[KDKit.Preload] Attempted to %s without an `n` attribute. Skipping preload."):format(ref))
+    if type(number) ~= "number" then
+        warn(("[KDKit.Preload] Attempted to %s without a numeric `n` attribute. Skipping preload."):format(ref))
         return instance
     end
     assert(n)
@@ -57,7 +57,7 @@ function Preload.ensureChildren(instance: Instance, n: number?): Instance
             warn(
                 ("[KDKit.Preload] %s is waiting for %d children, but it looks like there are actually %d children."):format(
                     ref,
-                    n,
+                    number,
                     #instance:GetChildren()
                 )
             )
@@ -69,11 +69,11 @@ end
 
 -- identical to Preload:ensureDescendants, except it counts the descendants and uses the `N` attribute (uppercase!)
 function Preload.ensureDescendants(instance: Instance, N: number?): Instance
-    N = N or instance:GetAttribute("N")
+    local number = N or instance:GetAttribute("N")
     local ref = ("KDKit.Preload.ensureChildren(%s)"):format(instance:GetFullName())
 
-    if not N then
-        warn(("[KDKit.Preload] Attempted to %s without an `N` attribute. Skipping preload."):format(ref))
+    if type(number) ~= "number" then
+        warn(("[KDKit.Preload] Attempted to %s without a numeric `N` attribute. Skipping preload."):format(ref))
         return instance
     end
 
@@ -82,7 +82,7 @@ function Preload.ensureDescendants(instance: Instance, N: number?): Instance
             warn(
                 ("[KDKit.Preload] %s is waiting for %d descendants, but it looks like there are actually %d descendants."):format(
                     ref,
-                    N,
+                    number,
                     #instance:GetDescendants()
                 )
             )
