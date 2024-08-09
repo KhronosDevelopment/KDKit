@@ -1232,16 +1232,17 @@ function Utils.compare(a: any, b: any): number
 end
 
 --[[
-    Returns the insertion index of the provided element, using binary search.
-    if you provide a key, it must return something that is comparable.
-    Similar to python's builtin `bisect.bisect` function.
+    Returns the index such that `table.insert(tab, index, element)` will
+    maintain (ascending) sorted order. If an equivalent `element` is 
+    already in the table, the returned index will be after the last copy.
+    Similar to Python's `bisect.bisect_right`.
 
     ```lua
     local x = {10, 11, 12, 14, 15}
-    Utils.bisect(x, 13) -> 4
+    Utils.bisect_right(x, 13) -> 4
     ```
 --]]
-function Utils.bisect<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>): number
+function Utils.bisect_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>): number
     local e = Utils.evaluator(key) :: (V, number?) -> any
     local elementEvaluation = e(element, nil)
 
@@ -1261,13 +1262,49 @@ function Utils.bisect<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>
 
     return low
 end
+Utils.bisect = Utils.bisect_right
 
 --[[
-    Insert `element` into `tab` such that it remains sorted (with an optional sorting key).
-    Similar to Python's builtin `bisect.insort` function.
+    Similar to `Utils.bisect_right`, except it inserts
+    elements to the left of the leftmost equivalent copy.
 --]]
-function Utils.insort<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
-    table.insert(tab, Utils.bisect(tab, element, key), element)
+function Utils.bisect_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>): number
+    local e = Utils.evaluator(key) :: (V, number?) -> any
+    local elementEvaluation = e(element, nil)
+
+    local low = 1
+    local high = #tab + 1
+    local middle
+
+    while low < high do
+        middle = math.floor((low + high) / 2)
+
+        if Utils.compare(elementEvaluation, e(tab[middle], middle)) > 0 then
+            low = middle + 1
+        else
+            high = middle
+        end
+    end
+
+    return low
+end
+
+--[[
+    Insert `element` into `tab` such that it remains sorted.
+    In the case of tiebreakers, the new element is placed on the right.
+    Similar to Python's builtin `bisect.insort_right` function.
+--]]
+function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
+    table.insert(tab, Utils.bisect_right(tab, element, key), element)
+end
+Utils.insort = Utils.insort_right
+
+--[[
+    Similar to `Utils.insort_right` but in the case of
+    tiebreakers, the new element is placed to the left.
+--]]
+function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
+    table.insert(tab, Utils.bisect_left(tab, element, key), element)
 end
 
 --[[
