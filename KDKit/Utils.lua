@@ -1242,9 +1242,8 @@ end
     Utils.bisect_right(x, 13) -> 4
     ```
 --]]
-function Utils.bisect_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>): number
+function Utils.bisect_right<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>): number
     local e = Utils.evaluator(key) :: (V, number?) -> any
-    local elementEvaluation = e(element, nil)
 
     local low = 1
     local high = #tab + 1
@@ -1253,7 +1252,7 @@ function Utils.bisect_right<V>(tab: { V }, element: V, key: Evaluator<number?, V
     while low < high do
         middle = math.floor((low + high) / 2)
 
-        if Utils.compare(elementEvaluation, e(tab[middle], middle)) >= 0 then
+        if Utils.compare(value, e(tab[middle], middle)) >= 0 then
             low = middle + 1
         else
             high = middle
@@ -1268,9 +1267,8 @@ Utils.bisect = Utils.bisect_right
     Similar to `Utils.bisect_right`, except it inserts
     elements to the left of the leftmost equivalent copy.
 --]]
-function Utils.bisect_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>): number
-    local e = Utils.evaluator(key) :: (V, number?) -> any
-    local elementEvaluation = e(element, nil)
+function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>): number
+    local e = Utils.evaluator(key) :: (V, number?) -> C
 
     local low = 1
     local high = #tab + 1
@@ -1279,7 +1277,7 @@ function Utils.bisect_left<V>(tab: { V }, element: V, key: Evaluator<number?, V,
     while low < high do
         middle = math.floor((low + high) / 2)
 
-        if Utils.compare(elementEvaluation, e(tab[middle], middle)) > 0 then
+        if Utils.compare(value, e(tab[middle], middle)) > 0 then
             low = middle + 1
         else
             high = middle
@@ -1295,7 +1293,8 @@ end
     Similar to Python's builtin `bisect.insort_right` function.
 --]]
 function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
-    table.insert(tab, Utils.bisect_right(tab, element, key), element)
+    local evaluator = Utils.evaluator(key) :: (V, number?) -> any
+    table.insert(tab, Utils.bisect_right(tab, evaluator(element, nil), evaluator), element)
 end
 Utils.insort = Utils.insort_right
 
@@ -1304,7 +1303,8 @@ Utils.insort = Utils.insort_right
     tiebreakers, the new element is placed to the left.
 --]]
 function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
-    table.insert(tab, Utils.bisect_left(tab, element, key), element)
+    local evaluator = Utils.evaluator(key) :: (V, number?) -> any
+    table.insert(tab, Utils.bisect_left(tab, evaluator(element, nil), evaluator), element)
 end
 
 --[[
