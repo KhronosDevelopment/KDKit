@@ -404,6 +404,16 @@ function Humanize.timestamp(unixTimestamp: number, format: string?, addTimezone:
 end
 
 --[[
+    Apply ISO-8601 formatting to a timestamp.
+    i.e. 2024-08-22T23:52:26.293791
+--]]
+function Humanize.iso8601(timestamp: number): string
+    local integral = math.floor(timestamp)
+    local microseconds = math.floor((timestamp - integral) * 1_000_000)
+    return ("%s.%06dZ"):format(os.date("!%Y-%m-%dT%H:%M:%S", integral), microseconds)
+end
+
+--[[
     This function is a proxy to `Humanize.timestamp` but with the format `%Y-%m-%d`.
     ```lua
     Humanize.date(0) -> "1970-01-01"
