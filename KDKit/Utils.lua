@@ -1242,24 +1242,24 @@ end
     Utils.bisect_right(x, 13) -> 4
     ```
 --]]
-function Utils.bisect_right<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>): number
+function Utils.bisect_right<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>, low: number?, high: number?): number
     local e = Utils.evaluator(key) :: (V, number?) -> any
 
-    local low = 1
-    local high = #tab + 1
+    local lo = low or 1
+    local hi = (high or #tab) + 1
     local middle
 
-    while low < high do
-        middle = math.floor((low + high) / 2)
+    while lo < hi do
+        middle = math.floor((lo + hi) / 2)
 
         if Utils.compare(value, e(tab[middle], middle)) >= 0 then
-            low = middle + 1
+            lo = middle + 1
         else
-            high = middle
+            hi = middle
         end
     end
 
-    return low
+    return lo
 end
 Utils.bisect = Utils.bisect_right
 
@@ -1267,24 +1267,24 @@ Utils.bisect = Utils.bisect_right
     Similar to `Utils.bisect_right`, except it inserts
     elements to the left of the leftmost equivalent copy.
 --]]
-function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>): number
+function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>, low: number?, high: number?): number
     local e = Utils.evaluator(key) :: (V, number?) -> C
 
-    local low = 1
-    local high = #tab + 1
+    local lo = math.max(low or 1, 1)
+    local hi = math.min(high or #tab, #tab) + 1
     local middle
 
-    while low < high do
-        middle = math.floor((low + high) / 2)
+    while lo < hi do
+        middle = math.floor((lo + hi) / 2)
 
         if Utils.compare(value, e(tab[middle], middle)) > 0 then
-            low = middle + 1
+            lo = middle + 1
         else
-            high = middle
+            hi = middle
         end
     end
 
-    return low
+    return lo
 end
 
 --[[
@@ -1292,9 +1292,9 @@ end
     In the case of tiebreakers, the new element is placed on the right.
     Similar to Python's builtin `bisect.insort_right` function.
 --]]
-function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
+function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
-    table.insert(tab, Utils.bisect_right(tab, evaluator(element, nil), evaluator), element)
+    table.insert(tab, Utils.bisect_right(tab, evaluator(element, nil), evaluator, low, high), element)
 end
 Utils.insort = Utils.insort_right
 
@@ -1302,9 +1302,9 @@ Utils.insort = Utils.insort_right
     Similar to `Utils.insort_right` but in the case of
     tiebreakers, the new element is placed to the left.
 --]]
-function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>)
+function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
-    table.insert(tab, Utils.bisect_left(tab, evaluator(element, nil), evaluator), element)
+    table.insert(tab, Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high), element)
 end
 
 --[[
