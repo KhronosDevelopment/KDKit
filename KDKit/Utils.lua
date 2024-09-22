@@ -1200,6 +1200,9 @@ end
         -1 if a < b
         0 if a == b
         1 if a > b
+        and when their types don't match:
+        1 if a == nil and b ~= nil
+        1 if type(a) > type(b)
     If both `a` and `b` are arrays,  corresponding elements are compared
     in order until a tie is broken. (similar to tuple comparison in Python)
     ```lua
@@ -1216,14 +1219,19 @@ function Utils.compare(a: any, b: any): number
     if a == b then
         return 0
     elseif type(a) == "table" and type(b) == "table" then
-        for i = 1, math.huge do
-            local c = Utils.compare(a[i], b[i])
+        for k, aa in a do
+            local bb = b[k]
+            local c = Utils.compare(aa, bb)
             if c ~= 0 then
                 return c
             end
         end
 
         return 0
+    elseif a == nil then
+        return 1 -- nil comes last in ascending sort
+    elseif type(a) > type(b) then
+        return 1
     elseif a < b then
         return -1
     else
