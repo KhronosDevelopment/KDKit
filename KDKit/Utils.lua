@@ -807,12 +807,13 @@ end
     Similar to passing a `key` to Python's builtin `list.sort` function.
     You may also return a table to include tiebreakers.
 --]]
-function Utils.isort<K, V>(tab: { V }, key: (value: V) -> any): { V }
+function Utils.isort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>): { V }
+    local e = Utils.evaluator(evaluator) :: (V, nil) -> any
     local rankings = {}
 
     table.sort(tab, function(a, b)
-        rankings[a] = rankings[a] or key(a)
-        rankings[b] = rankings[b] or key(b)
+        rankings[a] = rankings[a] or e(a)
+        rankings[b] = rankings[b] or e(b)
 
         return Utils.compare(rankings[a], rankings[b]) == -1
     end)
@@ -823,8 +824,8 @@ end
 --[[
     Similar to Utils.isort, but makes a copy first.
 --]]
-function Utils.sort<K, V>(tab: { V }, key: (value: V) -> any): { V }
-    return Utils.isort(table.clone(tab), key)
+function Utils.sort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>): { V }
+    return Utils.isort(table.clone(tab), evaluator)
 end
 
 --[[
