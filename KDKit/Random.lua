@@ -139,6 +139,37 @@ function KDRandom.weightedChoice<K>(options: { [K]: number }): K
     error("[KDKit.Random] Called weightedChoice with empty table!")
 end
 
+function KDRandom.bakeWeightedChooser<K>(options: { [K]: number }, rng: Random?): (Random?) -> K
+    local totalWeight = 0
+    local cumulativeOptions: { { option: K, cumWeight: number } } = {} -- haha
+
+    for option, weight in options do
+        totalWeight += weight
+        table.insert(cumulativeOptions, {
+            option = option,
+            cumWeight = totalWeight, -- haha
+        })
+    end
+
+    if totalWeight <= 0 then
+        error("Cant make choices from no options.")
+    end
+
+    return function(rng2: Random?)
+        local winner = (rng2 or rng or KDRandom.rng):NextNumber(0, totalWeight)
+
+        for _, cum in cumulativeOptions do -- haha
+            if winner <= cum.cumWeight then
+                return cum.option
+            end
+        end
+
+        -- technically impossible; satisfy linter
+        local _, cum = next(cumulativeOptions)
+        return cum.option
+    end
+end
+
 function KDRandom.uuid(strlen: number, avoidCollisions: { [string]: any }?, hat: ({ string } | string)?): string
     if hat == nil then
         hat = UUID_HAT
