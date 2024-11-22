@@ -37,12 +37,17 @@ function Animate.positionBasedOnAttributes(
     style = style or Enum.EasingStyle.Back
     direction = direction or Enum.EasingDirection.InOut
 
+    assert(seconds)
+
     local position = instance:GetAttribute(positionAttributeName)
-    local animationDelay = nil
+    local animationDelay = 0
     for _, name in delayAttributeNames do
-        animationDelay = animationDelay or instance:GetAttribute(name)
+        local v = instance:GetAttribute(name)
+        if typeof(v) == "number" then
+            animationDelay = v
+            break
+        end
     end
-    animationDelay = animationDelay or 0
 
     if position then
         local me = Animate.count(instance)
