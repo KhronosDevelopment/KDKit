@@ -46,7 +46,7 @@ function Mouse.updateIcon(): string
     return icon
 end
 
-function Mouse.getRay(offset: number): Ray
+function Mouse.getRay(offset: number?): Ray
     local x, y = Mouse.getPosition()
     return workspace.CurrentCamera:ScreenPointToRay(x, y, offset)
 end
