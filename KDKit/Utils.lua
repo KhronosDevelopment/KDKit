@@ -1273,8 +1273,9 @@ end
 Utils.bisect = Utils.bisect_right
 
 --[[
-    Similar to `Utils.bisect_right`, except it inserts
-    elements to the left of the leftmost equivalent copy.
+    Similar to `Utils.bisect_right`, but in the case where the table
+    contains equivalent elements, it returns the index of the leftmost copy.
+    Similar to Python's `bisect.bisect_left`.
 --]]
 function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>, low: number?, high: number?): number
     local e = Utils.evaluator(key) :: (V, number?) -> C
@@ -1314,6 +1315,23 @@ Utils.insort = Utils.insort_right
 function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
     table.insert(tab, Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high), element)
+end
+
+--[[
+    Insert an item into a sorted list. If an item with
+    the same sort key is already in the list, replace it.
+    If there are multiple, it replaces the first occurrence.
+--]]
+function Utils.insort_or_replace<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
+    local evaluator = Utils.evaluator(key) :: (V, number?) -> any
+    local index = Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high)
+
+    local existing_value = tab[index]
+    if existing_value == nil or Utils.deepEqual(evaluator(element), evaluator(existing_value)) then
+        tab[index] = element
+    else
+        table.insert(tab, index, element)
+    end
 end
 
 --[[
