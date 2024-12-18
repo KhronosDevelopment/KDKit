@@ -18,7 +18,7 @@ type MaidImpl = {
     new: () -> Maid,
     isTaskValid: (any) -> boolean,
     has: (Maid, any) -> boolean,
-    give: <T, A...>(Maid, T | (A...) -> T, A...) -> T | () -> T,
+    give: <T>(Maid, T) -> T,
     remove: (Maid, any) -> (),
     removeAll: (Maid) -> (),
     clean: (Maid, any, boolean?) -> (),
@@ -62,23 +62,16 @@ function Maid:has(task)
     return not not (self.tasks[task] or self.RBXScriptConnectionTasks[task])
 end
 
-function Maid:give<T, A...>(task, ...)
+function Maid:give<T>(task: T): T
     if typeof(task) == "RBXScriptConnection" then
         self.RBXScriptConnectionTasks[task] = true
-        return task
-    elseif type(task) == "function" then
-        local args = { ... }
-        local func = function()
-            return task(table.unpack(args))
-        end
-        self.tasks[func] = true
-        return func
     elseif Maid.isTaskValid(task) then
         self.tasks[task] = true
-        return task
+    else
+        error(("[KDKit.Maid] Invalid task `%s`"):format(Utils.repr(task)))
     end
 
-    error(("[KDKit.Maid] Invalid task `%s`"):format(Utils.repr(task)))
+    return task
 end
 
 function Maid:remove(task)
