@@ -2,25 +2,20 @@
 
 local Utils = require(script.Parent:WaitForChild("Utils"))
 
-type RemoteTime = {
-    unix: number,
-    clock: number,
-}
-
 local TIME_ADJUSTMENT_RATE: number
 local MAX_REMOTE_HISTORY: number
 local MIN_REMOTE_HISTORY: number
 
 local Time = {
-    remotes = {},
+    remoteOffsets = {},
+    avgRemoteOffset = 0,
 } :: {
-    remotes: { RemoteTime },
+    remoteOffsets: { number },
+    avgRemoteOffset: number,
     now: () -> number,
-    recordRemote: (RemoteTime) -> (),
+    recordRemoteOffset: (number) -> (),
     sync: () -> (),
     waitForSync: () -> number,
-    waitForRemote: () -> RemoteTime,
-    estimateCurrentRemoteTime: () -> number,
 }
 
 if game:GetService("RunService"):IsServer() then
@@ -33,8 +28,8 @@ if game:GetService("RunService"):IsServer() then
         "https://www.facebook.com/",
     }
 
-    TIME_ADJUSTMENT_RATE = 1 / 5 -- a 1 second delta is corrected in 5 seconds
-    MAX_REMOTE_HISTORY = 4 * #URLS
+    TIME_ADJUSTMENT_RATE = 1 / 300 -- a 1 second delta is corrected in 300 seconds
+    MAX_REMOTE_HISTORY = 10 * #URLS
     MIN_REMOTE_HISTORY = math.floor(#URLS / 2)
 
     local remote = Instance.new("RemoteFunction", game:GetService("ReplicatedStorage"))
@@ -79,7 +74,7 @@ if game:GetService("RunService"):IsServer() then
         return dt.UnixTimestamp
     end
 
-    local function getUrlTime(url: string, timeout: number?): RemoteTime
+    local function getUrlTimeOffset(url: string, timeout: number?): number
         local sentAtClock = os.clock()
         local response = Requests.head(url, { timeout = timeout })
         local requestDuration = os.clock() - sentAtClock
@@ -87,10 +82,7 @@ if game:GetService("RunService"):IsServer() then
         local remoteTime = parseDateHeader(response.headers["date"] or error("[KDKit.Time] Missing `date` header!"))
         local remoteTimeGeneratedAtClock = sentAtClock + requestDuration / 2
 
-        return {
-            unix = remoteTime,
-            clock = remoteTimeGeneratedAtClock,
-        }
+        return remoteTime - remoteTimeGeneratedAtClock
     end
 
     function Time.sync()
@@ -101,7 +93,7 @@ if game:GetService("RunService"):IsServer() then
 
         local startAt = os.clock()
         local s, r = Utils.try(Utils.retry, 3, function()
-            Time.recordRemote(getUrlTime(url, timeout))
+            Time.recordRemoteOffset(getUrlTimeOffset(url, timeout))
         end):result()
         local duration = os.clock() - startAt
 
@@ -114,42 +106,54 @@ if game:GetService("RunService"):IsServer() then
         end
     end
 
-    for i = 1, #URLS do
-        task.defer(Time.sync)
-    end
+    task.defer(function()
+        repeat
+        until game:GetService("RunService").Heartbeat:Wait() < (1 / 50)
+
+        for i = 0, #URLS - 1 do
+            task.delay(i / #URLS, Time.sync)
+        end
+    end)
 else
-    TIME_ADJUSTMENT_RATE = 1 / 2 -- a 1 second delta is corrected in 2 seconds
-    MAX_REMOTE_HISTORY = 4
-    MIN_REMOTE_HISTORY = 1
+    TIME_ADJUSTMENT_RATE = 1 / 15 -- a 1 second delta is corrected in 15 seconds
+    MAX_REMOTE_HISTORY = 5
+    MIN_REMOTE_HISTORY = 3
 
     -- note: if you require Time on the client, you must also require it on the server!
     local remote = game:GetService("ReplicatedStorage"):WaitForChild("_KDKit.Time") :: RemoteFunction
 
     function Time.sync()
         local sentAt = os.clock()
-        local result = remote:InvokeServer()
+        local remoteTime = remote:InvokeServer()
         local duration = os.clock() - sentAt
+        local remoteTimeGeneratedAtClock = sentAt + duration / 2
 
-        Time.recordRemote({
-            unix = result,
-            clock = sentAt + duration / 2,
-        })
+        Time.recordRemoteOffset(remoteTime - remoteTimeGeneratedAtClock)
     end
+
+    task.defer(function()
+        remote:InvokeServer() -- first call doesn't count towards timing
+        for i = 0, 2 do
+            task.delay(i / 3, Time.sync)
+        end
+    end)
 end
 
-function Time.recordRemote(remote)
-    table.insert(Time.remotes, remote)
+function Time.recordRemoteOffset(offset)
+    table.insert(Time.remoteOffsets, offset)
 
-    local delete = #Time.remotes - MAX_REMOTE_HISTORY
+    local delete = #Time.remoteOffsets - MAX_REMOTE_HISTORY
     for i = 1, delete do
-        table.remove(Time.remotes, 1)
+        table.remove(Time.remoteOffsets, 1)
     end
+
+    Time.avgRemoteOffset = Utils.median(Time.remoteOffsets)
 end
 
 function Time.waitForSync()
     local startedWaitingAt = os.clock()
     local warnAfter = 5
-    while #Time.remotes < MIN_REMOTE_HISTORY do
+    while #Time.remoteOffsets < MIN_REMOTE_HISTORY do
         task.wait()
 
         if (os.clock() - startedWaitingAt) > warnAfter then
@@ -161,40 +165,31 @@ function Time.waitForSync()
     return os.clock() - startedWaitingAt
 end
 
-function Time.estimateCurrentRemoteTime()
-    Time.waitForSync()
-
-    local now = os.clock()
-    local currentTimes = Utils.map(function(r: RemoteTime)
-        return r.unix + (now - r.clock)
-    end, Time.remotes)
-    local processingTime = os.clock() - now
-
-    return Utils.mean(currentTimes) + processingTime
-end
-
-local lastInvokeAt = nil
-local lastReturnValue = nil
-function Time.now()
-    if not lastInvokeAt then
-        lastReturnValue = Time.estimateCurrentRemoteTime()
-    else
-        local timeSinceLastCall = os.clock() - lastInvokeAt
-        local remoteTime = Time.estimateCurrentRemoteTime()
-        local localTime = lastReturnValue + timeSinceLastCall
-
-        local requiredAdjustment = remoteTime - localTime
-        lastReturnValue = localTime
-            + math.sign(requiredAdjustment)
-                * math.min(math.abs(requiredAdjustment), timeSinceLastCall * TIME_ADJUSTMENT_RATE)
+local offset = nil
+local lastUpdatedOffsetAt = nil
+function Time.now(): number
+    if not offset or not lastUpdatedOffsetAt then
+        Time.waitForSync()
+        offset = Time.avgRemoteOffset
+        lastUpdatedOffsetAt = os.clock()
     end
 
-    lastInvokeAt = os.clock()
-    return lastReturnValue
+    local now = os.clock()
+    local offsetDifference = Time.avgRemoteOffset - offset
+    offset += math.sign(offsetDifference) * math.min(
+        math.abs(offsetDifference),
+        (now - lastUpdatedOffsetAt) * TIME_ADJUSTMENT_RATE
+    )
+
+    lastUpdatedOffsetAt = now
+
+    return now + offset
 end
 
 local startedSyncingAt = os.clock()
 task.defer(function()
+    Time.waitForSync()
+
     while true do
         local syncHistoryDuration = os.clock() - startedSyncingAt
         Utils.try(Time.sync)
@@ -205,6 +200,8 @@ task.defer(function()
             :proceed(function()
                 task.wait(if syncHistoryDuration < 30 then 5 else 15)
             end)
+
+        task.wait(math.random())
     end
 end)
 
