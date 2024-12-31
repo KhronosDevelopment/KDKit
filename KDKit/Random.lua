@@ -242,7 +242,7 @@ end
     Returns true or false with the given odds (between 0 and 1).
 --]]
 function KDRandom.test(chance: number): boolean
-    return KDRandom.number(0, 1) < chance
+    return chance >= 1 or (chance > 0 and KDRandom.number(0, 1) < chance)
 end
 KDRandom.chance = KDRandom.test
 
