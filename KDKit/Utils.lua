@@ -255,6 +255,33 @@ function Utils.ensure<Arg..., Ret...>(
 end
 
 --[[
+    Executes all the provided tasks simultaneously
+--]]
+function Utils.gather<Ret...>(cb: (<Arg...>((Arg...) -> Ret..., Arg...) -> ()) -> ()): { TryNotRaised<Ret...> }
+    local results = {}
+    local queued = 0
+    local completed = 0
+
+    local function queue<Arg...>(func: (Arg...) -> Ret..., ...: Arg...)
+        queued += 1
+        local me = queued
+
+        task.defer(function(...)
+            results[me] = Utils.try(func, ...)
+            completed += 1
+        end, ...)
+    end
+
+    cb(queue)
+
+    while queued > completed do
+        task.wait()
+    end
+
+    return results
+end
+
+--[[
     Returns the keys of the table.
     ```lua
     Utils.keys({a=1, b=2, c=3}) -> { "a", "b", "c" }
