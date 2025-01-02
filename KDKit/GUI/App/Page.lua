@@ -53,8 +53,7 @@ function Page:rawOpen(transition)
     self.nTimesOpened += 1
     Button.enableWithin(self.instance)
     self.instance.ZIndex = Page.TOP_ZINDEX
-    local animationTime =
-        Animate.onscreen(self.instance, true, if transition.initial then 0 else nil, transition.initial)
+    local animationTime = Animate.onscreen(self.instance, if transition.initial then 0 else 1 / 3)
     self:afterOpened(transition)
     return animationTime
 end
@@ -67,8 +66,7 @@ function Page:rawClose(transition)
     end
     table.clear(self.connections)
     self.instance.ZIndex = Page.BOTTOM_ZINDEX
-    local animationTime =
-        Animate.offscreen(self.instance, true, if transition.initial then 0 else nil, transition.initial)
+    local animationTime = Animate.offscreen(self.instance, if transition.initial then 0 else 1 / 3)
     self.opened = false
     self.nTimesClosed += 1
     return animationTime

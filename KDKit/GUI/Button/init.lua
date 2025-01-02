@@ -279,6 +279,7 @@ end
     Stateful Rendering
 --]]
 function Button:style(style, animationTime)
+    -- TODO: use `GUI.Animate` for this tbh
     if animationTime == 0 then
         for name, value in style do
             Utils.setattr(self.instance, name, value)

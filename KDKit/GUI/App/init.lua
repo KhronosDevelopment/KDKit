@@ -248,6 +248,7 @@ function App:close()
     end
 
     self:goHome("APP_CLOSE")
+
     task.delay(self.pages.home:rawClose(Transition.new(self, "APP_CLOSE", self.pages.home, nil, false)), function()
         if not self.opened then
             self.instance.Enabled = false

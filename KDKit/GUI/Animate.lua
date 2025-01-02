@@ -5,6 +5,8 @@ local Animate = {
     counts = setmetatable({} :: { [Instance]: number }, { __mode = "kv" }),
 }
 
+export type Style = { [string]: any }
+
 function Animate.count(instance: Instance): number
     local count = (Animate.counts[instance] or 0) + 1
     Animate.counts[instance] = count
@@ -15,110 +17,71 @@ function Animate.checkCount(instance: Instance): number
     return Animate.counts[instance]
 end
 
-function Animate.positionBasedOnAttributes(
-    instance: Instance,
-    positionAttributeName: string,
-    delayAttributeNames: ({ string } | string)?,
-    includeDescendants: boolean?,
-    seconds: number?,
-    style: Enum.EasingStyle?,
-    direction: Enum.EasingDirection?
-): number
-    delayAttributeNames = delayAttributeNames or { "animationDelay" }
-    if typeof(delayAttributeNames) == "string" then
-        delayAttributeNames = { delayAttributeNames }
-    end
-    assert(typeof(delayAttributeNames) == "table")
+function Animate.style(instance: Instance, style: Style, tweenInfo: TweenInfo, delay: number)
+    local me = Animate.count(instance)
 
-    if includeDescendants == nil then
-        includeDescendants = true
-    end
-    seconds = seconds or 1 / 2
-    style = style or Enum.EasingStyle.Back
-    direction = direction or Enum.EasingDirection.InOut
-
-    assert(seconds)
-
-    local position = instance:GetAttribute(positionAttributeName)
-    local animationDelay = 0
-    for _, name in delayAttributeNames do
-        local v = instance:GetAttribute(name)
-        if typeof(v) == "number" then
-            animationDelay = v
-            break
-        end
-    end
-
-    if position then
-        local me = Animate.count(instance)
-
-        task.defer(function()
-            if animationDelay > 0 then
-                task.wait(animationDelay)
-            end
-
-            if me == Animate.checkCount(instance) then
-                TweenService:Create(instance, TweenInfo.new(seconds, style, direction, 0, false, 0), {
-                    Position = position,
-                }):Play()
+    if delay <= 0 then
+        TweenService:Create(instance, tweenInfo, style):Play()
+    else
+        task.delay(delay, function()
+            if Animate.checkCount(instance) == me then
+                TweenService:Create(instance, tweenInfo, style):Play()
             end
         end)
     end
+end
 
-    local allAnimationsWillCompleteIn = if position then animationDelay + seconds else 0
-    if includeDescendants then
-        for _, descendant in instance:GetDescendants() do
-            allAnimationsWillCompleteIn = math.max(
-                allAnimationsWillCompleteIn,
-                Animate.positionBasedOnAttributes(
-                    descendant,
-                    positionAttributeName,
-                    delayAttributeNames,
-                    false,
-                    seconds,
-                    style,
-                    direction
-                )
-            )
+function Animate.basedOnAttributes(
+    instance: Instance,
+    prefix: string,
+    tweenInfo: TweenInfo,
+    noDelay: boolean?,
+    excludeDescendants: boolean?
+): number
+    local style = {} :: Style
+    local animationDelay = 0
+
+    for name, value in instance:GetAttributes() do
+        local property = name:match(prefix .. "(.+)")
+        if property == "delay" then
+            animationDelay = tonumber(value) or 0
+        elseif property then
+            style[property] = value
         end
     end
 
+    if noDelay then
+        animationDelay = 0
+    end
+
+    local allAnimationsWillCompleteIn = if next(style) then animationDelay + tweenInfo.DelayTime + tweenInfo.Time else 0
+
+    if not excludeDescendants then
+        for _, child in instance:GetChildren() do
+            allAnimationsWillCompleteIn =
+                math.max(allAnimationsWillCompleteIn, Animate.basedOnAttributes(child, prefix, tweenInfo))
+        end
+    end
+
+    Animate.style(instance, style, tweenInfo, animationDelay)
     return allAnimationsWillCompleteIn
 end
 
-function Animate.onscreen(
-    instance: Instance,
-    includeDescendants: boolean?,
-    seconds: number?,
-    skipDelay: boolean?,
-    style: Enum.EasingStyle?
-): number
-    return Animate.positionBasedOnAttributes(
+function Animate.onscreen(instance: Instance, duration: number?): number
+    return Animate.basedOnAttributes(
         instance,
-        "onscreenPosition",
-        if skipDelay then {} else { "onscreenAnimationDelay", "animationDelay" },
-        includeDescendants,
-        seconds or 1 / 2,
-        style,
-        Enum.EasingDirection.Out
+        "onscreen_",
+        TweenInfo.new(duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        duration <= 0
     )
 end
 
-function Animate.offscreen(
-    instance: Instance,
-    includeDescendants: boolean?,
-    seconds: number?,
-    skipDelay: boolean?,
-    style: Enum.EasingStyle?
-): number
-    return Animate.positionBasedOnAttributes(
+function Animate.offscreen(instance: Instance, duration: number?): number
+    return Animate.basedOnAttributes(
         instance,
-        "offscreenPosition",
-        if skipDelay then {} else { "offscreenAnimationDelay", "animationDelay" },
-        includeDescendants,
-        seconds or 1 / 3,
-        style,
-        Enum.EasingDirection.In
+        "offscreen_",
+        TweenInfo.new(duration, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+        duration <= 0
     )
 end
 
