@@ -2,7 +2,7 @@
 
 local TweenService = game:GetService("TweenService")
 local Animate = {
-    counts = setmetatable({} :: { [Instance]: number }, { __mode = "kv" }),
+    counts = {} :: { [Instance]: number },
 }
 
 export type Style = { [string]: any }
@@ -15,6 +15,10 @@ end
 
 function Animate.checkCount(instance: Instance): number
     return Animate.counts[instance]
+end
+
+function Animate.clearCount(instance: Instance)
+    Animate.counts[instance] = nil
 end
 
 function Animate.tween(instance: Instance, style: Style, tweenInfo: TweenInfo)
@@ -35,6 +39,7 @@ function Animate.style(instance: Instance, style: Style, tweenInfo: TweenInfo, d
     else
         task.delay(delay, function()
             if Animate.checkCount(instance) == me then
+                Animate.clearCount(instance)
                 Animate.tween(instance, style, tweenInfo)
             end
         end)
