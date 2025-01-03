@@ -140,7 +140,7 @@ function App:goHome(transitionSource, data)
     self.mutex:wait()
 
     while next(self.history) do
-        self:goBack("GO_HOME", { transitionSource = transitionSource, data = data })
+        self:goBack(transitionSource, data)
     end
 end
 

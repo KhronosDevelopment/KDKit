@@ -110,5 +110,5 @@ export type Transition = typeof(setmetatable(
 ))
 
 return {
-    BUILTIN_SOURCES = { "INITIAL_SETUP", "APP_CLOSE", "APP_OPEN", "GO_HOME", "NEXT_PAGE_FAILED_TO_OPEN" },
+    BUILTIN_SOURCES = { "INITIAL_SETUP", "APP_CLOSE", "APP_OPEN", "NEXT_PAGE_FAILED_TO_OPEN" },
 }
