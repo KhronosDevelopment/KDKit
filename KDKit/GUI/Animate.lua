@@ -17,15 +17,25 @@ function Animate.checkCount(instance: Instance): number
     return Animate.counts[instance]
 end
 
+function Animate.tween(instance: Instance, style: Style, tweenInfo: TweenInfo)
+    if tweenInfo.Time <= 0 then
+        for k, v in style do
+            (instance :: any)[k] = v
+        end
+    else
+        TweenService:Create(instance, tweenInfo, style):Play()
+    end
+end
+
 function Animate.style(instance: Instance, style: Style, tweenInfo: TweenInfo, delay: number)
     local me = Animate.count(instance)
 
     if delay <= 0 then
-        TweenService:Create(instance, tweenInfo, style):Play()
+        Animate.tween(instance, style, tweenInfo)
     else
         task.delay(delay, function()
             if Animate.checkCount(instance) == me then
-                TweenService:Create(instance, tweenInfo, style):Play()
+                Animate.tween(instance, style, tweenInfo)
             end
         end)
     end
@@ -59,11 +69,14 @@ function Animate.basedOnAttributes(
     if not excludeDescendants then
         for _, child in instance:GetChildren() do
             allAnimationsWillCompleteIn =
-                math.max(allAnimationsWillCompleteIn, Animate.basedOnAttributes(child, prefix, tweenInfo))
+                math.max(allAnimationsWillCompleteIn, Animate.basedOnAttributes(child, prefix, tweenInfo, noDelay))
         end
     end
 
-    Animate.style(instance, style, tweenInfo, animationDelay)
+    if next(style) then
+        Animate.style(instance, style, tweenInfo, animationDelay)
+    end
+
     return allAnimationsWillCompleteIn
 end
 

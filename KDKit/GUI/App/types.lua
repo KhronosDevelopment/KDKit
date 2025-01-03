@@ -64,6 +64,10 @@ export type Page = typeof(setmetatable(
         ephemeral: boolean,
         nTimesOpened: number,
         nTimesClosed: number,
+        animationDuration: {
+            onscreen: number,
+            offscreen: number,
+        },
     },
     {} :: PageImpl
 ))
