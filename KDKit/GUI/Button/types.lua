@@ -48,6 +48,7 @@ export type ButtonVisualState = {
 }
 export type ButtonImpl = {
     __index: ButtonImpl,
+    state: State,
     list: { [GuiObject]: Button },
     onHoveredButtonChangedCallbacks: { (Button?) -> () },
     applyToAll: (GuiObject | Button, string, ...any) -> (),

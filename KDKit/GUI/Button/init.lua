@@ -21,6 +21,7 @@ export type Button = T.Button
 local Button: ButtonImpl = {
     list = {},
     onHoveredButtonChangedCallbacks = {},
+    state = S,
 } :: ButtonImpl
 Button.__index = Button
 
@@ -53,7 +54,7 @@ local USER_INPUT_TYPES = {
 local ATTRIBUTE_PREFIX = "kdbtn"
 
 -- Feel free to change. Simply:
--- `require(KDKit.GUI.Button.State).sound = newSound`
+-- `require(KDKit.GUI.Button).state.sound = newSound`
 S.sound = script:WaitForChild("defaultSound")
 
 function Button.applyToAll(root, funcName, ...)
