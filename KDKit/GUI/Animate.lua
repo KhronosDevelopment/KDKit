@@ -85,7 +85,7 @@ function Animate.basedOnAttributes(
     return allAnimationsWillCompleteIn
 end
 
-function Animate.onscreen(instance: Instance, duration: number?): number
+function Animate.onscreen(instance: Instance, duration: number): number
     return Animate.basedOnAttributes(
         instance,
         "onscreen_",
@@ -94,7 +94,7 @@ function Animate.onscreen(instance: Instance, duration: number?): number
     )
 end
 
-function Animate.offscreen(instance: Instance, duration: number?): number
+function Animate.offscreen(instance: Instance, duration: number): number
     return Animate.basedOnAttributes(
         instance,
         "offscreen_",
