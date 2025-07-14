@@ -1845,4 +1845,25 @@ function Utils.resolveNormalId(part: Part, normal: Vector3): Enum.NormalId
     return Enum.NormalId.Top
 end
 
+--[[
+    Reverses an array in place.
+--]]
+function Utils.ireverse<V>(tab: { V })
+    local n = #tab
+    for i = 1, n // 2 do
+        local j = n - i + 1
+        tab[i], tab[j] = tab[j], tab[i]
+    end
+    return tab
+end
+
+--[[
+    Same as ireverse, but makes a copy first.
+--]]
+function Utils.reverse<V>(tab: { V })
+    local copy = table.clone(tab)
+    Utils.ireverse(copy)
+    return copy
+end
+
 return Utils
