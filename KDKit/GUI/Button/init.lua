@@ -580,8 +580,8 @@ local function invokeHoveredButtonChangedCallbacks(newHoveredButton: Button?)
     end)
 end
 
-local function updateGuiState()
-    debug.profilebegin("_KDKit.Button.updateGuiState")
+local function updateHovered()
+    debug.profilebegin("_KDKit.Button.updateHovered")
 
     local mouseX, mouseY = Mouse.getPosition()
 
@@ -655,7 +655,7 @@ local function updateGuiState()
 
     debug.profileend()
 end
-RunService:BindToRenderStep("_KDKit.GUI.Button.updateGuiState", Enum.RenderPriority.Input.Value + 1, updateGuiState)
+RunService:BindToRenderStep("_KDKit.GUI.Button.updateHovered", Enum.RenderPriority.Input.Value + 1, updateHovered)
 
 S.recentMouseMovementCausedByTouchInput = false
 UserInputService.InputChanged:Connect(function(input)
@@ -671,7 +671,7 @@ UserInputService.InputBegan:Connect(function(input)
         return
     end
 
-    updateGuiState()
+    updateHovered()
 
     if S.hovered then
         S.hovered:simulateMouseDown()
@@ -683,7 +683,7 @@ UserInputService.InputEnded:Connect(function(input)
         return
     end
 
-    updateGuiState()
+    updateHovered()
 
     local active = S.active
     if active then
