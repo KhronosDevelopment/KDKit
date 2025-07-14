@@ -137,7 +137,7 @@ export type Button = typeof(setmetatable(
 
 export type State = {
     active: Button?,
-    hovered: Button?,
+    mouseHovered: Button?,
     world: Button,
     other: Button,
     sound: Sound,

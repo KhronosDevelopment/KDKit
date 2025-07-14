@@ -366,7 +366,7 @@ function Button:isActive()
 end
 
 function Button:isHovered()
-    return self == S.hovered
+    return self == S.mouseHovered
 end
 
 function Button:customHitboxContainsPoint(x, y)
@@ -518,7 +518,7 @@ function Button:delete(...)
     Button.list[self.instance] = nil
 
     if self:isHovered() then
-        S.hovered = nil
+        S.mouseHovered = nil
     end
     if self:isActive() then
         S.active = nil
@@ -616,22 +616,22 @@ local function updateHovered()
         then actualHoveredButton
         else nil
 
-    if S.hovered ~= persistableHoveredButton then
-        if S.hovered then
-            local unHovered = S.hovered
-            S.hovered = nil
+    if S.mouseHovered ~= persistableHoveredButton then
+        if S.mouseHovered then
+            local unHovered = S.mouseHovered
+            S.mouseHovered = nil
             unHovered:visualStateChanged()
         end
 
         if persistableHoveredButton then
-            S.hovered = persistableHoveredButton
+            S.mouseHovered = persistableHoveredButton
             persistableHoveredButton:visualStateChanged()
         end
 
         task.defer(invokeHoveredButtonChangedCallbacks, persistableHoveredButton)
     end
 
-    if S.hovered and S.hovered ~= S.world and S.hovered ~= S.other and S.hovered:pressable() then
+    if S.mouseHovered and S.mouseHovered ~= S.world and S.mouseHovered ~= S.other and S.mouseHovered:pressable() then
         Mouse.setIcon("_KDKit.GUI.Button", "pointer")
     else
         Mouse.setIcon("_KDKit.GUI.Button", nil)
@@ -657,8 +657,8 @@ UserInputService.InputBegan:Connect(function(input)
 
     updateHovered()
 
-    if S.hovered then
-        S.hovered:simulateMouseDown()
+    if S.mouseHovered then
+        S.mouseHovered:simulateMouseDown()
     end
 end)
 
@@ -671,7 +671,7 @@ UserInputService.InputEnded:Connect(function(input)
 
     local active = S.active
     if active then
-        if S.hovered == active then
+        if S.mouseHovered == active then
             active:simulateMouseUp()
         else
             active:deactivate()
