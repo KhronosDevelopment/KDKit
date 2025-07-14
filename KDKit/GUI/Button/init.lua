@@ -504,8 +504,7 @@ function Button:keyDown(keyCode)
 end
 
 function Button:mouseUp()
-    if self:pressable() then
-        self:deactivate()
+    if S.mouseActive == self and self:pressable() then
         self:click()
     else
         self:deactivateMouse()
@@ -513,8 +512,12 @@ function Button:mouseUp()
 end
 
 function Button:keyUp(keyCode)
-    if self:pressable() then
-        self:deactivate()
+    local kb = self.keybinds[keyCode]
+    if not kb then
+        return
+    end
+
+    if kb.active and self:pressable() then
         self:click()
     else
         self:deactivateKey(keyCode)
@@ -522,6 +525,8 @@ function Button:keyUp(keyCode)
 end
 
 function Button:click(skipSound: boolean?)
+    self:deactivate()
+
     if not skipSound and not self.silenced then
         self:makeSound()
     end
