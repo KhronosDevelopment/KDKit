@@ -47,10 +47,7 @@ CUSTOM_HITBOXES = {
         end
     end,
 }
-local USER_INPUT_TYPES = {
-    [Enum.UserInputType.MouseButton1] = true,
-    [Enum.UserInputType.Touch] = true,
-}
+
 local ATTRIBUTE_PREFIX = "kdbtn"
 
 -- Feel free to change. Simply:
@@ -670,9 +667,7 @@ end)
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         S.recentMouseMovementCausedByTouchInput = true
-    end
-
-    if not USER_INPUT_TYPES[input.UserInputType] then
+    elseif input.UserInputType ~= Enum.UserInputType.MouseButton1 then
         return
     end
 
@@ -684,7 +679,7 @@ UserInputService.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if not USER_INPUT_TYPES[input.UserInputType] then
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
         return
     end
 
