@@ -4,7 +4,6 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local Humanize = require(script.Parent.Parent.Parent:WaitForChild("Humanize"))
 local Utils = require(script.Parent.Parent.Parent:WaitForChild("Utils"))
-local S = require(script.Parent:WaitForChild("state"))
 local T = require(script.Parent:WaitForChild("types"))
 
 type KeybindImpl = T.KeybindImpl
