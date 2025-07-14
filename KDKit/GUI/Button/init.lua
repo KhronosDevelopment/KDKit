@@ -362,7 +362,7 @@ function Button:isOther()
 end
 
 function Button:isActive()
-    return self == S.mouseActive
+    return self == S.mouseActive or Utils.any(self.keybinds, "active")
 end
 
 function Button:isHovered()
@@ -413,11 +413,33 @@ function Button:activateMouse()
         S.mouseActive:deactivateMouse()
     end
 
+    local wasActive = self:isActive()
     S.mouseActive = self
-    self:visualStateChanged()
 
-    if self:pressable() then
-        task.defer(self.firePressCallbacks, self)
+    if not wasActive then
+        self:visualStateChanged()
+
+        if self:pressable() then
+            task.defer(self.firePressCallbacks, self)
+        end
+    end
+end
+
+function Button:activateKey(keyCode)
+    local keybind = self.keybinds[keyCode]
+    if not keybind or keybind.active then
+        return
+    end
+
+    local wasActive = self:isActive()
+    keybind.active = true
+
+    if not wasActive then
+        self:visualStateChanged()
+
+        if self:pressable() then
+            task.defer(self.firePressCallbacks, self)
+        end
     end
 end
 
@@ -427,6 +449,45 @@ function Button:deactivateMouse()
     end
 
     S.mouseActive = nil
+
+    if not self:isActive() then
+        self:visualStateChanged()
+
+        if self:pressable() then
+            task.defer(self.fireReleaseCallbacks, self)
+        end
+    end
+end
+
+function Button:deactivateKey(keyCode)
+    local keybind = self.keybinds[keyCode]
+    if not keybind or not keybind.active then
+        return
+    end
+
+    keybind.active = false
+
+    if not self:isActive() then
+        self:visualStateChanged()
+
+        if self:pressable() then
+            task.defer(self.fireReleaseCallbacks, self)
+        end
+    end
+end
+
+function Button:deactivate()
+    if not self:isActive() then
+        return
+    end
+
+    if S.mouseActive == self then
+        S.mouseActive = nil
+    end
+    for _, k in self.keybinds do
+        k.active = false
+    end
+
     self:visualStateChanged()
 
     if self:pressable() then
@@ -434,19 +495,44 @@ function Button:deactivateMouse()
     end
 end
 
-function Button:simulateMouseDown()
+function Button:mouseDown()
     self:activateMouse()
 end
 
-function Button:simulateMouseUp(skipSound)
-    self:deactivateMouse()
+function Button:keyDown(keyCode)
+    self:activateKey(keyCode)
+end
 
-    if not self:pressable() then
-        return
+function Button:mouseUp()
+    if self:pressable() then
+        self:deactivate()
+        self:click()
+    else
+        self:deactivateMouse()
     end
+end
 
+function Button:keyUp(keyCode)
+    if self:pressable() then
+        self:deactivate()
+        self:click()
+    else
+        self:deactivateKey(keyCode)
+    end
+end
+
+function Button:click(skipSound: boolean?)
     if not skipSound and not self.silenced then
         self:makeSound()
+    end
+
+    if self.callbackIsExecuting then
+        warn(
+            ("[KDKit.GUI.Button] Tried to click button `%s`, but the callback is already executing. (Doing nothing.)"):format(
+                self.instance:GetFullName()
+            )
+        )
+        return
     end
 
     self.callbackIsExecuting = true
@@ -458,11 +544,6 @@ function Button:simulateMouseUp(skipSound)
         LoadingGroups.update(self.loadingGroupIds)
         self:visualStateChanged()
     end, self.fireClickCallbacks, self)
-end
-
-function Button:click(skipSound: boolean?)
-    self:simulateMouseDown()
-    self:simulateMouseUp(skipSound)
 end
 
 function Button:fireCallbacks(callbackTable)
@@ -657,7 +738,7 @@ UserInputService.InputBegan:Connect(function(input)
     updateHovered()
 
     if S.mouseHovered then
-        S.mouseHovered:simulateMouseDown()
+        S.mouseHovered:mouseDown()
     end
 end)
 
@@ -670,7 +751,7 @@ UserInputService.InputEnded:Connect(function(input)
 
     if S.mouseActive then
         if S.mouseHovered == S.mouseActive then
-            S.mouseActive:simulateMouseUp()
+            S.mouseActive:mouseUp()
         else
             S.mouseActive:deactivateMouse()
         end

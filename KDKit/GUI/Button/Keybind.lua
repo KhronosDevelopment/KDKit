@@ -56,6 +56,7 @@ function Keybind.new(button, keyReference)
     local self = setmetatable({
         button = button,
         key = key,
+        active = false,
     }, Keybind) :: Keybind
 
     return self
@@ -68,18 +69,13 @@ function Keybind:enable()
 
     self.bind = Keybind.useNextBindString()
     ContextActionService:BindAction(self.bind, function(_actionName, inputState, _inputObject)
-        -- todo
-        -- if inputState == Enum.UserInputState.Begin then
-        --     if S.active ~= self.button then
-        --         self.button:simulateMouseDown()
-        --     end
-        -- elseif inputState == Enum.UserInputState.End then
-        --     if S.active == self.button then
-        --         self.button:simulateMouseUp()
-        --     end
-        -- elseif inputState == Enum.UserInputState.Cancel then
-        --     self.button:deactivate()
-        -- end
+        if inputState == Enum.UserInputState.Begin then
+            self.button:keyDown(self.key)
+        elseif inputState == Enum.UserInputState.End then
+            self.button:keyUp(self.key)
+        else -- Cancel
+            self.button:deactivateKey(self.key)
+        end
     end, false, self.key)
 end
 
