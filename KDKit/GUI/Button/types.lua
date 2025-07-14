@@ -55,10 +55,6 @@ export type ButtonImpl = {
     enableWithin: (GuiObject, number?) -> (),
     disableWithin: (GuiObject, number?) -> (),
     deleteWithin: (GuiObject, boolean?) -> (),
-    worldIsHovered: () -> boolean,
-    otherIsHovered: () -> boolean,
-    worldIsActive: () -> boolean,
-    otherIsActive: () -> boolean,
     onHoveredButtonChanged: ((Button?) -> ()) -> { Disconnect: () -> () },
     new: (GuiObject, ((Button) -> ())?) -> Button,
     loadStyles: (Button) -> (),
@@ -97,8 +93,8 @@ export type ButtonImpl = {
     customHitboxContainsPoint: (Button, number, number) -> boolean,
     pressable: (Button) -> boolean,
     makeSound: (Button) -> (),
-    activate: (Button) -> (),
-    deactivate: (Button) -> (),
+    activateMouse: (Button) -> (),
+    deactivateMouse: (Button) -> (),
     simulateMouseDown: (Button) -> (),
     simulateMouseUp: (Button, boolean?) -> (),
     click: (Button, boolean?) -> (),
@@ -136,7 +132,7 @@ export type Button = typeof(setmetatable(
 ))
 
 export type State = {
-    active: Button?,
+    mouseActive: Button?,
     mouseHovered: Button?,
     world: Button,
     other: Button,

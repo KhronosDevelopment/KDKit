@@ -68,17 +68,18 @@ function Keybind:enable()
 
     self.bind = Keybind.useNextBindString()
     ContextActionService:BindAction(self.bind, function(_actionName, inputState, _inputObject)
-        if inputState == Enum.UserInputState.Begin then
-            if S.active ~= self.button then
-                self.button:simulateMouseDown()
-            end
-        elseif inputState == Enum.UserInputState.End then
-            if S.active == self.button then
-                self.button:simulateMouseUp()
-            end
-        elseif inputState == Enum.UserInputState.Cancel then
-            self.button:deactivate()
-        end
+        -- todo
+        -- if inputState == Enum.UserInputState.Begin then
+        --     if S.active ~= self.button then
+        --         self.button:simulateMouseDown()
+        --     end
+        -- elseif inputState == Enum.UserInputState.End then
+        --     if S.active == self.button then
+        --         self.button:simulateMouseUp()
+        --     end
+        -- elseif inputState == Enum.UserInputState.Cancel then
+        --     self.button:deactivate()
+        -- end
     end, false, self.key)
 end
 

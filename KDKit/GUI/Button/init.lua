@@ -362,7 +362,7 @@ function Button:isOther()
 end
 
 function Button:isActive()
-    return self == S.active
+    return self == S.mouseActive
 end
 
 function Button:isHovered()
@@ -406,15 +406,14 @@ function Button:makeSound()
     return sound
 end
 
-function Button:activate()
-    local currentlyActive = S.active
-    if currentlyActive == self then
+function Button:activateMouse()
+    if S.mouseActive == self then
         return
-    elseif currentlyActive then
-        currentlyActive:deactivate()
+    elseif S.mouseActive then
+        S.mouseActive:deactivateMouse()
     end
 
-    S.active = self
+    S.mouseActive = self
     self:visualStateChanged()
 
     if self:pressable() then
@@ -422,12 +421,12 @@ function Button:activate()
     end
 end
 
-function Button:deactivate()
-    if S.active ~= self then
+function Button:deactivateMouse()
+    if S.mouseActive ~= self then
         return
     end
 
-    S.active = nil
+    S.mouseActive = nil
     self:visualStateChanged()
 
     if self:pressable() then
@@ -436,11 +435,11 @@ function Button:deactivate()
 end
 
 function Button:simulateMouseDown()
-    self:activate()
+    self:activateMouse()
 end
 
 function Button:simulateMouseUp(skipSound)
-    self:deactivate()
+    self:deactivateMouse()
 
     if not self:pressable() then
         return
@@ -521,7 +520,7 @@ function Button:delete(...)
         S.mouseHovered = nil
     end
     if self:isActive() then
-        S.active = nil
+        S.mouseActive = nil
     end
 end
 
@@ -612,7 +611,7 @@ local function updateHovered()
         actualHoveredButton = S.world
     end
 
-    local persistableHoveredButton = if S.active == nil or actualHoveredButton:isActive()
+    local persistableHoveredButton = if S.mouseActive == nil or actualHoveredButton:isActive()
         then actualHoveredButton
         else nil
 
@@ -669,12 +668,11 @@ UserInputService.InputEnded:Connect(function(input)
 
     updateHovered()
 
-    local active = S.active
-    if active then
-        if S.mouseHovered == active then
-            active:simulateMouseUp()
+    if S.mouseActive then
+        if S.mouseHovered == S.mouseActive then
+            S.mouseActive:simulateMouseUp()
         else
-            active:deactivate()
+            S.mouseActive:deactivateMouse()
         end
     end
 end)
