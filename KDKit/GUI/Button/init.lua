@@ -76,22 +76,6 @@ function Button.deleteWithin(root, instant)
     Button.applyToAll(root, "delete", instant)
 end
 
-function Button.worldIsHovered()
-    return S.hovered == S.world
-end
-
-function Button.otherIsHovered()
-    return S.hovered == S.other
-end
-
-function Button.worldIsActive()
-    return S.active == S.world
-end
-
-function Button.otherIsActive()
-    return S.active == S.other
-end
-
 function Button.new(instance, onClick)
     local self = setmetatable({
         instance = instance,
