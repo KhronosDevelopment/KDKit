@@ -126,7 +126,7 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
     return {
         success = success,
         results = if success then results :: { any } else nil,
-        traceback = if success then nil else results :: string,
+        traceback = if success then nil elseif typeof(results) == "string" then results else Utils.repr(results), -- apparently errors are not necessarily strings - see `error({})`
         _raise_called = false :: false,
         catch = function(ctx, cb)
             if not ctx.success then
