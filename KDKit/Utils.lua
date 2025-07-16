@@ -132,15 +132,7 @@ function Utils.try<Arg..., Ret...>(func: (Arg...) -> Ret..., ...: Arg...): TryNo
             if not ctx.success then
                 assert(ctx.traceback)
 
-                Utils.try(cb, ctx.traceback):catch(function(cbErr)
-                    task.defer(
-                        error,
-                        ("The following error occurred during the :catch() callback of a KDKit.Utils.try() attempt. The error was ignored.\nOriginal error that was passed to the callback:\n%s\nError that occurred within the callback:\n%s"):format(
-                            Utils.indent(ctx.traceback, "|   "),
-                            Utils.indent(cbErr, "|   ")
-                        )
-                    )
-                end)
+                cb(ctx.traceback)
             end
 
             return ctx
