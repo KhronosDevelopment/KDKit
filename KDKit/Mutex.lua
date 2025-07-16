@@ -43,6 +43,8 @@ type MutexImpl = {
     newOwner: (Mutex) -> number,
     wait: (Mutex) -> number,
     lock: <RL...>(Mutex, (<RU...>(() -> RU...) -> RU...) -> RL...) -> RL...,
+    acquire: (Mutex) -> number,
+    release: (Mutex, number) -> (),
     destroy: (Mutex) -> (),
 }
 export type Mutex = typeof(setmetatable(
@@ -166,6 +168,16 @@ function Mutex:lock<RL...>(fnToExecuteWithLock)
     return Utils.ensure(function()
         self.locked = false
     end, fnToExecuteWithLock, unlock)
+end
+
+function Mutex:acquire()
+    self:wait()
+    return self:newOwner()
+end
+
+function Mutex:release(owner)
+    assert(self.owner == owner, "You may not release a mutex lock you do not own.")
+    self.locked = false
 end
 
 function Mutex:destroy()
