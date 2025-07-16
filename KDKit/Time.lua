@@ -16,6 +16,7 @@ local Time = {
     recordRemoteOffset: (number) -> (),
     sync: () -> (),
     waitForSync: () -> number,
+    isReady: () -> boolean,
 }
 
 if game:GetService("RunService"):IsServer() then
@@ -36,6 +37,7 @@ if game:GetService("RunService"):IsServer() then
     remote.Name = "_KDKit.Time"
 
     remote.OnServerInvoke = function(player)
+        Time.waitForSync()
         return Time.now()
     end
 
@@ -150,10 +152,14 @@ function Time.recordRemoteOffset(offset)
     Time.avgRemoteOffset = Utils.median(Time.remoteOffsets)
 end
 
+function Time.isReady()
+    return #Time.remoteOffsets >= MIN_REMOTE_HISTORY
+end
+
 function Time.waitForSync()
     local startedWaitingAt = os.clock()
     local warnAfter = 5
-    while #Time.remoteOffsets < MIN_REMOTE_HISTORY do
+    while not Time.isReady() do
         task.wait()
 
         if (os.clock() - startedWaitingAt) > warnAfter then
@@ -169,7 +175,7 @@ local offset = nil
 local lastUpdatedOffsetAt = nil
 function Time.now(): number
     if not offset or not lastUpdatedOffsetAt then
-        Time.waitForSync()
+        assert(Time.isReady(), "[KDKit.Time] Time is not ready yet! Call waitForSync() first.")
         offset = Time.avgRemoteOffset
         lastUpdatedOffsetAt = os.clock()
     end
