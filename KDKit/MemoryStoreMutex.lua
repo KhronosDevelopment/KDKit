@@ -17,6 +17,7 @@ export type MemoryStoreMutexImpl = {
     _write: (MemoryStoreMutex, number) -> (),
     _tryClear: (MemoryStoreMutex) -> (boolean, string?),
     _clear: (MemoryStoreMutex, number) -> (),
+    getTimeToExpiration: (MemoryStoreMutex) -> number,
     acquire: (MemoryStoreMutex, (number) -> ()) -> (),
     release: (MemoryStoreMutex) -> (),
 }
@@ -160,6 +161,14 @@ function MemoryStoreMutex:_clear(attempts)
         end
         task.wait(timeout)
         timeout *= 2
+    end
+end
+
+function MemoryStoreMutex:getTimeToExpiration()
+    if not self.acquired then
+        return -math.huge
+    else
+        return self.acquired.expiry - os.clock()
     end
 end
 
