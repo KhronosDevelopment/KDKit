@@ -308,15 +308,15 @@ function Humanize.casing(text: string, mode: string)
         error(
             ("[KDKit.Humanize] Invalid casing mode `%s`. Valid options are %s."):format(
                 Utils.repr(mode),
-                Humanize.list(Utils.map(function(option)
+                Humanize.list(Utils.map(Utils.keys(Humanize.CASING), function(option)
                     return Utils.repr(option)
-                end, Utils.keys(Humanize.CASING)))
+                end))
             )
         )
     end
 
     local words = Humanize.detectCasingAndExtractWords(text)
-    Utils.imap(casing.transformer, words)
+    Utils.imap(words, casing.transformer)
     return table.concat(words, casing.separator)
 end
 
@@ -358,13 +358,13 @@ function Humanize.list(array: { string }, maxItems: number?, name: string?)
 
         return table.concat(items, ", ")
     else
-        local items = Utils.map(function(item)
+        local items = Utils.map(array, function(item)
             if type(item) ~= "string" then
                 return Utils.repr(item)
             else
                 return item
             end
-        end, array)
+        end)
 
         if n > 1 then
             items[n] = "and " .. items[n]

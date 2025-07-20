@@ -34,9 +34,9 @@ function Request:render()
     } :: HttpRequestOptions
 
     if self.options and self.options.headers then
-        o.Headers = Utils.mapf(function(v, k)
+        o.Headers = Utils.mapf(self.options.headers, function(v, k)
             return k:lower(), v
-        end, self.options.headers)
+        end)
     end
 
     if self.options and self.options.params then

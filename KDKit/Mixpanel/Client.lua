@@ -94,7 +94,7 @@ function Client.new(projectToken, options)
 
     self.timeProvider = self.options.timeProvider or require(script.Parent.Parent:WaitForChild("Time")).now
 
-    self.batches = Utils.mapf(function(v): (string, Batch<any>)
+    self.batches = Utils.mapf({ "event", "profile" }, function(v): (string, Batch<any>)
         return v,
             {
                 id = 0,
@@ -102,7 +102,7 @@ function Client.new(projectToken, options)
                 lastItemAddedAt = 0,
                 items = {},
             }
-    end, { "event", "profile" })
+    end)
 
     game:BindToClose(function()
         self.options.batching = { default = { maxSize = 0 } }
@@ -244,9 +244,9 @@ function Client:queueEventP(name, player, properties)
 end
 
 function Client:queueProfileUpdate(distinctId, params)
-    local o = Utils.mapf(function(value, key)
+    local o = Utils.mapf(params, function(value, key)
         return "$" .. key, value
-    end, params)
+    end)
     o["$distinct_id"] = distinctId
 
     print(("[KDKit.Mixpanel] Profile update for '%d' added to batch with params"):format(distinctId), params)

@@ -9,8 +9,8 @@ local Utils = {
     PRIMITIVE_TYPES = { string = true, boolean = true, number = true, ["nil"] = true },
 }
 
-type Evaluator<K, V, T> = ((V, K) -> T) | string?
-function Utils.evaluator<K, V, T>(e: Evaluator<K, V, T>): (V, K) -> T
+type Evaluator<K, V, T> = ((V, K) -> T) | string
+function Utils.evaluator<K, V, T>(e: Evaluator<K, V, T>?): (V, K) -> T
     if e == nil then
         return function(v: V, k: K)
             return (v :: any) :: T
@@ -409,15 +409,16 @@ end
 
     ```lua
     local x = { 1, 2, 3 }
-    Utils.imap(function(v) return v * v end, x)
+    Utils.imap(x, function(v) return v * v end)
     print(x) -> { 1, 4, 9 }
     ```
 --]]
-function Utils.imap<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
+function Utils.imap<K, V, T>(tab: { [K]: V }, evaluator: Evaluator<K, V, T>): { [K]: T }
+    local e = Utils.evaluator(evaluator)
     local typeAdjustedTab = (tab :: any) :: { [K]: T }
 
     for key, value in tab do
-        typeAdjustedTab[key] = transform(value, key)
+        typeAdjustedTab[key] = e(value, key)
     end
 
     return typeAdjustedTab
@@ -425,24 +426,24 @@ end
 
 --[[
     Returns a new table whose values have been transformed by the provided `transform` function.
-    Similar to Python's builtin `map` function, but is eagerly evaluated.
+    Similar to Python's builtin `map` function, but is eagerly evaluated & args are swapped.
 
     ```lua
-    Utils.map(function(v) return v ^ 3 end, { 1, 2, 3 }) -> { 1, 8, 27 }
+    Utils.map({ 1, 2, 3 }, function(v) return v ^ 3 end) -> { 1, 8, 27 }
     ```
 --]]
-function Utils.map<K, V, T>(transform: (value: V, key: K) -> T, tab: { [K]: V }): { [K]: T }
-    return Utils.imap(transform, table.clone(tab))
+function Utils.map<K, V, T>(tab: { [K]: V }, evaluator: Evaluator<K, V, T>): { [K]: T }
+    return Utils.imap(table.clone(tab), evaluator)
 end
 
 --[[
     Similar to Utils.map, except you can specify both the key and the value.
 
     ```lua
-    Utils.mapf(function(v, k) return k + 1, v ^ 2 end, { 1, 2, 3 }) -> { [2] = 1, [3] = 4, [4] = 9 }
+    Utils.mapf({ 1, 2, 3 }, function(v, k) return k + 1, v ^ 2 end) -> { [2] = 1, [3] = 4, [4] = 9 }
     ```
 --]]
-function Utils.mapf<K1, V1, K2, V2>(transform: (value: V1, key: K1, index: number) -> (K2, V2), tab: { [K1]: V1 }): { [K2]: V2 }
+function Utils.mapf<K1, V1, K2, V2>(tab: { [K1]: V1 }, transform: (value: V1, key: K1, index: number) -> (K2, V2)): { [K2]: V2 }
     local output = {}
     local index = 1
     for k1, v1 in tab do
@@ -826,7 +827,7 @@ end
     Similar to passing a `key` to Python's builtin `list.sort` function.
     You may also return a table to include tiebreakers.
 --]]
-function Utils.isort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>): { V }
+function Utils.isort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?): { V }
     local e = Utils.evaluator(evaluator) :: (V, nil) -> any
     local rankings = {}
 
@@ -843,7 +844,7 @@ end
 --[[
     Similar to Utils.isort, but makes a copy first.
 --]]
-function Utils.sort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>): { V }
+function Utils.sort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?): { V }
     return Utils.isort(table.clone(tab), evaluator)
 end
 
@@ -1143,38 +1144,6 @@ function Utils.weld(a: BasePart, b: BasePart, reuse: WeldConstraint?): WeldConst
 end
 
 --[[
-    Returns a function that, when invoked, will access the provided key.
---]]
-type Pluckable<K, T> = { [K]: Pluckable<K, T> | T }
-function Utils.plucker<K, T>(...: K): (value: Pluckable<K, T>, key: K) -> T
-    local chain = { ... }
-    return function(value: Pluckable<K, T>, _key: K): T
-        local result: Pluckable<K, T> | T = value
-
-        for _, key in chain do
-            result = (result :: Pluckable<K, T>)[key]
-        end
-
-        return result :: T
-    end
-end
-
---[[
-    [!] UPDATES THE TABLE IN-PLACE
-    Basically equivalent to Utils.imap(Utils.plucker(attribute), tab)
---]]
-function Utils.ipluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V }): { [K]: T }
-    return Utils.imap(Utils.evaluator(plucker), tab)
-end
-
---[[
-    Same as Utils.ipluck, but makes a copy first.
---]]
-function Utils.pluck<K, V, T>(plucker: Evaluator<K, V, T>, tab: { [K]: V }): { [K]: T }
-    return Utils.ipluck(plucker, table.clone(tab))
-end
-
---[[
     Returns true if at least one of the elements of the table are truthy.
     Optionally, you may specify a function which will be used to judge the truthiness of each element.
     Note that this function is lazy, so any elements that occur after a truthy one will not be evaluated.
@@ -1188,7 +1157,7 @@ end
     Utils.any({1, 2, 3, -5}, function(x) return x < 0 end) -> true
     ```
 --]]
-function Utils.any<K, V>(collection: { [K]: V }, evaluator: Evaluator<K, V, boolean>): boolean
+function Utils.any<K, V>(collection: { [K]: V }, evaluator: Evaluator<K, V, boolean>?): boolean
     local e = Utils.evaluator(evaluator) :: (V, K) -> boolean
 
     for k, v in collection do
@@ -1203,7 +1172,7 @@ end
 --[[
     Similar to Utils.any(), but checks if _all_ the elements are truthy.
 --]]
-function Utils.all<K, V>(collection: { [K]: V }, evaluator: Evaluator<K, V, boolean>): boolean
+function Utils.all<K, V>(collection: { [K]: V }, evaluator: Evaluator<K, V, boolean>?): boolean
     local e = Utils.evaluator(evaluator) :: (V, K) -> boolean
 
     for k, v in collection do
@@ -1270,7 +1239,7 @@ end
     Utils.bisect_right(x, 13) -> 4
     ```
 --]]
-function Utils.bisect_right<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>, low: number?, high: number?): number
+function Utils.bisect_right<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>?, low: number?, high: number?): number
     local e = Utils.evaluator(key) :: (V, number?) -> any
 
     local lo = low or 1
@@ -1296,7 +1265,7 @@ Utils.bisect = Utils.bisect_right
     contains equivalent elements, it returns the index of the leftmost copy.
     Similar to Python's `bisect.bisect_left`.
 --]]
-function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>, low: number?, high: number?): number
+function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>?, low: number?, high: number?): number
     local e = Utils.evaluator(key) :: (V, number?) -> C
 
     local lo = math.max(low or 1, 1)
@@ -1321,7 +1290,7 @@ end
     In the case of tiebreakers, the new element is placed on the right.
     Similar to Python's builtin `bisect.insort_right` function.
 --]]
-function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
+function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>?, low: number?, high: number?)
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
     table.insert(tab, Utils.bisect_right(tab, evaluator(element, nil), evaluator, low, high), element)
 end
@@ -1331,7 +1300,7 @@ Utils.insort = Utils.insort_right
     Similar to `Utils.insort_right` but in the case of
     tiebreakers, the new element is placed to the left.
 --]]
-function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
+function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>?, low: number?, high: number?)
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
     table.insert(tab, Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high), element)
 end
@@ -1341,7 +1310,7 @@ end
     the same sort key is already in the list, replace it.
     If there are multiple, it replaces the first occurrence.
 --]]
-function Utils.insort_or_replace<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>, low: number?, high: number?)
+function Utils.insort_or_replace<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>?, low: number?, high: number?)
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
     local index = Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high)
 
@@ -1388,7 +1357,7 @@ end
     Utils.min({-8, 3}, math.abs) -> 3, 2
     ```
 --]]
-function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>): (V, K)
+function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V, K)
     local e = Utils.evaluator(key) :: (V, K) -> any
     local minValue, minKey = nil, nil
 
@@ -1429,7 +1398,7 @@ end
 --[[
     Identical to `Utils.min` but, you know.
 --]]
-function Utils.max<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>): (V, K)
+function Utils.max<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V, K)
     local e = Utils.evaluator(key) :: (V, K) -> any
     local maxValue, maxKey = nil, nil
 
@@ -1470,7 +1439,7 @@ end
     Utils.sum({ 4, "5", 6 }) -> 15
     ```
 --]]
-function Utils.sum<K, V>(tab: { [K]: V }, key: Evaluator<K, V, number>): number
+function Utils.sum<K, V>(tab: { [K]: V }, key: Evaluator<K, V, number>?): number
     local e = Utils.evaluator(key) :: (V, K) -> number
 
     local total = 0
@@ -1615,9 +1584,9 @@ function Utils.aggregateErrors<FRet...>(
     end
 
     if next(errors) then
-        Utils.imap(function(err: string, index: number)
+        Utils.imap(errors, function(err, index)
             return ("Error %d:\n"):format(index) .. Utils.indent(Utils.rstrip(err), "|   ")
-        end, errors)
+        end)
         error(
             ("The following %d error(s) occurred within a call to Utils.aggregateErrors:\n%s"):format(
                 #errors,
@@ -1639,7 +1608,7 @@ end
     end) -> {2, 4}
     ```
 --]]
-function Utils.select<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>): { V }
+function Utils.select<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>?): { V }
     local e = Utils.evaluator(shouldSelect) :: (V, K) -> boolean
     local selected = {} :: { V }
 
@@ -1655,7 +1624,7 @@ end
 --[[
     Like `select`, but works for non-array-like tables.
 --]]
-function Utils.selectMap<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>): { [K]: V }
+function Utils.selectMap<K, V>(tab: { [K]: V }, shouldSelect: Evaluator<K, V, boolean>?): { [K]: V }
     local e = Utils.evaluator(shouldSelect) :: (V, K) -> boolean
     local selected = {} :: { [K]: V }
 
@@ -1671,7 +1640,7 @@ end
 --[[
     Logical opposite of Utils.select
 --]]
-function Utils.reject<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>): { V }
+function Utils.reject<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>?): { V }
     local e = Utils.evaluator(shouldReject) :: (V, K) -> boolean
     local selected = {} :: { V }
 
@@ -1687,7 +1656,7 @@ end
 --[[
     Logical opposite of Utils.selectMap
 --]]
-function Utils.rejectMap<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>): { [K]: V }
+function Utils.rejectMap<K, V>(tab: { [K]: V }, shouldReject: Evaluator<K, V, boolean>?): { [K]: V }
     local e = Utils.evaluator(shouldReject) :: (V, K) -> boolean
     local selected = {} :: { [K]: V }
 
@@ -1703,7 +1672,7 @@ end
 --[[
     Returns the first value in the table where the `func` returns `true`.
 --]]
-function Utils.find<K, V>(tab: { [K]: V }, evaluator: Evaluator<K, V, boolean>): (V?, K?)
+function Utils.find<K, V>(tab: { [K]: V }, evaluator: Evaluator<K, V, boolean>?): (V?, K?)
     local e = Utils.evaluator(evaluator) :: (V, K) -> boolean
 
     for k, v in tab do

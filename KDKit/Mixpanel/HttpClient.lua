@@ -61,27 +61,27 @@ end
 function HttpClient:import(events)
     return Requests.post("https://api.mixpanel.com/import", {
         headers = { Authorization = self.authHeader },
-        json = Utils.map(function(e: Event)
+        json = Utils.map(events, function(e)
             return {
                 event = e.event,
-                properties = Utils.map(function<T>(v: T): T
+                properties = Utils.map(e.properties, function<T>(v: T): T
                     if typeof(v) == "string" then
                         -- mixpanel automatically truncates to 255 chars, so don't bother uploading more
                         return v:sub(1, 255)
                     else
                         return v
                     end
-                end, e.properties),
+                end),
             }
-        end, events),
+        end),
     })
 end
 
 function HttpClient:updateProfiles(profileUpdates)
     return Requests.post("https://api.mixpanel.com/engage#profile-batch-update", {
-        json = Utils.map(function(p: ProfileUpdate)
+        json = Utils.map(profileUpdates, function(p)
             return Utils.merge(p, { ["$token"] = self.projectToken })
-        end, profileUpdates),
+        end),
     })
 end
 

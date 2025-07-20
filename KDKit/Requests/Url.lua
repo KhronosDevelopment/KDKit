@@ -9,9 +9,9 @@ type UrlImpl = T.UrlImpl
 
 local Url: UrlImpl = {} :: UrlImpl
 Url.__index = Url
-Url.STANDARD_LEGAL_URL_CHARACTERS = Utils.mapf(function(v, k)
+Url.STANDARD_LEGAL_URL_CHARACTERS = Utils.mapf(Utils.characters(":-_.!~*'()@=$,;"), function(v, k)
     return v, true
-end, Utils.characters(":-_.!~*'()@=$,;"))
+end)
 
 function Url.encode(str)
     return str:gsub("([^a-zA-Z0-9])", function(v)
@@ -95,9 +95,9 @@ function Url:render(withoutSecrets)
             return self.path
                 .. "?"
                 .. table.concat(
-                    Utils.mapf(function(v, k, index)
+                    Utils.mapf(params, function(v, k, index)
                         return index, Url.encode(k) .. "=" .. Url.encode(v)
-                    end, params) :: { string },
+                    end),
                     "&"
                 )
         end
