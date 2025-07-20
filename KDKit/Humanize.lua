@@ -570,6 +570,12 @@ function Humanize.number(number: number, options: NumberFmtOptions): string
         options.removeTrailingZeros = true
     end
 
+    if number == math.huge then
+        return "∞"
+    elseif number == -math.huge then
+        return "-∞"
+    end
+
     local fmt = "%." .. (options.decimalPlaces :: number) .. "f"
     local str = fmt:format(number)
 
