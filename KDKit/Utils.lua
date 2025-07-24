@@ -1355,11 +1355,12 @@ end
     ```lua
     Utils.min({3, 1, 8}) -> 1, 2
     Utils.min({-8, 3}, math.abs) -> 3, 2
+    Utils.min({}) -> nil, nil
     ```
 --]]
-function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V, K)
+function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V?, K?)
     local e = Utils.evaluator(key) :: (V, K) -> any
-    local minValue, minKey = nil, nil
+    local minValue: V?, minKey: K? = nil, nil
 
     if key then
         local minimumEvaluation = nil
