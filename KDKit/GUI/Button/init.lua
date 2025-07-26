@@ -285,10 +285,6 @@ function Button:determinePropertyValueDuringState(property, visualState)
 end
 
 function Button:getVisualState()
-    if not self.stylingEnabled then
-        return STATE_NO_STYLING
-    end
-
     local loading = self:isLoading()
     local pressable = self:pressable()
 
@@ -327,12 +323,14 @@ function Button:visualStateChanged(animationTime)
         task.defer(self.fireCallbacks, self, self.connections.press)
     end
 
-    local style = table.clone(self.styles.original)
-    for property in style do
-        style[property] = self:determinePropertyValueDuringState(property, visualState)
-    end
+    if self.stylingEnabled then
+        local style = table.clone(self.styles.original)
+        for property in style do
+            style[property] = self:determinePropertyValueDuringState(property, visualState)
+        end
 
-    self:style(style, animationTime or (if wasActive ~= isActive then 0.02 else 0.1))
+        self:style(style, animationTime or (if wasActive ~= isActive then 0.02 else 0.1))
+    end
 end
 
 function Button:isBoundTo(keyCode: Enum.KeyCode)
