@@ -595,17 +595,18 @@ function Button:disable(animationTime)
     return self
 end
 
-function Button:delete(...)
-    local instant = ...
+function Button:delete(instant)
+    self:silence()
     self:loadWith(nil)
+    self:unbindAll()
     self:style(self.styles.original, if instant then 0 elseif self:isActive() then 0.02 else 0.1)
 
     Button.list[self.instance] = nil
 
-    if self:isHovered() then
+    if S.mouseHovered == self then
         S.mouseHovered = nil
     end
-    if self:isActive() then
+    if S.mouseActive == self then
         S.mouseActive = nil
     end
 end
