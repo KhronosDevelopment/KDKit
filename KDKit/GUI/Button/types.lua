@@ -68,7 +68,7 @@ export type ButtonImpl = {
     connectPress: ButtonConnector<Button>,
     connectRelease: ButtonConnector<Button>,
     connectClick: ButtonConnector<Button>,
-    connectVisualStateChange: ButtonConnector<Button, ButtonVisualState>,
+    connectVisualStateChange: ButtonConnector<Button, ButtonVisualState, ButtonVisualState>,
     hitbox: (Button, string | ButtonHitbox) -> Button,
     bind: (Button, ...KeyCodeReference) -> Button,
     unbindAll: (Button) -> Button,
@@ -117,7 +117,7 @@ export type Button = typeof(setmetatable(
             press: ButtonConnections<>,
             release: ButtonConnections<>,
             click: ButtonConnections<>,
-            visualStateChange: ButtonConnections<ButtonVisualState>,
+            visualStateChange: ButtonConnections<ButtonVisualState, ButtonVisualState>,
         },
         loadingGroupIds: { any },
         isClicking: boolean,
@@ -133,7 +133,7 @@ export type Button = typeof(setmetatable(
             disabled: ButtonStyle,
         },
         customHitbox: ButtonHitbox?,
-        _previousVisualState: ButtonVisualState?,
+        _previousVisualState: ButtonVisualState,
     },
     {} :: ButtonImpl
 ))

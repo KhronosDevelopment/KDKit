@@ -111,6 +111,7 @@ function Button.new(instance, onClickCallback)
             loading = {},
             disabled = {},
         },
+        _previousVisualState = STATE_NO_STYLING,
     }, Button) :: Button
 
     Button.list[self.instance] = self
@@ -120,7 +121,6 @@ function Button.new(instance, onClickCallback)
     end
 
     self:loadStyles()
-    self:visualStateChanged(0)
 
     return self
 end
@@ -317,9 +317,9 @@ function Button:visualStateChanged(animationTime)
         return
     end
 
-    task.defer(self.fireCallbacks, self, self.connections.visualStateChange, visualState)
+    task.defer(self.fireCallbacks, self, self.connections.visualStateChange, previousVisualState, visualState)
 
-    local wasActive = previousVisualState and previousVisualState.active
+    local wasActive = previousVisualState.active
     local isActive = visualState.active
     if wasActive and not isActive then
         task.defer(self.fireCallbacks, self, self.connections.release)
