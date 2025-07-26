@@ -97,7 +97,7 @@ function Button.new(instance, onClickCallback)
             click = {},
         },
         loadingGroupIds = {},
-        callbackIsExecuting = false,
+        isClicking = false,
         enabled = false,
         keybinds = {},
         silenced = false,
@@ -332,7 +332,7 @@ function Button:isBoundTo(keyCode: Enum.KeyCode)
 end
 
 function Button:isLoading(): boolean
-    return self.callbackIsExecuting or LoadingGroups.anyAreLoading(self.loadingGroupIds)
+    return self.isClicking or LoadingGroups.anyAreLoading(self.loadingGroupIds)
 end
 
 function Button:isWorld()
@@ -442,21 +442,6 @@ function Button:deactivateKey(keyCode)
     end
 end
 
-function Button:deactivate()
-    if not self:isActive() then
-        return
-    end
-
-    if S.mouseActive == self then
-        S.mouseActive = nil
-    end
-    for _, k in self.keybinds do
-        k.active = false
-    end
-
-    self:visualStateChanged()
-end
-
 function Button:mouseDown()
     self:activateMouse()
 end
@@ -466,10 +451,11 @@ function Button:keyDown(keyCode)
 end
 
 function Button:mouseUp()
-    if S.mouseActive == self and self:pressable() then
-        self:click()
-    else
+    if S.mouseActive == self then
         self:deactivateMouse()
+        if self:pressable() then
+            self:click()
+        end
     end
 end
 
@@ -479,39 +465,62 @@ function Button:keyUp(keyCode)
         return
     end
 
-    if kb.active and self:pressable() then
-        self:click()
-    else
+    if kb.active then
         self:deactivateKey(keyCode)
+        if self:pressable() then
+            self:click()
+        end
     end
 end
 
 function Button:click(skipSound: boolean?)
-    self:deactivate()
-
-    if self.callbackIsExecuting then
+    if self:isLoading() then
         warn(
-            ("[KDKit.GUI.Button] Tried to click button `%s`, but the callback is already executing. (Doing nothing.)"):format(
+            ("[KDKit.GUI.Button] Tried to click a loading button `%s`. (Doing nothing.)"):format(
                 self.instance:GetFullName()
             )
         )
         return
     end
+    self.isClicking = true
 
     if not skipSound and not self.silenced then
         self:makeSound()
     end
 
-    self.callbackIsExecuting = true
+    local result = nil
+    coroutine.wrap(function()
+        result = Utils.try(self.fireCallbacks, self, self.connections.click)
+    end)()
 
-    LoadingGroups.update(self.loadingGroupIds)
-    self:visualStateChanged()
+    if result then
+        -- callbacks where all synchronous! we can skip a whole lot of animation
+        self.isClicking = false
 
-    Utils.ensure(function()
-        self.callbackIsExecuting = false
+        -- it is "technically possible" that the loading group saw that this button
+        -- was loading, (if the callbacks invoked it somehow) so we'll need to notify it about this change.
         LoadingGroups.update(self.loadingGroupIds)
+        return
+    end
+
+    -- rip, we optimistically assumed we wouldn't need to do any loading animations
+    -- but the callbacks are asynchronous, so we do.
+    if next(self.loadingGroupIds) then
+        LoadingGroups.update(self.loadingGroupIds)
+    else
         self:visualStateChanged()
-    end, self.fireCallbacks, self, self.connections.click)
+    end
+    while not result do
+        task.wait()
+    end
+    self.isClicking = false
+    if next(self.loadingGroupIds) then
+        LoadingGroups.update(self.loadingGroupIds)
+    else
+        self:visualStateChanged()
+    end
+
+    assert(result):raise()
 end
 
 function Button:fireCallbacks<T...>(connections, ...: T...)

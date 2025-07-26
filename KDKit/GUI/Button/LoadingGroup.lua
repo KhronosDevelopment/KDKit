@@ -46,7 +46,7 @@ end
 
 function LoadingGroup:isLoading()
     for button in self.buttons do
-        if button.callbackIsExecuting then
+        if button.isClicking then
             return true
         end
     end
