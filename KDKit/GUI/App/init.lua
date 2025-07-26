@@ -100,7 +100,9 @@ function App.new(folder)
     Utils.ensure(function()
         App.appsLoadingPages[self] = nil
     end, function()
-        for _, page in self.pages do
+        for _, p in self.pages do
+            local page = p :: Page -- type checker fails on templates
+
             local required = require(page.module) :: any
 
             if required ~= page then
@@ -113,11 +115,8 @@ function App.new(folder)
                 )
             end
 
-            -- this is required, for some reason
-            -- https://discord.com/channels/385151591524597761/906369439262461992/1257086656545030164
-            local x = page :: Page
-            x:rawOpen(Transition.new(self, "INITIAL_SETUP", nil, x, true))
-            x:rawClose(Transition.new(self, "INITIAL_SETUP", x, nil, false))
+            page:rawOpen(Transition.new(self, "INITIAL_SETUP", nil, page, true))
+            page:rawClose(Transition.new(self, "INITIAL_SETUP", page, nil, false))
         end
     end)
 

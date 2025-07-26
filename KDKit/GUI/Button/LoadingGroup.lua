@@ -58,7 +58,8 @@ function LoadingGroup:update()
     local loading = self:isLoading()
     if loading ~= self.wasLoadingOnLastUpdate then
         self.wasLoadingOnLastUpdate = loading
-        for button in self.buttons do
+        for b in self.buttons do
+            local button = b :: T.Button -- type checker fails on templates
             button:visualStateChanged()
         end
     end
