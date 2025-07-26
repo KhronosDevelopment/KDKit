@@ -20,7 +20,6 @@ export type Button = T.Button
 
 local Button: ButtonImpl = {
     list = {},
-    onHoveredButtonChangedCallbacks = {},
     state = S,
 } :: ButtonImpl
 Button.__index = Button
@@ -620,36 +619,6 @@ S.world = Button.new(Instance.new("Frame")):disableAllStyling():silence():enable
 --[[
     User Input Handling
 --]]
-function Button.onHoveredButtonChanged(callback)
-    table.insert(Button.onHoveredButtonChangedCallbacks, callback)
-
-    local disconnected = false
-    return {
-        Disconnect = function()
-            if disconnected then
-                return false
-            end
-            disconnected = true
-
-            local i = table.find(Button.onHoveredButtonChangedCallbacks, callback)
-            if i then
-                table.remove(Button.onHoveredButtonChangedCallbacks, i)
-                return true
-            end
-
-            return false
-        end,
-    }
-end
-
-local function invokeHoveredButtonChangedCallbacks(newHoveredButton: Button?)
-    Utils.aggregateErrors(function(aggregate)
-        for _, cb in Button.onHoveredButtonChangedCallbacks do
-            aggregate(cb, newHoveredButton)
-        end
-    end)
-end
-
 local function updateHovered()
     debug.profilebegin("_KDKit.Button.updateHovered")
 
@@ -713,8 +682,6 @@ local function updateHovered()
             S.mouseHovered = persistableHoveredButton
             persistableHoveredButton:visualStateChanged()
         end
-
-        task.defer(invokeHoveredButtonChangedCallbacks, persistableHoveredButton)
     end
 
     if S.mouseHovered and S.mouseHovered ~= S.world and S.mouseHovered ~= S.other and S.mouseHovered:pressable() then

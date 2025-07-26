@@ -51,12 +51,10 @@ export type ButtonImpl = {
     __index: ButtonImpl,
     state: State,
     list: { [GuiObject]: Button },
-    onHoveredButtonChangedCallbacks: { (Button?) -> () },
     applyToAll: (GuiObject | Button, string, ...any) -> (),
     enableWithin: (GuiObject, number?) -> (),
     disableWithin: (GuiObject, number?) -> (),
     deleteWithin: (GuiObject, boolean?) -> (),
-    onHoveredButtonChanged: ((Button?) -> ()) -> { Disconnect: () -> () },
     new: (GuiObject, ((Button) -> ())?) -> Button,
     loadStyles: (Button) -> (),
     addCallback: (
