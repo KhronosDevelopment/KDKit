@@ -1553,10 +1553,12 @@ end
     Utils.lua:950
     ```
 --]]
-function Utils.aggregateErrors<FRet...>(
+function Utils.aggregateErrors<FRet..., Passthrough...>(
     func: (
-        aggregate: <AArg..., ARet...>((AArg...) -> ARet..., AArg...) -> (boolean, any) -- actually returns (boolean, AArg... | string)
-    ) -> FRet...
+        aggregate: <AArg..., ARet...>((AArg...) -> ARet..., AArg...) -> (boolean, any), -- actually returns (boolean, AArg... | string)
+        Passthrough...
+    ) -> FRet...,
+    ...: Passthrough...
 ): FRet...
     local errors = {}
 
@@ -1573,7 +1575,7 @@ function Utils.aggregateErrors<FRet...>(
         end
     end
 
-    local tried = Utils.try(func, aggregate)
+    local tried = Utils.try(func, aggregate, ...)
     if not tried.success then
         assert(tried.traceback)
         table.insert(
