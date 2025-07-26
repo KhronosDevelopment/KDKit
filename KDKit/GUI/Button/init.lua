@@ -30,7 +30,8 @@ local STYLE_STATE_PRIORITIES = {
     "active",
     "hovered",
 }
-local STATE_NO_STYLING: T.ButtonVisualState = { hovered = false, active = false, loading = false, disabled = false }
+local STATE_NO_STYLING: T.ButtonVisualState =
+    table.freeze({ hovered = false, active = false, loading = false, disabled = false })
 local CUSTOM_HITBOXES: { [string]: T.ButtonHitbox }
 CUSTOM_HITBOXES = {
     OVAL = function(_btn, xOffset, yOffset, xSize, ySize)
@@ -95,6 +96,7 @@ function Button.new(instance, onClickCallback)
             press = {},
             release = {},
             click = {},
+            visualStateChange = {},
         },
         loadingGroupIds = {},
         isClicking = false,
@@ -171,6 +173,10 @@ end
 
 function Button:connectClick(callback)
     return self, Button.connect(self.connections.click, callback)
+end
+
+function Button:connectVisualStateChange(callback)
+    return self, Button.connect(self.connections.visualStateChange, callback)
 end
 
 function Button:hitbox(hitbox)
@@ -299,17 +305,19 @@ function Button:getVisualState()
         state.hovered = state.hovered and state.active
     end
 
-    return state
+    return table.freeze(state)
 end
 
 function Button:visualStateChanged(animationTime)
     local visualState = self:getVisualState()
     local previousVisualState = self._previousVisualState
-    self._previousVisualState = table.clone(visualState)
+    self._previousVisualState = visualState
 
     if Utils.shallowEqual(visualState, previousVisualState) then
         return
     end
+
+    task.defer(self.fireCallbacks, self, self.connections.visualStateChange, visualState)
 
     local wasActive = previousVisualState and previousVisualState.active
     local isActive = visualState.active
@@ -558,19 +566,19 @@ function Button:disable(animationTime)
 end
 
 function Button:delete(instant)
-    self:silence()
     self:loadWith(nil)
     self:unbindAll()
     self:style(self.styles.original, if instant then 0 elseif self:isActive() then 0.02 else 0.1)
 
-    Button.list[self.instance] = nil
-
     if S.mouseHovered == self then
         S.mouseHovered = nil
     end
+
     if S.mouseActive == self then
         S.mouseActive = nil
     end
+
+    Button.list[self.instance] = nil
 end
 
 -- when you interact with something that is a gui object, but not a Button

@@ -45,6 +45,7 @@ export type ButtonConnection<T...> = {
     callback: ButtonCallback<T...>,
 }
 export type ButtonConnections<T...> = { [ButtonConnection<T...>]: true }
+export type ButtonConnector<B, T...> = (B, ButtonCallback<T...>) -> (B, ButtonConnection<T...>)
 export type ButtonHitbox = (Button, xOffset: number, yOffset: number, sizeX: number, sizeY: number) -> boolean
 export type ButtonStyle = { [string]: any }
 export type ButtonVisualState = {
@@ -64,9 +65,10 @@ export type ButtonImpl = {
     connect: <T...>(ButtonConnections<T...>, ButtonCallback<T...>) -> ButtonConnection<T...>,
     new: (GuiObject, ButtonCallback<>?) -> Button,
     loadStyles: (Button) -> (),
-    connectPress: (Button, ButtonCallback<>) -> (Button, ButtonConnection<>),
-    connectRelease: (Button, ButtonCallback<>) -> (Button, ButtonConnection<>),
-    connectClick: (Button, ButtonCallback<>) -> (Button, ButtonConnection<>),
+    connectPress: ButtonConnector<Button>,
+    connectRelease: ButtonConnector<Button>,
+    connectClick: ButtonConnector<Button>,
+    connectVisualStateChange: ButtonConnector<Button, ButtonVisualState>,
     hitbox: (Button, string | ButtonHitbox) -> Button,
     bind: (Button, ...KeyCodeReference) -> Button,
     unbindAll: (Button) -> Button,
@@ -115,6 +117,7 @@ export type Button = typeof(setmetatable(
             press: ButtonConnections<>,
             release: ButtonConnections<>,
             click: ButtonConnections<>,
+            visualStateChange: ButtonConnections<ButtonVisualState>,
         },
         loadingGroupIds: { any },
         isClicking: boolean,
