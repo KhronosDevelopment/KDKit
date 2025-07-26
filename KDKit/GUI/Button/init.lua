@@ -75,12 +75,27 @@ function Button.deleteWithin(root, instant)
     Button.applyToAll(root, "delete", instant)
 end
 
-function Button.new(instance, onClick)
+function Button.connect(connections, callback)
+    local connection
+    connection = {
+        Disconnect = function()
+            connections[connection] = nil
+        end,
+        callback = callback,
+    }
+
+    connections[connection] = true
+    return connection
+end
+
+function Button.new(instance, onClickCallback)
     local self = setmetatable({
         instance = instance,
-        onPressCallbacks = {},
-        onReleaseCallbacks = {},
-        onClickCallbacks = {},
+        connections = {
+            press = {},
+            release = {},
+            click = {},
+        },
         loadingGroupIds = {},
         callbackIsExecuting = false,
         enabled = false,
@@ -98,8 +113,8 @@ function Button.new(instance, onClick)
 
     Button.list[self.instance] = self
 
-    if onClick then
-        self:onClick(onClick)
+    if onClickCallback then
+        self:connectClick(onClickCallback)
     end
 
     self:loadStyles()
@@ -146,43 +161,16 @@ function Button:loadStyles()
     end
 end
 
-function Button:addCallback(callback, event)
-    local callbackTable = if event == "press"
-        then self.onPressCallbacks
-        elseif event == "release" then self.onReleaseCallbacks
-        else self.onClickCallbacks
-
-    local disconnected = false
-
-    table.insert(callbackTable, callback)
-
-    return self,
-        {
-            Disconnect = function()
-                if disconnected then
-                    return
-                end
-                disconnected = true
-
-                local found = table.find(callbackTable, callback)
-
-                if found then
-                    table.remove(callbackTable, found)
-                end
-            end,
-        }
+function Button:connectPress(callback)
+    return self, Button.connect(self.connections.press, callback)
 end
 
-function Button:onPress(callback)
-    return self:addCallback(callback, "press")
+function Button:connectRelease(callback)
+    return self, Button.connect(self.connections.release, callback)
 end
 
-function Button:onRelease(callback)
-    return self:addCallback(callback, "release")
-end
-
-function Button:onClick(callback)
-    return self:addCallback(callback, "click")
+function Button:connectClick(callback)
+    return self, Button.connect(self.connections.click, callback)
 end
 
 function Button:hitbox(hitbox)
@@ -196,13 +184,11 @@ function Button:hitbox(hitbox)
 end
 
 function Button:bind(...)
-    local pressable = self:pressable()
-
     for _, keyReference in { ... } do
         local kb = Keybind.new(self, keyReference)
         self.keybinds[kb.key] = kb
 
-        if pressable then
+        if self.enabled then
             kb:enable()
         end
     end
@@ -211,7 +197,8 @@ function Button:bind(...)
 end
 
 function Button:unbindAll()
-    for _, keybind in self.keybinds do
+    for _, k in self.keybinds do
+        local keybind = k :: T.Keybind -- type checker fails on templates
         keybind:disable()
     end
     table.clear(self.keybinds)
@@ -320,28 +307,24 @@ function Button:visualStateChanged(animationTime)
     local previousVisualState = self._previousVisualState
     self._previousVisualState = table.clone(visualState)
 
-    if self:pressable() then
-        for _key, keybind in self.keybinds do
-            keybind:enable()
-        end
-    else
-        for _key, keybind in self.keybinds do
-            keybind:disable()
-        end
-    end
-
     if Utils.shallowEqual(visualState, previousVisualState) then
         return
     end
 
-    local activeChanged = previousVisualState and visualState.active ~= previousVisualState.active
+    local wasActive = previousVisualState and previousVisualState.active
+    local isActive = visualState.active
+    if wasActive and not isActive then
+        task.defer(self.fireCallbacks, self, self.connections.release)
+    elseif not wasActive and isActive then
+        task.defer(self.fireCallbacks, self, self.connections.press)
+    end
 
     local style = table.clone(self.styles.original)
     for property in style do
         style[property] = self:determinePropertyValueDuringState(property, visualState)
     end
 
-    self:style(style, animationTime or (if activeChanged then 0.02 else 0.1))
+    self:style(style, animationTime or (if wasActive ~= isActive then 0.02 else 0.1))
 end
 
 function Button:isBoundTo(keyCode: Enum.KeyCode)
@@ -417,10 +400,6 @@ function Button:activateMouse()
 
     if not wasActive then
         self:visualStateChanged()
-
-        if self:pressable() then
-            task.defer(self.firePressCallbacks, self)
-        end
     end
 end
 
@@ -435,10 +414,6 @@ function Button:activateKey(keyCode)
 
     if not wasActive then
         self:visualStateChanged()
-
-        if self:pressable() then
-            task.defer(self.firePressCallbacks, self)
-        end
     end
 end
 
@@ -451,10 +426,6 @@ function Button:deactivateMouse()
 
     if not self:isActive() then
         self:visualStateChanged()
-
-        if self:pressable() then
-            task.defer(self.fireReleaseCallbacks, self)
-        end
     end
 end
 
@@ -468,10 +439,6 @@ function Button:deactivateKey(keyCode)
 
     if not self:isActive() then
         self:visualStateChanged()
-
-        if self:pressable() then
-            task.defer(self.fireReleaseCallbacks, self)
-        end
     end
 end
 
@@ -488,10 +455,6 @@ function Button:deactivate()
     end
 
     self:visualStateChanged()
-
-    if self:pressable() then
-        task.defer(self.fireReleaseCallbacks, self)
-    end
 end
 
 function Button:mouseDown()
@@ -526,10 +489,6 @@ end
 function Button:click(skipSound: boolean?)
     self:deactivate()
 
-    if not skipSound and not self.silenced then
-        self:makeSound()
-    end
-
     if self.callbackIsExecuting then
         warn(
             ("[KDKit.GUI.Button] Tried to click button `%s`, but the callback is already executing. (Doing nothing.)"):format(
@@ -539,7 +498,12 @@ function Button:click(skipSound: boolean?)
         return
     end
 
+    if not skipSound and not self.silenced then
+        self:makeSound()
+    end
+
     self.callbackIsExecuting = true
+
     LoadingGroups.update(self.loadingGroupIds)
     self:visualStateChanged()
 
@@ -547,34 +511,23 @@ function Button:click(skipSound: boolean?)
         self.callbackIsExecuting = false
         LoadingGroups.update(self.loadingGroupIds)
         self:visualStateChanged()
-    end, self.fireClickCallbacks, self)
+    end, self.fireCallbacks, self, self.connections.click)
 end
 
-function Button:fireCallbacks(callbackTable)
-    Utils.aggregateErrors(function(aggregate)
-        for _, cb in callbackTable do
-            aggregate(cb, self)
+function Button:fireCallbacks<T...>(connections, ...: T...)
+    Utils.aggregateErrors(function(aggregate, ...)
+        for conn in connections do
+            aggregate(conn.callback, ...)
         end
-    end)
-end
-
-function Button:firePressCallbacks()
-    self:fireCallbacks(self.onPressCallbacks)
-end
-
-function Button:fireReleaseCallbacks()
-    self:fireCallbacks(self.onReleaseCallbacks)
-end
-
-function Button:fireClickCallbacks()
-    self:fireCallbacks(self.onClickCallbacks)
+    end, ...)
 end
 
 function Button:enable(animationTime)
     if not self.enabled then
         self.enabled = true
-        if self:isActive() and self:pressable() then
-            task.defer(self.firePressCallbacks, self)
+        for _key, k in self.keybinds do
+            local keybind = k :: T.Keybind -- type checker fails on templates
+            keybind:enable()
         end
         self:visualStateChanged(animationTime)
     end
@@ -584,10 +537,11 @@ end
 
 function Button:disable(animationTime)
     if self.enabled then
-        if self:isActive() and self:pressable() then
-            task.defer(self.fireReleaseCallbacks, self)
-        end
         self.enabled = false
+        for _key, k in self.keybinds do
+            local keybind = k :: T.Keybind -- type checker fails on templates
+            keybind:disable()
+        end
         self:visualStateChanged(animationTime)
     end
 

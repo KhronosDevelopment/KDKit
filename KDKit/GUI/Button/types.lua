@@ -39,6 +39,12 @@ export type LoadingGroup = typeof(setmetatable(
     {} :: LoadingGroupImpl
 ))
 
+export type ButtonCallback<T...> = (T...) -> ()
+export type ButtonConnection<T...> = {
+    Disconnect: () -> (),
+    callback: ButtonCallback<T...>,
+}
+export type ButtonConnections<T...> = { [ButtonConnection<T...>]: true }
 export type ButtonHitbox = (Button, xOffset: number, yOffset: number, sizeX: number, sizeY: number) -> boolean
 export type ButtonStyle = { [string]: any }
 export type ButtonVisualState = {
@@ -55,16 +61,12 @@ export type ButtonImpl = {
     enableWithin: (GuiObject, number?) -> (),
     disableWithin: (GuiObject, number?) -> (),
     deleteWithin: (GuiObject, boolean?) -> (),
-    new: (GuiObject, ((Button) -> ())?) -> Button,
+    connect: <T...>(ButtonConnections<T...>, ButtonCallback<T...>) -> ButtonConnection<T...>,
+    new: (GuiObject, ButtonCallback<>?) -> Button,
     loadStyles: (Button) -> (),
-    addCallback: (
-        Button,
-        (Button) -> (),
-        ("press" | "release" | "click")?
-    ) -> (Button, { Disconnect: () -> () }),
-    onPress: (Button, (Button) -> ()) -> (Button, { Disconnect: () -> () }),
-    onRelease: (Button, (Button) -> ()) -> (Button, { Disconnect: () -> () }),
-    onClick: (Button, (Button) -> ()) -> (Button, { Disconnect: () -> () }),
+    connectPress: (Button, ButtonCallback<>) -> (Button, ButtonConnection<>),
+    connectRelease: (Button, ButtonCallback<>) -> (Button, ButtonConnection<>),
+    connectClick: (Button, ButtonCallback<>) -> (Button, ButtonConnection<>),
     hitbox: (Button, string | ButtonHitbox) -> Button,
     bind: (Button, ...KeyCodeReference) -> Button,
     unbindAll: (Button) -> Button,
@@ -102,10 +104,7 @@ export type ButtonImpl = {
     mouseUp: (Button) -> (),
     keyUp: (Button, Enum.KeyCode) -> (),
     click: (Button, boolean?) -> (),
-    fireCallbacks: (Button, { (Button) -> () }) -> (),
-    firePressCallbacks: (Button) -> (),
-    fireReleaseCallbacks: (Button) -> (),
-    fireClickCallbacks: (Button) -> (),
+    fireCallbacks: <T...>(Button, ButtonConnections<T...>, T...) -> (),
     enable: (Button, number?) -> Button,
     disable: (Button, number?) -> Button,
     delete: (Button, boolean?) -> (),
@@ -113,9 +112,11 @@ export type ButtonImpl = {
 export type Button = typeof(setmetatable(
     {} :: {
         instance: GuiObject,
-        onPressCallbacks: { (Button) -> () },
-        onReleaseCallbacks: { (Button) -> () },
-        onClickCallbacks: { (Button) -> () },
+        connections: {
+            press: ButtonConnections<>,
+            release: ButtonConnections<>,
+            click: ButtonConnections<>,
+        },
         loadingGroupIds: { any },
         callbackIsExecuting: boolean,
         enabled: boolean,
