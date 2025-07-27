@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = game.Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+local Signal = require(script.Parent.Parent:WaitForChild("Signal"))
 local Mouse = require(script.Parent.Parent:WaitForChild("Mouse"))
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))
 local Humanize = require(script.Parent.Parent:WaitForChild("Humanize"))
@@ -76,27 +77,14 @@ function Button.deleteWithin(root, instant)
     Button.applyToAll(root, "delete", instant)
 end
 
-function Button.connect(connections, callback)
-    local connection
-    connection = {
-        Disconnect = function()
-            connections[connection] = nil
-        end,
-        callback = callback,
-    }
-
-    connections[connection] = true
-    return connection
-end
-
 function Button.new(instance, onClickCallback)
     local self = setmetatable({
         instance = instance,
-        connections = {
-            press = {},
-            release = {},
-            click = {},
-            visualStateChange = {},
+        signals = {
+            press = Signal.new(),
+            release = Signal.new(),
+            click = Signal.new(),
+            visualStateChange = Signal.new(),
         },
         loadingGroupIds = {},
         isClicking = false,
@@ -117,7 +105,7 @@ function Button.new(instance, onClickCallback)
     Button.list[self.instance] = self
 
     if onClickCallback then
-        self:connectClick(onClickCallback)
+        self.signals.click:connect(onClickCallback)
     end
 
     self:loadStyles()
@@ -163,20 +151,24 @@ function Button:loadStyles()
     end
 end
 
-function Button:connectPress(callback)
-    return self, Button.connect(self.connections.press, callback)
+function Button:withPressConnection(callback)
+    self.signals.press:connect(callback)
+    return self
 end
 
-function Button:connectRelease(callback)
-    return self, Button.connect(self.connections.release, callback)
+function Button:withReleaseConnection(callback)
+    self.signals.release:connect(callback)
+    return self
 end
 
-function Button:connectClick(callback)
-    return self, Button.connect(self.connections.click, callback)
+function Button:withClickConnection(callback)
+    self.signals.click:connect(callback)
+    return self
 end
 
-function Button:connectVisualStateChange(callback)
-    return self, Button.connect(self.connections.visualStateChange, callback)
+function Button:withVisualStateChangeConnection(callback)
+    self.signals.visualStateChange:connect(callback)
+    return self
 end
 
 function Button:hitbox(hitbox)
@@ -313,14 +305,14 @@ function Button:visualStateChanged(animationTime)
         return
     end
 
-    task.defer(self.fireCallbacks, self, self.connections.visualStateChange, previousVisualState, visualState)
+    self.signals.visualStateChange:fire(previousVisualState, visualState)
 
     local wasActive = previousVisualState.active
     local isActive = visualState.active
     if wasActive and not isActive then
-        task.defer(self.fireCallbacks, self, self.connections.release)
+        self.signals.release:fire()
     elseif not wasActive and isActive then
-        task.defer(self.fireCallbacks, self, self.connections.press)
+        self.signals.press:fire()
     end
 
     if self.stylingEnabled then
@@ -496,7 +488,7 @@ function Button:click(skipSound: boolean?)
 
     local result = nil
     coroutine.wrap(function()
-        result = Utils.try(self.fireCallbacks, self, self.connections.click)
+        result = self.signals.click:invoke()
     end)()
 
     if result then
@@ -527,14 +519,6 @@ function Button:click(skipSound: boolean?)
     end
 
     assert(result):raise()
-end
-
-function Button:fireCallbacks<T...>(connections, ...: T...)
-    Utils.aggregateErrors(function(aggregate, ...)
-        for conn in connections do
-            aggregate(conn.callback, ...)
-        end
-    end, ...)
 end
 
 function Button:enable(animationTime)

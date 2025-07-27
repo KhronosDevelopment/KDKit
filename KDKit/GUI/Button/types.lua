@@ -1,5 +1,7 @@
 --!strict
 
+local Signal = require(script.Parent.Parent.Parent:WaitForChild("Signal"))
+
 export type KeyCodeReference = string | Enum.KeyCode | number
 export type KeybindImpl = {
     __index: KeybindImpl,
@@ -39,13 +41,6 @@ export type LoadingGroup = typeof(setmetatable(
     {} :: LoadingGroupImpl
 ))
 
-export type ButtonCallback<T...> = (T...) -> ()
-export type ButtonConnection<T...> = {
-    Disconnect: () -> (),
-    callback: ButtonCallback<T...>,
-}
-export type ButtonConnections<T...> = { [ButtonConnection<T...>]: true }
-export type ButtonConnector<B, T...> = (B, ButtonCallback<T...>) -> (B, ButtonConnection<T...>)
 export type ButtonHitbox = (Button, xOffset: number, yOffset: number, sizeX: number, sizeY: number) -> boolean
 export type ButtonStyle = { [string]: any }
 export type ButtonVisualState = {
@@ -62,13 +57,12 @@ export type ButtonImpl = {
     enableWithin: (GuiObject, number?) -> (),
     disableWithin: (GuiObject, number?) -> (),
     deleteWithin: (GuiObject, boolean?) -> (),
-    connect: <T...>(ButtonConnections<T...>, ButtonCallback<T...>) -> ButtonConnection<T...>,
-    new: (GuiObject, ButtonCallback<>?) -> Button,
+    new: (GuiObject, Signal.SignalFn<(), ()>?) -> Button,
     loadStyles: (Button) -> (),
-    connectPress: ButtonConnector<Button>,
-    connectRelease: ButtonConnector<Button>,
-    connectClick: ButtonConnector<Button>,
-    connectVisualStateChange: ButtonConnector<Button, ButtonVisualState, ButtonVisualState>,
+    withPressConnection: (Button, Signal.SignalFn<(), ()>) -> Button,
+    withReleaseConnection: (Button, Signal.SignalFn<(), ()>) -> Button,
+    withClickConnection: (Button, Signal.SignalFn<(), ()>) -> Button,
+    withVisualStateChangeConnection: (Button, Signal.SignalFn<(ButtonVisualState, ButtonVisualState), ()>) -> Button,
     hitbox: (Button, string | ButtonHitbox) -> Button,
     bind: (Button, ...KeyCodeReference) -> Button,
     unbindAll: (Button) -> Button,
@@ -105,7 +99,6 @@ export type ButtonImpl = {
     mouseUp: (Button) -> (),
     keyUp: (Button, Enum.KeyCode) -> (),
     click: (Button, boolean?) -> (),
-    fireCallbacks: <T...>(Button, ButtonConnections<T...>, T...) -> (),
     enable: (Button, number?) -> Button,
     disable: (Button, number?) -> Button,
     delete: (Button, boolean?) -> (),
@@ -113,11 +106,11 @@ export type ButtonImpl = {
 export type Button = typeof(setmetatable(
     {} :: {
         instance: GuiObject,
-        connections: {
-            press: ButtonConnections<>,
-            release: ButtonConnections<>,
-            click: ButtonConnections<>,
-            visualStateChange: ButtonConnections<ButtonVisualState, ButtonVisualState>,
+        signals: {
+            press: Signal.Signal<(), ()>,
+            release: Signal.Signal<(), ()>,
+            click: Signal.Signal<(), ()>,
+            visualStateChange: Signal.Signal<(ButtonVisualState, ButtonVisualState), ()>,
         },
         loadingGroupIds: { any },
         isClicking: boolean,
