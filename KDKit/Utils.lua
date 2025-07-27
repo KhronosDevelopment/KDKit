@@ -68,7 +68,7 @@ end
 
 type _AnyTry<Ret...> = TryNotRaised<Ret...> | TryRaised<Ret...>
 
-type TryNotRaised<Ret...> = {
+export type TryNotRaised<Ret...> = {
     success: boolean,
     traceback: string?, -- note that this only includes frames from AFTER :try()
     results: { any }?, -- actually packed { Ret... }
@@ -80,7 +80,7 @@ type TryNotRaised<Ret...> = {
     result: (self: TryNotRaised<Ret...>) -> (boolean, string | any), -- the 'any' is actually 'Ret...',
 }
 
-type TryRaised<Ret...> = {
+export type TryRaised<Ret...> = {
     success: boolean,
     traceback: string?, -- note that this only includes frames from AFTER :try()
     results: { any }?, -- actually packed { Ret... }
