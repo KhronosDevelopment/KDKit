@@ -12,6 +12,7 @@ local Mutex = require(script:WaitForChild("Mutex"))
 local Preload = require(script:WaitForChild("Preload"))
 local Random = require(script:WaitForChild("Random"))
 local ReplicatedValue = require(script:WaitForChild("ReplicatedValue"))
+local Signal = require(script:WaitForChild("Signal"))
 local Time = require(script:WaitForChild("Time"))
 local Utils = require(script:WaitForChild("Utils"))
 
@@ -22,6 +23,8 @@ export type MemoryStoreMutex = MemoryStoreMutex.MemoryStoreMutex
 export type MixpanelClient = Mixpanel.Client
 export type Mutex = Mutex.Mutex
 export type ReplicatedValue = ReplicatedValue.ReplicatedValue
+export type SignalConnection<T...> = Signal.SignalConnection<T...>
+export type Signal<T...> = Signal.Signal<T...>
 
 local KDKit = {
     Assembly = Assembly,
@@ -34,6 +37,7 @@ local KDKit = {
     Preload = Preload,
     Random = Random,
     ReplicatedValue = ReplicatedValue,
+    Signal = Signal,
     Time = Time,
     Utils = Utils,
 }
