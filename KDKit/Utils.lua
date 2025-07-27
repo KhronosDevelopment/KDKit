@@ -249,7 +249,10 @@ end
 --[[
     Executes all the provided tasks simultaneously
 --]]
-function Utils.gather<Ret...>(cb: (<Arg...>((Arg...) -> Ret..., Arg...) -> ()) -> ()): { TryNotRaised<Ret...> }
+function Utils.gather<Ret..., Passthrough...>(
+    cb: (<Arg...>((Arg...) -> Ret..., Arg...) -> (), Passthrough...) -> (),
+    ...: Passthrough...
+): { TryNotRaised<Ret...> }
     local results = {}
     local queued = 0
     local completed = 0
@@ -258,13 +261,13 @@ function Utils.gather<Ret...>(cb: (<Arg...>((Arg...) -> Ret..., Arg...) -> ()) -
         queued += 1
         local me = queued
 
-        task.defer(function(...)
+        coroutine.wrap(function(...)
             results[me] = Utils.try(func, ...)
             completed += 1
-        end, ...)
+        end)(...)
     end
 
-    cb(queue)
+    cb(queue, ...)
 
     while queued > completed do
         task.wait()
