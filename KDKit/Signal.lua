@@ -115,8 +115,11 @@ function Signal:wait(timeout, warnAfter)
         if now >= timeoutAt then
             error("Signal wait timed out.")
         elseif now >= warnAt then
-            warn("Signal wait is taking a long time. Consider increasing the timeout or warnAfter parameters.")
-            warnAfter = math.huge
+            warn(
+                "Signal wait is taking a long time. Consider increasing the timeout or warnAfter parameters.",
+                debug.traceback()
+            )
+            warnAt = math.huge
         end
     end
 end
