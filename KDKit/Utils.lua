@@ -1833,4 +1833,31 @@ function Utils.reverse<V>(tab: { V })
     return copy
 end
 
+--[[
+    Determines the axis-aligned bounding box which will contain the specified cuboid.
+    Not particularly optimized, but good enough.
+--]]
+function Utils.getAABB(size: Vector3, cf: CFrame): (Vector3, Vector3)
+    local halfSize = size / 2
+
+    local corners = {
+        cf * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z),
+        cf * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z),
+        cf * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z),
+        cf * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z),
+        cf * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z),
+        cf * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z),
+        cf * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z),
+    }
+    local max = cf * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)
+    local min = max
+
+    for _, corner in corners do
+        min = Vector3.new(math.min(min.X, corner.X), math.min(min.Y, corner.Y), math.min(min.Z, corner.Z))
+        max = Vector3.new(math.max(max.X, corner.X), math.max(max.Y, corner.Y), math.max(max.Z, corner.Z))
+    end
+
+    return min, max
+end
+
 return Utils
