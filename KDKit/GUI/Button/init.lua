@@ -518,7 +518,9 @@ function Button:click(skipSound: boolean?)
         self:visualStateChanged()
     end
 
-    assert(result):raise()
+    for _, r in assert(result) do
+        r:raise()
+    end
 end
 
 function Button:enable(animationTime)
