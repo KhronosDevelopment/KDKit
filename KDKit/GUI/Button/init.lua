@@ -498,6 +498,10 @@ function Button:click(skipSound: boolean?)
         -- it is "technically possible" that the loading group saw that this button
         -- was loading, (if the callbacks invoked it somehow) so we'll need to notify it about this change.
         LoadingGroups.update(self.loadingGroupIds)
+
+        for _, r in result do
+            r:raise()
+        end
         return
     end
 
