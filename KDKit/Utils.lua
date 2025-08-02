@@ -1836,6 +1836,9 @@ end
 --[[
     Determines the axis-aligned bounding box which will contain the specified cuboid.
     Not particularly optimized, but good enough.
+
+    -- TODO: optimize this with some dot products instead of literally computing every corner
+    -- i know its possible but haven't had any time to think about it
 --]]
 function Utils.getAABB(size: Vector3, cf: CFrame): (Vector3, Vector3)
     local halfSize = size / 2
