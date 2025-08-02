@@ -1271,8 +1271,8 @@ Utils.bisect = Utils.bisect_right
 function Utils.bisect_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>?, low: number?, high: number?): number
     local e = Utils.evaluator(key) :: (V, number?) -> C
 
-    local lo = math.max(low or 1, 1)
-    local hi = math.min(high or #tab, #tab) + 1
+    local lo = low or 1
+    local hi = (high or #tab) + 1
     local middle
 
     while lo < hi do
