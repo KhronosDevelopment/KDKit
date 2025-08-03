@@ -13,6 +13,7 @@ export type SignalImpl<Arg..., Ret...> = {
     __index: SignalImpl<Arg..., Ret...>,
     new: () -> Signal<Arg..., Ret...>,
     connect: (Signal<Arg..., Ret...>, SignalFn<Arg..., Ret...>) -> SignalConnection<Arg..., Ret...>,
+    once: (Signal<Arg..., Ret...>, SignalFn<Arg..., Ret...>) -> SignalConnection<Arg..., Ret...>,
     fire: (Signal<Arg..., Ret...>, Arg...) -> (),
     invoke: (Signal<Arg..., Ret...>, Arg...) -> { Utils.TryNotRaised<Ret...> },
     finishWaiting: (Signal<Arg..., Ret...>, Arg...) -> (),
@@ -50,6 +51,18 @@ function Signal:connect(fn)
     }
     self.connections[conn] = true
     return conn
+end
+
+function Signal:once(fn)
+    local conn: SignalConnection<...any>?
+    conn = self:connect(function(...)
+        if conn then
+            conn.disconnect()
+            conn = nil
+            fn(...)
+        end
+    end)
+    return assert(conn)
 end
 
 function Signal:fire(...)

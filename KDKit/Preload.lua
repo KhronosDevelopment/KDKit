@@ -15,7 +15,7 @@ function Preload.waitForEvent(event: RBXScriptSignal, timeout: number): (boolean
     local returnValue = nil
 
     local connection: RBXScriptConnection?
-    connection = event:Connect(function(...)
+    connection = event:Once(function(...)
         if returnValue then
             return
         end
