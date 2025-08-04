@@ -2,7 +2,6 @@
 local RunService = game:GetService("RunService")
 
 local Assembly = require(script:WaitForChild("Assembly"))
-local Cooldown = require(script:WaitForChild("Cooldown"))
 local Cryptography = require(script:WaitForChild("Cryptography"))
 local Humanize = require(script:WaitForChild("Humanize"))
 local Maid = require(script:WaitForChild("Maid"))
@@ -17,7 +16,6 @@ local Time = require(script:WaitForChild("Time"))
 local Utils = require(script:WaitForChild("Utils"))
 
 export type Assembly = Assembly.Assembly
-export type Cooldown = Cooldown.Cooldown
 export type Maid = Maid.Maid
 export type MemoryStoreMutex = MemoryStoreMutex.MemoryStoreMutex
 export type MixpanelClient = Mixpanel.Client
@@ -28,7 +26,6 @@ export type Signal<T...> = Signal.Signal<T...>
 
 local KDKit = {
     Assembly = Assembly,
-    Cooldown = Cooldown,
     Cryptography = Cryptography,
     Humanize = Humanize,
     Maid = Maid,
