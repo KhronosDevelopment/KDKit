@@ -245,18 +245,11 @@ end
     Stateful Rendering
 --]]
 function Button:style(style, animationTime)
-    -- TODO: use `GUI.Animate` for this tbh
-    if animationTime == 0 then
-        for name, value in style do
-            Utils.setattr(self.instance, name, value)
-        end
-    else
-        TweenService:Create(
-            self.instance,
-            TweenInfo.new(animationTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0),
-            style
-        ):Play()
-    end
+    TweenService:Create(
+        self.instance,
+        TweenInfo.new(animationTime, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0),
+        style
+    ):Play()
 end
 
 function Button:updateStyle(state, property, value)

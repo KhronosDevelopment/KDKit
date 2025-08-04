@@ -21,26 +21,16 @@ function Animate.clearCount(instance: Instance)
     Animate.counts[instance] = nil
 end
 
-function Animate.tween(instance: Instance, style: Style, tweenInfo: TweenInfo)
-    if tweenInfo.Time <= 0 then
-        for k, v in style do
-            (instance :: any)[k] = v
-        end
-    else
-        TweenService:Create(instance, tweenInfo, style):Play()
-    end
-end
-
 function Animate.style(instance: Instance, style: Style, tweenInfo: TweenInfo, delay: number)
-    local me = Animate.count(instance)
-
     if delay <= 0 then
-        Animate.tween(instance, style, tweenInfo)
+        Animate.clearCount(instance)
+        TweenService:Create(instance, tweenInfo, style):Play()
     else
+        local me = Animate.count(instance)
         task.delay(delay, function()
             if Animate.checkCount(instance) == me then
                 Animate.clearCount(instance)
-                Animate.tween(instance, style, tweenInfo)
+                TweenService:Create(instance, tweenInfo, style):Play()
             end
         end)
     end
