@@ -9,7 +9,7 @@ local Utils = {
     PRIMITIVE_TYPES = { string = true, boolean = true, number = true, ["nil"] = true },
 }
 
-type Evaluator<K, V, T> = ((V, K) -> T) | string
+type Evaluator<K, V, T> = ((V, K) -> T) | string | { string }
 function Utils.evaluator<K, V, T>(e: Evaluator<K, V, T>?): (V, K) -> T
     if e == nil then
         return function(v: V, k: K)
@@ -18,6 +18,13 @@ function Utils.evaluator<K, V, T>(e: Evaluator<K, V, T>?): (V, K) -> T
     elseif typeof(e) == "string" then
         return function(v: V, k: K)
             return ((v :: any) :: { [string]: T })[e]
+        end
+    elseif typeof(e) == "table" then
+        return function(v: V, k: K)
+            for _, part in ipairs(e) do
+                v = (v :: any)[part]
+            end
+            return (v :: any) :: T
         end
     else
         return e
