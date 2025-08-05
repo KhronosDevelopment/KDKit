@@ -1395,16 +1395,17 @@ end
     Utils.minKey({a = 2, b = 1, c = 4}) -> "b"
     ```
 --]]
-function Utils.minKey(...): any
-    return select(2, Utils.min(...))
+function Utils.minKey<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): K?
+    local _, k = Utils.min(tab, key)
+    return k
 end
 
 --[[
     Identical to `Utils.min` but, you know.
 --]]
-function Utils.max<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V, K)
+function Utils.max<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V?, K?)
     local e = Utils.evaluator(key) :: (V, K) -> any
-    local maxValue, maxKey = nil, nil
+    local maxValue: V?, maxKey: K? = nil, nil
 
     if key then
         local maximumEvaluation = nil
@@ -1432,8 +1433,9 @@ end
 --[[
     Same as `Utils.minKey` but, you know.
 --]]
-function Utils.maxKey(...): any
-    return select(2, Utils.max(...))
+function Utils.maxKey<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): K?
+    local _, k = Utils.max(tab, key)
+    return k
 end
 
 --[[
