@@ -24,7 +24,7 @@ App.__index = App
 
 function App.loadPage(module)
     for app in App.appsLoadingPages do
-        if not module:IsDescendantOf(app.folder) then
+        if not module:IsDescendantOf(app.src) then
             continue
         end
 
@@ -52,9 +52,9 @@ function App.getDebugState()
     }
 end
 
-function App.new(folder)
+function App.new(src)
     local self = setmetatable({
-        folder = folder,
+        src = src,
         mutex = Mutex.new(15),
         opened = false,
         closedWithData = nil,
@@ -63,17 +63,17 @@ function App.new(folder)
     }, App) :: App
 
     self.instance = Instance.new("ScreenGui", App.folder)
-    self.instance.Name = self.folder:GetFullName()
+    self.instance.Name = self.src:GetFullName()
     self.instance.Enabled = false
     self.instance.IgnoreGuiInset = true
     self.instance.ResetOnSpawn = false
     self.instance.DisplayOrder = App.useNextDisplayOrder()
     self.instance.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    Preload.ensureDescendants(self.folder)
+    Preload.ensureDescendants(self.src)
 
     for _, pageInstance in
-        Utils.sort(self.folder:GetChildren(), function(pageInstance): { number | string }
+        Utils.sort(self.src:GetChildren(), function(pageInstance): { number | string }
             return { if pageInstance.Name == "home" then 0 else 1, pageInstance.Name }
         end)
     do

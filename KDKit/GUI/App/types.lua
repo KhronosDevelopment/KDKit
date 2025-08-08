@@ -17,7 +17,7 @@ export type AppImpl = {
         MouseEnabled: boolean,
         TouchEnabled: boolean,
     },
-    new: (Folder) -> App,
+    new: (Instance) -> App,
     getPage: (App, string | Page) -> Page?,
     getCurrentPage: (App) -> Page,
     goHome: (App, string, any) -> (),
@@ -30,7 +30,7 @@ export type AppImpl = {
 }
 export type App = typeof(setmetatable(
     {} :: {
-        folder: Folder,
+        src: Instance,
         mutex: Mutex.Mutex,
         opened: boolean,
         closedWithData: any?,
