@@ -77,7 +77,7 @@ function Signal:invoke(...)
     self:finishWaiting(...)
 
     return Utils.gather(function(exec, ...)
-        for conn in self.connections do
+        for conn in table.clone(self.connections) do
             exec(conn.fn, ...)
         end
     end, ...)
