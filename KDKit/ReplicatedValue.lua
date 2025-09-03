@@ -1,6 +1,8 @@
 --!strict
 --[[
     A dead-simple way to replicate complicated data to clients in real time.
+    WARNING: This uses remote events to send data, so if tables aren't array-like
+             then its keys will be stringified.
 
     Server:
     ```lua
