@@ -995,14 +995,14 @@ end
     y -> { a = 2, b = 3, d = 4 } -- (unchanged)
     ```
 --]]
-function Utils.imerge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
-    local typeAdjustedDst = dst :: { [K1 | K2]: V1 | V2 }
-
-    for key, value in src do
-        typeAdjustedDst[key] = value
+function Utils.imerge<K, V>(dst: { [K]: V }, ...: { [K]: V }): { [K]: V }
+    for _, src in { ... } do
+        for key, value in src do
+            dst[key] = value
+        end
     end
 
-    return typeAdjustedDst
+    return dst
 end
 
 --[[
@@ -1011,7 +1011,7 @@ end
     Utils.merge({ a = 1, b = 2 }, { a = 2, c = 3 }}) -> { a = 2, b = 2, c = 3 }
     ```
 --]]
-function Utils.merge<K1, V1, K2, V2>(dst: { [K1]: V1 }, src: { [K2]: V2 }): { [K1 | K2]: V1 | V2 }
+function Utils.merge<K, V>(dst: { [K]: V }, src: { [K]: V }): { [K]: V }
     return Utils.imerge(table.clone(dst), src)
 end
 
@@ -1030,12 +1030,11 @@ end
     y -> { 'c', 'd' } -- (unchanged)
     ```
 --]]
-function Utils.iextend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
-    local typeAdjustedLeft = left :: { V1 | V2 }
-    local typeAdjustedRight = right :: { V1 | V2 }
-
-    table.move(typeAdjustedRight, 1, #typeAdjustedRight, #typeAdjustedLeft + 1, typeAdjustedLeft)
-    return typeAdjustedLeft
+function Utils.iextend<V>(dst: { V }, ...: { V }): { V }
+    for _, src in { ... } do
+        table.move(src, 1, #src, #dst + 1, dst)
+    end
+    return dst
 end
 
 --[[
