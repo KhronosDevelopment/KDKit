@@ -836,8 +836,10 @@ end
     Sort a table (in-place) using a function to extract a comparable value.
     Similar to passing a `key` to Python's builtin `list.sort` function.
     You may also return a table to include tiebreakers.
+
+    Default ascending order unless `descending` is set to true.
 --]]
-function Utils.isort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?): { V }
+function Utils.isort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?, descending: boolean?): { V }
     local e = Utils.evaluator(evaluator) :: (V, nil) -> any
     local rankings = {}
 
@@ -845,7 +847,11 @@ function Utils.isort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?): { V }
         rankings[a] = rankings[a] or e(a)
         rankings[b] = rankings[b] or e(b)
 
-        return Utils.compare(rankings[a], rankings[b]) == -1
+        if descending then
+            return Utils.compare(rankings[a], rankings[b]) == 1
+        else
+            return Utils.compare(rankings[a], rankings[b]) == -1
+        end
     end)
 
     return tab
@@ -854,8 +860,8 @@ end
 --[[
     Similar to Utils.isort, but makes a copy first.
 --]]
-function Utils.sort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?): { V }
-    return Utils.isort(table.clone(tab), evaluator)
+function Utils.sort<V>(tab: { V }, evaluator: Evaluator<nil, V, any>?, descending: boolean?): { V }
+    return Utils.isort(table.clone(tab), evaluator, descending)
 end
 
 --[[
@@ -1043,7 +1049,7 @@ end
     Utils.extend({ 'a', 'b' }, { 'c', 'd' }) -> { 'a', 'b', 'c', 'd' }
     ```
 --]]
-function Utils.extend<V1, V2>(left: { V1 }, right: { V2 }): { V1 | V2 }
+function Utils.extend<V>(left: { V }, right: { V }): { V }
     return Utils.iextend(table.clone(left), right)
 end
 
