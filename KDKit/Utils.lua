@@ -730,6 +730,32 @@ function Utils.isLinearArray(x: { any }): boolean
 end
 
 --[[
+    Assumes both tables contain no duplicate values.
+    Returns true if and only if both tables contain the same values,
+    regardless of order.
+
+    Behavior is undefined if either table contains duplicate values.
+--]]
+function Utils.setsEqual(a: { any }, b: { any }): boolean
+    if #a ~= #b then
+        return false
+    end
+
+    local aSet = {}
+    for _, value in a do
+        aSet[value] = true
+    end
+
+    for _, value in b do
+        if not aSet[value] then
+            return false
+        end
+    end
+
+    return true
+end
+
+--[[
     `Utils.count(x)` is basically `#x` except it works with dictionaries.
 --]]
 function Utils.count(x: { [any]: any }): number
