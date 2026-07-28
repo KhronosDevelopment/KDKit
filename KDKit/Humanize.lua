@@ -653,6 +653,42 @@ function Humanize.money(number: number, noCents: boolean?, unit: string?): strin
 end
 
 --[[
+    ```lua
+    Humanize.hugeNumber(3) -> "3"
+    Humanize.hugeNumber(999) -> "999"
+    Humanize.hugeNumber(1e3) -> "1k"
+    Humanize.hugeNumber(2e6) -> "2M"
+    Humanize.hugeNumber(3e9) -> "3B"
+    Humanize.hugeNumber(4e12) -> "4T"
+    Humanize.hugeNumber(5e15) -> "5000T"
+    ```
+--]]
+local SUFFIXES = { "", "k", "M", "B", "T" }
+function Humanize.hugeNumber(number: number, options: NumberFmtOptions?, sep: string?): string
+    if number == 0 then
+        return Humanize.number(0, options or {})
+    end
+
+    local negative = number < 0
+    local magnitude = math.abs(number)
+
+    local order = math.floor(math.log10(magnitude) / 3)
+    local normalized = magnitude / (1000 ^ order)
+    local suffix = SUFFIXES[order + 1] or "T"
+
+    return table.concat({
+        if negative then "-" else "",
+        Humanize.number(normalized, options or {}),
+        sep or "",
+        suffix,
+    })
+end
+
+function Humanize.shortMoney(number: number)
+    return Humanize.hugeNumber(number, { decimalPlaces = 2, removeTrailingZeros = true })
+end
+
+--[[
     Converts a string to hexadecimal representation.
     ```lua
     Humanize.hex("hello") -> "68656C6C6F"
