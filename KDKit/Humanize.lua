@@ -562,8 +562,10 @@ end
     Humanize.number(1, { decimalPlaces = 4, removeTrailingZeros = false }) -> "1.0000"
     ```
 --]]
-type NumberFmtOptions = { decimalPlaces: number?, addCommas: boolean?, removeTrailingZeros: boolean? }
-function Humanize.number(number: number, options: NumberFmtOptions): string
+function Humanize.number(
+    number: number,
+    options: { decimalPlaces: number?, addCommas: boolean?, removeTrailingZeros: boolean? }
+): string
     options.decimalPlaces = options.decimalPlaces or 7
     options.addCommas = options.addCommas or false
     if options.removeTrailingZeros == nil then
@@ -654,38 +656,70 @@ end
 
 --[[
     ```lua
-    Humanize.hugeNumber(3) -> "3"
-    Humanize.hugeNumber(999) -> "999"
-    Humanize.hugeNumber(1e3) -> "1k"
-    Humanize.hugeNumber(2e6) -> "2M"
-    Humanize.hugeNumber(3e9) -> "3B"
-    Humanize.hugeNumber(4e12) -> "4T"
-    Humanize.hugeNumber(5e15) -> "5000T"
+    Humanize.hugeNumber(1.23456789, {}) -> "1.23"
+    Humanize.hugeNumber(12.3456789, {}) -> "12.3"
+    Humanize.hugeNumber(123.456789, {}) -> "123"
+    Humanize.hugeNumber(1234.56789, {}) -> "1.23k"
+    Humanize.hugeNumber(12345.6789, {}) -> "12.3k"
+    Humanize.hugeNumber(123456.789, {}) -> "123k"
+    Humanize.hugeNumber(1234567.89, {}) -> "1.23M"
+    Humanize.hugeNumber(12345678.9, {}) -> "12.3M"
+    Humanize.hugeNumber(123456789., {}) -> "123M"
+    Humanize.hugeNumber(1.23456e9, {}) -> "1.23B"
+    Humanize.hugeNumber(12.3456e9, {}) -> "12.3B"
+    Humanize.hugeNumber(123.456e9, {}) -> "123B"
+    Humanize.hugeNumber(1234.56e9, {}) -> "1.23T"
+    Humanize.hugeNumber(12345.6e9, {}) -> "12.3T"
+    Humanize.hugeNumber(123456.e9, {}) -> "123T"
     ```
 --]]
 local SUFFIXES = { "", "k", "M", "B", "T" }
-function Humanize.hugeNumber(number: number, options: NumberFmtOptions?, sep: string?): string
+function Humanize.hugeNumber(
+    number: number,
+    options: { sigFigs: number?, removeTrailingZeros: boolean?, separator: string? }
+): string
+    local negative = number < 0
+    number = math.abs(number)
     if number == 0 then
-        return Humanize.number(0, options or {})
+        return "0"
     end
 
-    local negative = number < 0
-    local magnitude = math.abs(number)
+    local log = math.floor(math.log10(number))
+    if log < 0 then
+        return Humanize.number(number, {
+            addCommas = false,
+            decimalPlaces = (options.sigFigs or 3) - log - 1,
+            removeTrailingZeros = options.removeTrailingZeros or false,
+        })
+    end
 
-    local order = math.floor(math.log10(magnitude) / 3)
-    local normalized = magnitude / (1000 ^ order)
-    local suffix = SUFFIXES[order + 1] or "T"
+    local order = log // 3
+    local normalized = number / (1000 ^ order)
+    local dp = (options.sigFigs or 3) - (log % 3) - 1
+
+    local suffix = SUFFIXES[order + 1]
+    if not suffix then
+        suffix = "E" .. (order * 3)
+    end
 
     return table.concat({
         if negative then "-" else "",
-        Humanize.number(normalized, options or {}),
-        sep or "",
+        Humanize.number(normalized, {
+            addCommas = false,
+            decimalPlaces = dp,
+            removeTrailingZeros = options.removeTrailingZeros,
+        }),
+        options.separator or "",
         suffix,
     })
 end
 
-function Humanize.shortMoney(number: number)
-    return Humanize.hugeNumber(number, { decimalPlaces = 2, removeTrailingZeros = true })
+function Humanize.shortMoney(number: number): string
+    if math.abs(number) < 1000 then
+        return Humanize.money(number, true)
+    end
+
+    return Humanize.hugeNumber(number, {})
 end
 
 --[[
