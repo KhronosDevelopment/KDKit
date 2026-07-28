@@ -79,9 +79,9 @@ export type TryNotRaised<Ret...> = {
     success: boolean,
     traceback: string?, -- note that this only includes frames from AFTER :try()
     results: { any }?, -- actually packed { Ret... }
-    catch: (self: TryNotRaised<Ret...>, (err: string) -> nil) -> TryNotRaised<Ret...>,
-    proceed: (self: TryNotRaised<Ret...>, (Ret...) -> nil) -> TryNotRaised<Ret...>,
-    after: (self: TryNotRaised<Ret...>, (err: string?) -> nil) -> TryNotRaised<Ret...>,
+    catch: (self: TryNotRaised<Ret...>, (err: string) -> ()) -> TryNotRaised<Ret...>,
+    proceed: (self: TryNotRaised<Ret...>, (Ret...) -> ()) -> TryNotRaised<Ret...>,
+    after: (self: TryNotRaised<Ret...>, (err: string?) -> ()) -> TryNotRaised<Ret...>,
     raise: (self: TryNotRaised<Ret...>) -> TryRaised<Ret...>,
     _raise_called: false,
     result: (self: TryNotRaised<Ret...>) -> (boolean, string | any), -- the 'any' is actually 'Ret...',
@@ -91,9 +91,9 @@ export type TryRaised<Ret...> = {
     success: boolean,
     traceback: string?, -- note that this only includes frames from AFTER :try()
     results: { any }?, -- actually packed { Ret... }
-    catch: (self: TryRaised<Ret...>, (err: string) -> nil) -> TryRaised<Ret...>,
-    proceed: (self: TryRaised<Ret...>, (Ret...) -> nil) -> TryRaised<Ret...>,
-    after: (self: TryRaised<Ret...>, (err: string?) -> nil) -> TryRaised<Ret...>,
+    catch: (self: TryRaised<Ret...>, (err: string) -> ()) -> TryRaised<Ret...>,
+    proceed: (self: TryRaised<Ret...>, (Ret...) -> ()) -> TryRaised<Ret...>,
+    after: (self: TryRaised<Ret...>, (err: string?) -> ()) -> TryRaised<Ret...>,
     raise: (self: TryRaised<Ret...>) -> TryRaised<Ret...>,
     _raise_called: true,
     result: (self: TryRaised<Ret...>) -> Ret...,
@@ -234,7 +234,7 @@ end
     ```
 --]]
 function Utils.ensure<Arg..., Ret...>(
-    callback: (failed: boolean, traceback: string?) -> nil,
+    callback: (failed: boolean, traceback: string?) -> (),
     func: (Arg...) -> Ret...,
     ...: Arg...
 ): Ret...

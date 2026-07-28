@@ -64,7 +64,7 @@ local Utils = require(script.Parent:WaitForChild("Utils"))
 type Permission = ((player: Player) -> boolean) | { Player } | Player
 type Path = { any }
 type PathLike = Path | string
-type Listener = { path: Path, callback: (value: any) -> nil, default: any? }
+type Listener = { path: Path, callback: (value: any) -> (), default: any? }
 
 type ReplicatedValueImpl = {
     __index: ReplicatedValueImpl,
