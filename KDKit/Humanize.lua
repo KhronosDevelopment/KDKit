@@ -485,6 +485,13 @@ function Humanize.plural(word: string, count: number?): string
         return word
     end
 
+    do
+        local lastWordStart = word:find("[A-Za-z]+$")
+        if lastWordStart and lastWordStart > 1 then
+            return word:sub(1, lastWordStart - 1) .. Humanize.plural(word:sub(lastWordStart), count)
+        end
+    end
+
     local irregularPluralVersion = Humanize.IRREGULAR_NOUNS_PLURALIZATION[Utils.strip(word):lower()]
     if irregularPluralVersion then
         if Utils.isUpper(word) then
