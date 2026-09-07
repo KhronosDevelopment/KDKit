@@ -214,6 +214,8 @@ local Humanize = {
     } :: { [string]: string },
 }
 
+Humanize.IRREGULAR_NOUNS_SINGULARIZATION = Utils.invert(Humanize.IRREGULAR_NOUNS_PLURALIZATION)
+
 --[[
     This function is mostly used internally by Humanize.casing(...) which converts between cases,
     but I might as well expose this functionality :shrug:
@@ -465,6 +467,47 @@ function Humanize.timeDelta(seconds: number, short: boolean?): string
 end
 
 --[[
+    Makes a best effort to detect if a phrase is already plural.
+    Used in `Humanize.plural` to prevent double-pluralization
+--]]
+function Humanize.isPlural(word: string): boolean
+    do
+        local found, _, lastWord = word:find("([A-Za-z]+)[^A-Za-z]*$")
+        if found and lastWord then
+            word = lastWord
+        end
+    end
+
+    word = word:lower()
+
+    if Humanize.IRREGULAR_NOUNS_SINGULARIZATION[word] then
+        return true
+    end
+
+    if
+        word:match("ies$")
+        or word:match("ves$")
+        or word:match("sses$")
+        or word:match("shes$")
+        or word:match("ches$")
+        or word:match("xes$")
+        or word:match("zes$")
+    then
+        return true
+    end
+
+    -- Generic "...s" plural.
+    --
+    -- Exclude several common singular endings so things like
+    -- "glass", "status", etc. aren't assumed to already be plural.
+    if word:match("s$") and not word:match("ss$") and not word:match("us$") and not word:match("is$") then
+        return true
+    end
+
+    return false
+end
+
+--[[
     Pluralizes the provided word, optionally based on a number.
     Reasonably handles most irregular nouns, like "bus" -> "busses".
 
@@ -480,19 +523,19 @@ end
     Humanize.plural("fish", 5) -> "fish"
     ```
 --]]
-function Humanize.plural(word: string, count: number?): string
+function Humanize.plural(word: string, count: number?, skipAlreadyPluralCheck: boolean?): string
     if count == 1 then
         return word
     end
 
     do
-        local lastWordStart = word:find("[A-Za-z]+$")
-        if lastWordStart and lastWordStart > 1 then
-            return word:sub(1, lastWordStart - 1) .. Humanize.plural(word:sub(lastWordStart), count)
+        local lastWordStart, lastWordEnd, lastWord = word:find("([A-Za-z]+)[^A-Za-z]*$")
+        if lastWordStart and lastWordEnd and lastWord and (lastWordStart > 1 or lastWordEnd < word:len()) then
+            return word:sub(1, lastWordStart - 1) .. Humanize.plural(lastWord, count) .. word:sub(lastWordEnd + 1)
         end
     end
 
-    local irregularPluralVersion = Humanize.IRREGULAR_NOUNS_PLURALIZATION[Utils.strip(word):lower()]
+    local irregularPluralVersion = Humanize.IRREGULAR_NOUNS_PLURALIZATION[word:lower()]
     if irregularPluralVersion then
         if Utils.isUpper(word) then
             return irregularPluralVersion:upper()
@@ -501,6 +544,10 @@ function Humanize.plural(word: string, count: number?): string
         else
             return Humanize.casing(irregularPluralVersion, "sentence")
         end
+    end
+
+    if not skipAlreadyPluralCheck and Humanize.isPlural(word) then
+        return word
     end
 
     local ending = "s"
