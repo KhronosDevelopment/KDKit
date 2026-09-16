@@ -1390,6 +1390,79 @@ function Utils.insort_or_replace<V>(
 end
 
 --[[
+    Searches exponentially to the right from `start` for the first valid
+    insertion position for `value`.
+
+    In the case of equivalent elements, returns the index of the leftmost
+    equivalent element encountered by the search.
+
+    The caller must guarantee that the correct insertion position is at or
+    to the right of `start`.
+--]]
+function Utils.exponential_search_right<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>?, start: number): number
+    local e = Utils.evaluator(key) :: (V, number?) -> C
+    local n = #tab
+
+    if start > n then
+        return n + 1
+    end
+
+    -- `start` itself is already a valid insertion point.
+    if Utils.compare(value, e(tab[start], start)) <= 0 then
+        return start
+    end
+
+    local offset = 1
+
+    -- Gallop right while value belongs after the probed element.
+    while start + offset <= n and Utils.compare(value, e(tab[start + offset], start + offset)) > 0 do
+        offset *= 2
+    end
+
+    local low = start + math.floor(offset / 2) + 1
+    local high = math.min(start + offset, n)
+
+    return Utils.bisect_left(tab, value, key, low, high)
+end
+
+--[[
+    Searches exponentially to the left from `start` for the first valid
+    insertion position for `value`.
+
+    In the case of equivalent elements, returns the position immediately
+    after the rightmost equivalent element encountered by the search.
+
+    The caller must guarantee that the correct insertion position is at or
+    to the left of `start`.
+--]]
+function Utils.exponential_search_left<V, C>(tab: { V }, value: C, key: Evaluator<number?, V, C>?, start: number): number
+    local e = Utils.evaluator(key) :: (V, number?) -> C
+
+    if start < 1 then
+        return 1
+    end
+
+    start = math.min(start, #tab)
+
+    -- `start + 1` is already a valid insertion point.
+    if Utils.compare(value, e(tab[start], start)) >= 0 then
+        return start + 1
+    end
+
+    local offset = 1
+
+    -- Gallop left while value belongs before the probed element.
+    while start - offset >= 1 and Utils.compare(value, e(tab[start - offset], start - offset)) < 0 do
+        offset *= 2
+    end
+
+    local low = math.max(start - offset, 1)
+    local high = start - math.floor(offset / 2)
+
+    return Utils.bisect_right(tab, value, key, low, high)
+end
+
+--[[
     Returns an un-parented Part that has CanCollide/Anchored on, and everything else off.
 --]]
 function Utils.getBlankPart(parent: Instance?): Part
