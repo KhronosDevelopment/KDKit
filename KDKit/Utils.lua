@@ -1329,11 +1329,20 @@ end
 --[[
     Insert `element` into `tab` such that it remains sorted.
     In the case of tiebreakers, the new element is placed on the right.
+    Returns the index of insertion.
     Similar to Python's builtin `bisect.insort_right` function.
 --]]
-function Utils.insort_right<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>?, low: number?, high: number?)
+function Utils.insort_right<V>(
+    tab: { V },
+    element: V,
+    key: Evaluator<number?, V, any>?,
+    low: number?,
+    high: number?
+): number
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
-    table.insert(tab, Utils.bisect_right(tab, evaluator(element, nil), evaluator, low, high), element)
+    local i = Utils.bisect_right(tab, evaluator(element, nil), evaluator, low, high)
+    table.insert(tab, i, element)
+    return i
 end
 Utils.insort = Utils.insort_right
 
@@ -1341,17 +1350,32 @@ Utils.insort = Utils.insort_right
     Similar to `Utils.insort_right` but in the case of
     tiebreakers, the new element is placed to the left.
 --]]
-function Utils.insort_left<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>?, low: number?, high: number?)
+function Utils.insort_left<V>(
+    tab: { V },
+    element: V,
+    key: Evaluator<number?, V, any>?,
+    low: number?,
+    high: number?
+): number
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
-    table.insert(tab, Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high), element)
+    local i = Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high)
+    table.insert(tab, i, element)
+    return i
 end
 
 --[[
     Insert an item into a sorted list. If an item with
     the same sort key is already in the list, replace it.
     If there are multiple, it replaces the first occurrence.
+    Returns the index of the element in the list.
 --]]
-function Utils.insort_or_replace<V>(tab: { V }, element: V, key: Evaluator<number?, V, any>?, low: number?, high: number?)
+function Utils.insort_or_replace<V>(
+    tab: { V },
+    element: V,
+    key: Evaluator<number?, V, any>?,
+    low: number?,
+    high: number?
+): number
     local evaluator = Utils.evaluator(key) :: (V, number?) -> any
     local index = Utils.bisect_left(tab, evaluator(element, nil), evaluator, low, high)
 
@@ -1361,6 +1385,8 @@ function Utils.insort_or_replace<V>(tab: { V }, element: V, key: Evaluator<numbe
     else
         table.insert(tab, index, element)
     end
+
+    return index
 end
 
 --[[
