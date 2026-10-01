@@ -213,13 +213,12 @@ function KDRandom.withRNG<Arg..., Ret...>(rng: Random, f: (Arg...) -> Ret..., ..
 end
 
 function KDRandom.withSeed<Arg..., Ret...>(seed: number?, f: (Arg...) -> Ret..., ...: Arg...): Ret...
+    KDRandom.lastSeed = seed
     return KDRandom.withRNG(Random.new(seed), f, ...)
 end
 
 function KDRandom.vector(minMagnitude: number, maxMagnitude: number?): Vector3
-    local v = Vector3.new(KDRandom.number(-1, 1), KDRandom.number(-1, 1), KDRandom.number(-1, 1))
-
-    return v.Unit * KDRandom.number(minMagnitude, maxMagnitude or minMagnitude)
+    return KDRandom.rng:NextUnitVector() * KDRandom.number(minMagnitude, maxMagnitude or minMagnitude)
 end
 
 function KDRandom.angle(): CFrame
