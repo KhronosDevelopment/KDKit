@@ -1498,13 +1498,11 @@ end
     Utils.min({}) -> nil, nil
     ```
 --]]
-function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V?, K?)
+function Utils.min<K, V, E>(tab: { [K]: V }, key: Evaluator<K, V, E>?): (V?, K?, E?)
     local e = Utils.evaluator(key) :: (V, K) -> any
-    local minValue: V?, minKey: K? = nil, nil
+    local minValue: V?, minKey: K?, minimumEvaluation: E? = nil, nil, nil
 
     if key then
-        local minimumEvaluation = nil
-
         for k, v in tab do
             local evaluation = e(v, k)
             if minimumEvaluation == nil or Utils.compare(evaluation, minimumEvaluation) < 0 then
@@ -1522,7 +1520,7 @@ function Utils.min<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): (V?, K?)
         end
     end
 
-    return minValue, minKey
+    return minValue, minKey, minimumEvaluation
 end
 
 --[[
@@ -1532,9 +1530,9 @@ end
     Utils.minKey({a = 2, b = 1, c = 4}) -> "b"
     ```
 --]]
-function Utils.minKey<K, V>(tab: { [K]: V }, key: Evaluator<K, V, any>?): K?
-    local _, k = Utils.min(tab, key)
-    return k
+function Utils.minKey<K, V, E>(tab: { [K]: V }, key: Evaluator<K, V, E>?): (K?, E?)
+    local _, k, e = Utils.min(tab, key)
+    return k, e
 end
 
 --[[
