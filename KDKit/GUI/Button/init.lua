@@ -3,8 +3,8 @@
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local LocalPlayer = game.Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
 
 local Signal = require(script.Parent.Parent:WaitForChild("Signal"))
 local Mouse = require(script.Parent.Parent:WaitForChild("Mouse"))
@@ -595,6 +595,7 @@ local function updateHovered()
             end
         elseif
             not topmostHoveredButton
+            and instanceUnderMouse.Interactable
             and (
                 (not instanceUnderMouse:IsA("Frame") and not instanceUnderMouse:IsA("TextLabel"))
                 or instanceUnderMouse.BackgroundTransparency < 1
