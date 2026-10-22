@@ -99,6 +99,7 @@ function Button.new(instance, onClickCallback)
             loading = {},
             disabled = {},
         },
+        mouseHoveredIcon = "pointer",
         _previousVisualState = STATE_NO_STYLING,
     }, Button) :: Button
 
@@ -168,6 +169,11 @@ end
 
 function Button:withVisualStateChangeConnection(callback)
     self.signals.visualStateChange:connect(callback)
+    return self
+end
+
+function Button:withMouseHoveredIcon(icon)
+    self.mouseHoveredIcon = icon
     return self
 end
 
@@ -638,7 +644,7 @@ local function updateHovered()
     end
 
     if S.mouseHovered and S.mouseHovered ~= S.world and S.mouseHovered ~= S.other and S.mouseHovered:pressable() then
-        Mouse.setIcon("_KDKit.GUI.Button", "pointer")
+        Mouse.setIcon("_KDKit.GUI.Button", S.mouseHovered.mouseHoveredIcon)
     else
         Mouse.setIcon("_KDKit.GUI.Button", nil)
     end

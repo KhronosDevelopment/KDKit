@@ -63,6 +63,7 @@ export type ButtonImpl = {
     withReleaseConnection: (Button, Signal.SignalFn<(), ()>) -> Button,
     withClickConnection: (Button, Signal.SignalFn<(), ()>) -> Button,
     withVisualStateChangeConnection: (Button, Signal.SignalFn<(ButtonVisualState, ButtonVisualState), ()>) -> Button,
+    withMouseHoveredIcon: (Button, string?) -> Button,
     hitbox: (Button, string | ButtonHitbox) -> Button,
     bind: (Button, ...KeyCodeReference) -> Button,
     unbindAll: (Button) -> Button,
@@ -125,6 +126,7 @@ export type Button = typeof(setmetatable(
             loading: ButtonStyle,
             disabled: ButtonStyle,
         },
+        mouseHoveredIcon: string?, -- nil = don't set, default = "pointer"
         customHitbox: ButtonHitbox?,
         _previousVisualState: ButtonVisualState,
     },
