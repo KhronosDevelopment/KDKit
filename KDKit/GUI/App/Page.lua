@@ -20,9 +20,12 @@ function Page.new(app, module)
         module = module,
         name = module.Name,
         instance = module:FindFirstChild("instance"),
+        modalButton = Instance.new("TextButton"),
         connections = {},
         buttons = {},
         opened = false,
+        -- set this to true to unlock the mouse while this page is open
+        modal = false,
         -- set this to true if you do not want the page to be added to the history stack
         -- with the exception of when the page is currently open, when it will be on the top of the stack
         -- that is, ephemeral pages will never be opened via a call to App():goBack()
@@ -50,6 +53,18 @@ function Page.new(app, module)
     self.instance.Name = self.name
     self.instance.Parent = app.instance
 
+    self.modalButton.Name = "_KDKit.GUI.Page.ModalButton_" .. self.name
+    self.modalButton.BackgroundTransparency = 1
+    self.modalButton.Position = UDim2.fromScale(-1, -1)
+    self.modalButton.Size = UDim2.fromOffset(0, 0)
+    self.modalButton.Text = ""
+    self.modalButton.AutoButtonColor = false
+    self.modalButton.Selectable = false
+    self.modalButton.Active = false
+    self.modalButton.Modal = true
+    self.modalButton.Visible = false
+    self.modalButton.Parent = app.instance
+
     return self
 end
 
@@ -57,6 +72,7 @@ function Page:rawOpen(transition)
     self.opened = true
     self.nTimesOpened += 1
     Button.enableWithin(self.instance)
+    self.modalButton.Visible = self.modal
     self.instance.ZIndex = Page.TOP_ZINDEX
     local animationTime =
         Animate.onscreen(self.instance, if transition.initial then 0 else self.animationDuration.onscreen)
@@ -67,6 +83,7 @@ end
 function Page:rawClose(transition)
     self:beforeClosed(transition)
     Button.disableWithin(self.instance)
+    self.modalButton.Visible = false
     for _key, connection in self.connections do
         connection:Disconnect()
     end
