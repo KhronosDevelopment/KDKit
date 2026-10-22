@@ -8,6 +8,7 @@ local Mouse = {
         pointer = "rbxasset://textures/Cursors/KeyboardMouse/ArrowCursor.png",
         grabbing = "rbxasset://textures/Cursors/KeyboardMouse/ArrowCursor.png",
         dragging = "rbxasset://textures/Cursors/mouseIconCameraTrack.png",
+        hidden = "KDKIT_MOUSE_CURSOR_HIDDEN",
     },
     cursorByContext = {} :: { [string]: string },
     contexts = {} :: { string },
@@ -42,7 +43,12 @@ end
 function Mouse.updateIcon(): string
     local icon = Mouse.cursorByContext[Mouse.contexts[#Mouse.contexts]]
         or "rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png"
-    UserInputService.MouseIcon = icon
+    if icon == Mouse.cursors.hidden then
+        UserInputService.MouseIconEnabled = false
+    else
+        UserInputService.MouseIconEnabled = true
+        UserInputService.MouseIcon = icon
+    end
     return icon
 end
 
