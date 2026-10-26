@@ -1,4 +1,6 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Utils = require(script.Parent:WaitForChild("Utils"))
 
@@ -19,7 +21,7 @@ local Time = {
     isReady: () -> boolean,
 }
 
-if game:GetService("RunService"):IsServer() then
+if RunService:IsServer() then
     local URLS = {
         "https://www.google.com/",
         "https://status.cloud.google.com/",
@@ -33,7 +35,7 @@ if game:GetService("RunService"):IsServer() then
     MAX_REMOTE_HISTORY = 10 * #URLS
     MIN_REMOTE_HISTORY = math.floor(#URLS / 2)
 
-    local remote = Instance.new("RemoteFunction", game:GetService("ReplicatedStorage"))
+    local remote = Instance.new("RemoteFunction", ReplicatedStorage)
     remote.Name = "_KDKit.Time"
 
     remote.OnServerInvoke = function(player)
@@ -110,7 +112,7 @@ if game:GetService("RunService"):IsServer() then
 
     task.defer(function()
         repeat
-        until game:GetService("RunService").Heartbeat:Wait() < (1 / 50)
+        until RunService.Heartbeat:Wait() < (1 / 50)
 
         for i = 0, #URLS - 1 do
             task.delay(i / #URLS, Time.sync)
@@ -122,7 +124,7 @@ else
     MIN_REMOTE_HISTORY = 3
 
     -- note: if you require Time on the client, you must also require it on the server!
-    local remote = game:GetService("ReplicatedStorage"):WaitForChild("_KDKit.Time") :: RemoteFunction
+    local remote = ReplicatedStorage:WaitForChild("_KDKit.Time") :: RemoteFunction
 
     function Time.sync()
         local sentAt = os.clock()

@@ -1,4 +1,5 @@
 --!strict
+
 --[[
     A dead-simple way to replicate complicated data to clients in real time.
     WARNING: This uses remote events to send data, so if tables aren't array-like
@@ -55,7 +56,10 @@
     end)
     ```
 --]]
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+
 local IS_SERVER = RunService:IsServer()
 local IS_CLIENT = RunService:IsClient()
 
@@ -117,14 +121,14 @@ local ReplicatedValue: ReplicatedValueImpl = {
 ReplicatedValue.__index = ReplicatedValue
 
 if IS_SERVER then
-    ReplicatedValue.remotesFolder = Instance.new("Folder", game:GetService("ReplicatedStorage"))
+    ReplicatedValue.remotesFolder = Instance.new("Folder", ReplicatedStorage)
     ReplicatedValue.remotesFolder.Name = "_KDKit.ReplicatedValue.Remotes"
 
     Instance.new("RemoteEvent", ReplicatedValue.remotesFolder).Name = "subscribe"
     Instance.new("RemoteEvent", ReplicatedValue.remotesFolder).Name = "unsubscribe"
     Instance.new("RemoteEvent", ReplicatedValue.remotesFolder).Name = "update"
 else
-    ReplicatedValue.remotesFolder = game:GetService("ReplicatedStorage"):WaitForChild("_KDKit.ReplicatedValue.Remotes")
+    ReplicatedValue.remotesFolder = ReplicatedStorage:WaitForChild("_KDKit.ReplicatedValue.Remotes")
 end
 
 ReplicatedValue.remotes = {
@@ -178,7 +182,7 @@ if IS_SERVER then
     end
 end
 
-game:GetService("Players").PlayerRemoving:Connect(function(player: Player)
+Players.PlayerRemoving:Connect(function(player: Player)
     for key, pendingSubscribers in ReplicatedValue.pendingSubscribers do
         for pendingSubscriber, _ in pendingSubscribers do
             if pendingSubscriber == player then

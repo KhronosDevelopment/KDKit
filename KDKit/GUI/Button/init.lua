@@ -1,9 +1,11 @@
 --!strict
-
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
-local LocalPlayer = game:GetService("Players").LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
 
 local Signal = require(script.Parent.Parent:WaitForChild("Signal"))
@@ -379,7 +381,7 @@ function Button:makeSound()
     end
 
     local sound = S.sound:Clone()
-    sound.Parent = game:GetService("SoundService")
+    sound.Parent = SoundService
     sound.PlayOnRemove = true
     task.defer(sound.Destroy, sound)
     return sound

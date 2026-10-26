@@ -1,5 +1,4 @@
 --!strict
-
 local UserInputService = game:GetService("UserInputService")
 
 local Preload = require(script.Parent.Parent:WaitForChild("Preload"))

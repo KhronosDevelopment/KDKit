@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 
 --[[
     KDKit.Utils is a collection of various utility functions that are "missing" from the standard library and the language itself.
@@ -853,7 +854,7 @@ end
     ```
 --]]
 function Utils.safeJSONEncode(data: any): string
-    return game:GetService("HttpService"):JSONEncode(Utils.makeSerializable(data))
+    return HttpService:JSONEncode(Utils.makeSerializable(data))
 end
 
 --[[

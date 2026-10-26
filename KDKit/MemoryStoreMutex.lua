@@ -1,12 +1,12 @@
 --!strict
-
 local MemoryStoreService = game:GetService("MemoryStoreService")
+local RunService = game:GetService("RunService")
 
 local Utils = require(script.Parent:WaitForChild("Utils"))
 local KDRandom = require(script.Parent:WaitForChild("Random"))
 
 local STORE
-if game:GetService("RunService"):IsServer() then
+if RunService:IsServer() then
     STORE = MemoryStoreService:GetHashMap("_KDKit.MemoryStoreMutex")
 end
 

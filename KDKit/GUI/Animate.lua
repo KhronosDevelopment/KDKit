@@ -1,6 +1,6 @@
 --!strict
-
 local TweenService = game:GetService("TweenService")
+
 local Animate = {
     counts = {} :: { [Instance]: number },
 }

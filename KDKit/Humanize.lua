@@ -1,6 +1,6 @@
 --!strict
-
 local RunService = game:GetService("RunService")
+
 local Utils = require(script.Parent:WaitForChild("Utils"))
 
 --[[

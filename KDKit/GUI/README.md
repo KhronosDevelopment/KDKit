@@ -39,7 +39,8 @@ My pride and joy. A wonderfully simple interface to creating beautiful interacti
 
 Code within the `home` page:
 ```lua
-local KDKit = game:GetService("ReplicateFirst"):WaitForChild("KDKit")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+local KDKit = ReplicatedFirst:WaitForChild("KDKit")
 local GUI = require(KDKit.GUI)
 local app, page = GUI.App.loadPage(script)
 

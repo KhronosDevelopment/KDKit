@@ -1,5 +1,4 @@
 --!strict
-
 local HttpService = game:GetService("HttpService")
 
 local Utils = require(script.Parent.Parent:WaitForChild("Utils"))

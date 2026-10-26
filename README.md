@@ -7,7 +7,8 @@ A collection of tools that Khronos Development uses in every game.
 First, [install](#installation) KDKit. Then, you can require all the tools:
 
 ```lua
-local KDKit = require(game:GetService("ReplicatedStorage").KDKit)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local KDKit = require(ReplicatedStorage.KDKit)
 
 KDKit.Utils
     .try(function()
@@ -25,7 +26,8 @@ KDKit.Utils
 Or, you can require individual tools:
 
 ```lua
-local KDKit = game:GetService("ReplicatedStorage").KDKit
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local KDKit = ReplicatedStorage.KDKit
 local Humanize = require(KDKit.Humanize)
 
 for _, word in {"item", "knife", "Option", "LIST"} do
@@ -115,7 +117,8 @@ git submodule add "https://github.com/KhronosDevelopment/KDKit" KDKit
 And you're done! Now you can use KDKit:
 
 ```lua
-local KDKit = require(game:GetService("ReplicatedStorage"):WaitForChild("KDKit"))
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local KDKit = require(ReplicatedStorage:WaitForChild("KDKit"))
 
 print(KDKit.Utils.sum({ 1, 2, 3 }))
 ```

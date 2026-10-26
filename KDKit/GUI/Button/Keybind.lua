@@ -1,5 +1,4 @@
 --!strict
-
 local ContextActionService = game:GetService("ContextActionService")
 
 local Humanize = require(script.Parent.Parent.Parent:WaitForChild("Humanize"))
