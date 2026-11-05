@@ -54,7 +54,7 @@ function Url.extractUrlParams(url)
 end
 
 function Url.new(url, extraParams)
-    local path, params = Url.extractUrlParams(url)
+    local path, params: { [string]: string | Secret } = Url.extractUrlParams(url)
     if extraParams then
         Utils.imerge(params, extraParams)
     end
