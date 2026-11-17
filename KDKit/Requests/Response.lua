@@ -9,6 +9,7 @@ type Response = T.Response
 type ResponseImpl = T.ResponseImpl
 
 local Response: ResponseImpl = {} :: ResponseImpl
+Response.__index = Response
 
 function Response.new(request, data)
     local self = setmetatable({
