@@ -59,7 +59,7 @@ function HttpClient.new(projectToken)
 end
 
 function HttpClient:import(events)
-    return Requests.post("https://api.mixpanel.com/import", {
+    local response = Requests.post("https://api.mixpanel.com/import", {
         headers = { Authorization = self.authHeader },
         json = Utils.map(events, function(e)
             return {
@@ -75,14 +75,25 @@ function HttpClient:import(events)
             }
         end),
     })
+    response:raiseForStatus()
+    return response
 end
 
 function HttpClient:updateProfiles(profileUpdates)
-    return Requests.post("https://api.mixpanel.com/engage#profile-batch-update", {
+    local response = Requests.post("https://api.mixpanel.com/engage", {
+        params = { verbose = "1" },
         json = Utils.map(profileUpdates, function(p)
             return Utils.merge(p, { ["$token"] = self.projectToken })
         end),
     })
+    response:raiseForStatus()
+
+    -- mixpanel answers 200 even when it rejects the whole batch
+    local ok, result = pcall(response.json, response)
+    if not ok or typeof(result) ~= "table" or result.status ~= 1 then
+        error(("[KDKit.Mixpanel] Profile batch rejected: %s"):format(response.body:sub(1, 500)))
+    end
+    return response
 end
 
 return HttpClient
