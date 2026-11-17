@@ -256,18 +256,19 @@ function Client:queueEvent(name, properties)
 end
 
 function Client:queueEventP(name, player, properties)
-    return self:queueEvent(name, Utils.merge(properties or {}, { distinct_id = player.UserId }))
+    -- mixpanel rejects events whose distinct_id isn't a string
+    return self:queueEvent(name, Utils.merge(properties or {}, { distinct_id = tostring(player.UserId) }))
 end
 
 -- Mixpanel rejects an update with more than one operation, so each one is sent as its own update
 local PROFILE_OPERATIONS = { "set", "set_once", "add", "union", "append", "remove", "unset" }
 
 function Client:queueProfileUpdate(distinctId, params)
-    print(("[KDKit.Mixpanel] Profile update for '%d' added to batch with params"):format(distinctId), params)
+    print(("[KDKit.Mixpanel] Profile update for '%s' added to batch with params"):format(tostring(distinctId)), params)
     for _, operation in PROFILE_OPERATIONS do
         local value = (params :: any)[operation]
         if value ~= nil then
-            self:batch("profile", { ["$distinct_id"] = distinctId, ["$" .. operation] = value })
+            self:batch("profile", { ["$distinct_id"] = tostring(distinctId), ["$" .. operation] = value })
         end
     end
 end

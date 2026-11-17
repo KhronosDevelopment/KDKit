@@ -59,31 +59,48 @@ function HttpClient.new(projectToken)
 end
 
 function HttpClient:import(events)
+    -- strict: without it mixpanel answers 200 and silently drops events that fail validation
     local response = Requests.post("https://api.mixpanel.com/import", {
+        params = { strict = "1" },
         headers = { Authorization = self.authHeader },
         json = Utils.map(events, function(e)
+            local properties = Utils.map(e.properties, function<T>(v: T): T
+                if typeof(v) == "string" then
+                    -- mixpanel automatically truncates to 255 chars, so don't bother uploading more
+                    return v:sub(1, 255)
+                else
+                    return v
+                end
+            end)
+            if typeof(properties.distinct_id) == "number" then
+                properties.distinct_id = tostring(properties.distinct_id)
+            end
             return {
                 event = e.event,
-                properties = Utils.map(e.properties, function<T>(v: T): T
-                    if typeof(v) == "string" then
-                        -- mixpanel automatically truncates to 255 chars, so don't bother uploading more
-                        return v:sub(1, 255)
-                    else
-                        return v
-                    end
-                end),
+                properties = properties,
             }
         end),
     })
+
+    -- validation failures would fail again on retry; the valid events in the batch were still imported
+    if response.statusCode == 400 and response.body:find("failed_records", 1, true) then
+        task.defer(
+            error,
+            ("[KDKit.Mixpanel] %d events failed validation: %s"):format(#events, response.body:sub(1, 1000))
+        )
+        return response
+    end
+
     response:raiseForStatus()
     return response
 end
 
 function HttpClient:updateProfiles(profileUpdates)
     local response = Requests.post("https://api.mixpanel.com/engage", {
-        params = { verbose = "1" },
+        -- ip=0: the request comes from the game server, so geolocating it would give every player the server's city
+        params = { verbose = "1", ip = "0" },
         json = Utils.map(profileUpdates, function(p)
-            return Utils.merge(p, { ["$token"] = self.projectToken })
+            return Utils.merge(p, { ["$token"] = self.projectToken, ["$distinct_id"] = tostring(p["$distinct_id"]) })
         end),
     })
     response:raiseForStatus()
