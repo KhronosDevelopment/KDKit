@@ -30,6 +30,8 @@ type Options = {
     batching: { default: BatchingOptions?, event: BatchingOptions?, profile: BatchingOptions? }?,
     retryBatches: RetryBatchesOptions?,
     timeProvider: (() -> number)?,
+    -- false to call `client:close()` from your own game:BindToClose instead, after the last events are queued
+    bindToClose: boolean?,
 }
 
 type Properties = { [string]: JsonValueL? } -- "?" to allow you to do `{ value = value }` where value might be nil
@@ -51,6 +53,8 @@ type ClientImpl = {
     batchingParams: (Client, string) -> { maxSize: number, maxDuration: number, delay: number },
     batch: (Client, string, any) -> (),
     fireBatch: (Client, string, ((boolean, string?) -> ())?) -> (),
+    flushAsync: (Client) -> (),
+    close: (Client) -> (),
     queueEvent: (Client, string, Properties?) -> JsonValueL,
     queueEventP: (Client, string, Player, Properties?) -> JsonValueL,
     queueProfileUpdate: (Client, number, ProfileUpdate) -> (),
@@ -104,22 +108,11 @@ function Client.new(projectToken, options)
             }
     end)
 
-    game:BindToClose(function()
-        self.options.batching = { default = { maxSize = 0 } }
-        for endpoint, batch in self.batches :: { [string]: Batch<any> } do
-            if next(batch.items) then
-                self:fireBatch(endpoint, function(failed)
-                    if not failed then
-                        print(("[KDKit.Mixpanel] Successfully fired '%s' batch at game close."):format(endpoint))
-                    end
-                end)
-            end
-        end
-
-        while self.inProgressBatchFires > 0 do
-            task.wait(0.1)
-        end
-    end)
+    if self.options.bindToClose ~= false then
+        game:BindToClose(function()
+            self:close()
+        end)
+    end
 
     return self
 end
@@ -221,6 +214,29 @@ function Client:fireBatch(endpoint, cb)
     end)
 end
 
+-- fires everything queued so far and yields until every batch fire (including retries) has finished
+function Client:flushAsync()
+    while true do
+        for endpoint, batch in self.batches :: { [string]: Batch<any> } do
+            if next(batch.items) then
+                self:fireBatch(endpoint)
+            end
+        end
+
+        if self.inProgressBatchFires == 0 then
+            return
+        end
+        task.wait(0.1)
+    end
+end
+
+-- from now on every item is sent immediately; yields until everything queued has been sent
+function Client:close()
+    self.options.batching = { default = { maxSize = 0 } }
+    self:flushAsync()
+    print("[KDKit.Mixpanel] Flushed at game close.")
+end
+
 function Client:queueEvent(name, properties)
     properties = properties or {}
     assert(properties)
@@ -243,14 +259,17 @@ function Client:queueEventP(name, player, properties)
     return self:queueEvent(name, Utils.merge(properties or {}, { distinct_id = player.UserId }))
 end
 
-function Client:queueProfileUpdate(distinctId, params)
-    local o = Utils.mapf(params, function(value, key)
-        return "$" .. key, value
-    end)
-    o["$distinct_id"] = distinctId
+-- Mixpanel rejects an update with more than one operation, so each one is sent as its own update
+local PROFILE_OPERATIONS = { "set", "set_once", "add", "union", "append", "remove", "unset" }
 
+function Client:queueProfileUpdate(distinctId, params)
     print(("[KDKit.Mixpanel] Profile update for '%d' added to batch with params"):format(distinctId), params)
-    self:batch("profile", o)
+    for _, operation in PROFILE_OPERATIONS do
+        local value = (params :: any)[operation]
+        if value ~= nil then
+            self:batch("profile", { ["$distinct_id"] = distinctId, ["$" .. operation] = value })
+        end
+    end
 end
 
 function Client:queueProfileUpdateP(player, params)
