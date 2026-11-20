@@ -18,7 +18,7 @@ export type MemoryStoreMutexImpl = {
     _tryClear: (MemoryStoreMutex) -> (boolean, string?),
     _clear: (MemoryStoreMutex, number) -> (),
     getTimeToExpiration: (MemoryStoreMutex) -> number,
-    acquire: (MemoryStoreMutex, (number) -> ()) -> (),
+    acquire: (MemoryStoreMutex, (number, string) -> ()) -> (),
     release: (MemoryStoreMutex) -> (),
 }
 export type MemoryStoreMutex = typeof(setmetatable(
@@ -202,7 +202,7 @@ function MemoryStoreMutex:acquire(cbOnReleasingPrematurely)
 
             r:catch(function(failed)
                 local eta = if me then me.expiry - os.clock() else -1
-                task.defer(cbOnReleasingPrematurely, eta)
+                task.defer(cbOnReleasingPrematurely, eta, tostring(failed))
                 task.delay(eta, function()
                     if not self.releasing and self.acquired == me then
                         self.acquired = nil
